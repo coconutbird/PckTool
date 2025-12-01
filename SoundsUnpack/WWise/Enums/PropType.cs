@@ -1,0 +1,65 @@
+﻿namespace SoundsUnpack.WWise.Enums;
+
+public enum PropType : byte
+{
+    Volume = 0x00,
+    LowFrequencyEffects = 0x01,       // LFE
+    Pitch = 0x02,
+    LowPassFilter = 0x03,             // LPF
+    HighPassFilter = 0x04,            // HPF
+    BusVolume = 0x05,
+    Priority = 0x06,                  // sometimes StatePropNum in decomp
+    PriorityDistanceOffset = 0x07,
+    FeedbackVolume = 0x08,
+    FeedbackLowPassFilter = 0x09,     // FeedbackLPF
+    MuteRatio = 0x0A,
+    PanLeftRight = 0x0B,              // PAN_LR
+    PanFrontRear = 0x0C,              // PAN_FR
+    CenterPercent = 0x0D,             // CenterPCT
+    DelayTime = 0x0E,
+    TransitionTime = 0x0F,
+    Probability = 0x10,
+    DialogueMode = 0x11,
+    UserAuxSendVolume0 = 0x12,
+    UserAuxSendVolume1 = 0x13,
+    UserAuxSendVolume2 = 0x14,
+    UserAuxSendVolume3 = 0x15,
+    GameAuxSendVolume = 0x16,
+    OutputBusVolume = 0x17,
+    OutputBusHighPassFilter = 0x18,
+    OutputBusLowPassFilter = 0x19,
+    HDRBusThreshold = 0x1A,
+    HDRBusRatio = 0x1B,
+    HDRBusReleaseTime = 0x1C,
+    HDRBusGameParameter = 0x1D,
+    HDRBusGameParameterMin = 0x1E,
+    HDRBusGameParameterMax = 0x1F,
+    HDRActiveRange = 0x20,
+    MakeUpGain = 0x21,
+    LoopStart = 0x22,
+    LoopEnd = 0x23,
+    TrimInTime = 0x24,
+    TrimOutTime = 0x25,
+    FadeInTime = 0x26,
+    FadeOutTime = 0x27,
+    FadeInCurve = 0x28,
+    FadeOutCurve = 0x29,
+    LoopCrossfadeDuration = 0x2A,
+    CrossfadeUpCurve = 0x2B,
+    CrossfadeDownCurve = 0x2C,
+    MidiTrackingRootNote = 0x2D,
+    MidiPlayOnNoteType = 0x2E,
+    MidiTransposition = 0x2F,
+    MidiVelocityOffset = 0x30,
+    MidiKeyRangeMin = 0x31,
+    MidiKeyRangeMax = 0x32,
+    MidiVelocityRangeMin = 0x33,
+    MidiVelocityRangeMax = 0x34,
+    MidiChannelMask = 0x35,
+    PlaybackSpeed = 0x36,
+    MidiTempoSource = 0x37,
+    MidiTargetNode = 0x38,
+    AttachedPluginFxId = 0x39,
+    Loop = 0x3A,
+    InitialDelay = 0x3B
+}

@@ -15,6 +15,8 @@ public class BankHeaderChunk
             return false;
         }
 
+        var basePosition = reader.BaseStream.Position;
+
         BankGeneratorVersion = reader.ReadUInt32();
         SoundBankId = reader.ReadUInt32();
         LanguageId = reader.ReadUInt32();
@@ -22,7 +24,9 @@ public class BankHeaderChunk
         ProjectId = reader.ReadUInt32();
 
         // Padding
-        reader.BaseStream.Position += 0x0C;
+        var paddingSize = size - (reader.BaseStream.Position - basePosition);
+
+        reader.BaseStream.Seek(paddingSize, SeekOrigin.Current);
 
         return true;
     }

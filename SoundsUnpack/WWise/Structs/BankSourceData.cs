@@ -8,11 +8,19 @@ public class BankSourceData
 
     public bool Read(BinaryReader reader)
     {
-        PluginId = reader.ReadUInt32();
-        StreamType = reader.ReadByte();
+        var pluginId = reader.ReadUInt32();
+        var streamType = reader.ReadByte();
 
-        MediaInformation = new MediaInformation();
+        var mediaInformation = new MediaInformation();
+        if (!mediaInformation.Read(reader))
+        {
+            return false;
+        }
 
-        return MediaInformation.Read(reader);
+        PluginId = pluginId;
+        StreamType = streamType;
+        MediaInformation = mediaInformation;
+
+        return true;
     }
 }

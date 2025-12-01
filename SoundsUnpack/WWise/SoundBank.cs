@@ -41,9 +41,10 @@ public class SoundBank
 
         completed = false;
 
+        var chunk = SubChunk.Read(reader);
+
         var baseOffset = reader.BaseStream.Position;
 
-        var chunk = SubChunk.Read(reader);
         if (chunk.Tag == BnkChunkIds.BankHeaderChunkId)
         {
             var bankHeaderChunk = new BankHeaderChunk();
@@ -85,12 +86,12 @@ public class SoundBank
         else if (chunk.Tag == BnkChunkIds.BankHierarchyChunkId)
         {
             var hircChunk = new HircChunk();
-            
+
             if (!hircChunk.Read(reader, chunk.Size))
             {
                 return false;
             }
-            
+
             HircChunk = hircChunk;
         }
         else if (chunk.Tag == BnkChunkIds.BankStrMapChunkId)
@@ -213,6 +214,15 @@ public class SoundBank
             var strTag = chunk.MagicString;
 
             return false;
+        }
+
+        var expectedPosition = baseOffset + chunk.Size;
+        if (reader.BaseStream.Position != expectedPosition)
+        {
+            Console.WriteLine(
+                $"Warning: Sub-chunk read position mismatch for chunk {chunk.MagicString}. Expected {expectedPosition}, got {reader.BaseStream.Position}.");
+
+            reader.BaseStream.Position = expectedPosition;
         }
 
         return true;
