@@ -9,24 +9,22 @@ public class LoadedItem
 
     // CAkAttenuation
     public AttenuationInitialValues? AttenuationValues { get; set; }
-    
+
     // CAkSound
     public SoundInitialValues? SoundValues { get; set; }
-    
+
     // CAkRanSeqCntr
     public RanSeqCntrInitialValues? RanSeqCntrInitialValues { get; set; }
-    
+
     // CAkActorMixer
     public ActorMixerInitialValues? ActorMixerInitialValues { get; set; }
-    
+
     // CAkActionPlay
     public ushort? ActionType { get; set; }
     public ActionInitialValues? ActionInitialValues { get; set; }
-    
+
     // CAkEvent
     public EventInitialValues? EventInitialValues { get; set; }
-
-    public static int Idx = 0;
 
     public bool Read(BinaryReader reader)
     {
@@ -34,9 +32,11 @@ public class LoadedItem
 
         var sectionSize = reader.ReadUInt32();
 
-        Id = reader.ReadUInt32();
+        var baseOffset = reader.BaseStream.Position;
 
-        Console.WriteLine($"Reading HIRC Item: Type={Type}, Id={Id}, Size={sectionSize}, Idx={Idx}");
+        Id = reader.ReadUInt32();
+        
+        Console.WriteLine($"Loading HIRC Item - Type: {Type}, ID: {Id}");
 
         switch (Type)
         {
@@ -109,16 +109,23 @@ public class LoadedItem
                 {
                     return false;
                 }
-                
+
                 EventInitialValues = eventInitialValues;
                 break;
             }
 
             default:
+                Console.WriteLine("Unsupported HIRC type: " + Type);
+
                 return false;
         }
-
-        Idx++;
+        
+        var expectedPosition = baseOffset + sectionSize;
+        if (reader.BaseStream.Position != expectedPosition)
+        {
+            Console.WriteLine(
+                $"Warning: LoadedItem read position mismatch for type {Type}. Expected {expectedPosition}, got {reader.BaseStream.Position}.");
+        }
 
         return true;
     }

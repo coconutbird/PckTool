@@ -2,14 +2,22 @@
 
 public class InitialRtpc
 {
+    public List<RtpcManager> RtpcManagers { get; set; } = new();
+
     public bool Read(BinaryReader reader)
     {
         var numberOfRtpcs = reader.ReadUInt16();
-        if (numberOfRtpcs == 0)
+        for (var i = 0; i < numberOfRtpcs; ++i)
         {
-            return true;
+            var rtpcManager = new RtpcManager();
+            if (!rtpcManager.Read(reader))
+            {
+                return false;
+            }
+
+            RtpcManagers.Add(rtpcManager);
         }
 
-        return false;
+        return true;
     }
 }
