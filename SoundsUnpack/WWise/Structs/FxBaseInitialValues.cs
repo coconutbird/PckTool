@@ -6,6 +6,7 @@ public class FxBaseInitialValues
 {
     public PluginId FxId { get; set; }
     public uint Size { get; set; }
+    public PluginParam? PluginParam { get; set; }
     public FxSrcSilenceParams? FxSrcSilenceParams { get; set; }
     public DelayFxParams? DelayFxParams { get; set; }
 
@@ -14,11 +15,23 @@ public class FxBaseInitialValues
         var fxId = (PluginId)reader.ReadUInt32();
         var size = reader.ReadUInt32();
 
+        PluginParam? pluginParam = null;
         FxSrcSilenceParams? fxSrcSilenceParams = null;
         DelayFxParams? delayFxParams = null;
 
         switch (fxId)
         {
+            case PluginId.Wwise_Compressor:
+            {
+                pluginParam = new PluginParam();
+                if (!pluginParam.Read(reader, size))
+                {
+                    return false;
+                }
+
+                break;
+            }
+
             case PluginId.Wwise_Silence:
             {
                 fxSrcSilenceParams = new FxSrcSilenceParams();
@@ -66,6 +79,7 @@ public class FxBaseInitialValues
         FxId = fxId;
         Size = size;
 
+        PluginParam = pluginParam;
         FxSrcSilenceParams = fxSrcSilenceParams;
         DelayFxParams = delayFxParams;
 

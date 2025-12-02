@@ -18,8 +18,11 @@ public class LoadedItem
 
     // CAkActorMixer
     public ActorMixerInitialValues? ActorMixerInitialValues { get; set; }
+    
+    // CAkBus
+    public BusInitialValues? BusInitialValues { get; set; }
 
-    // CAkActionPlay
+    // CAkAction*
     public ushort? ActionType { get; set; }
     public ActionInitialValues? ActionInitialValues { get; set; }
 
@@ -91,6 +94,18 @@ public class LoadedItem
                 break;
             }
 
+            case HircType.Bus:
+            {
+                var busInitialValues = new BusInitialValues();
+                if (!busInitialValues.Read(reader))
+                {
+                    return false;
+                }
+                
+                BusInitialValues = busInitialValues;
+                break;
+            }
+
             case HircType.Action:
             {
                 var actionType = reader.ReadUInt16();
@@ -117,6 +132,7 @@ public class LoadedItem
                 break;
             }
 
+            case HircType.FxShareSet:
             case HircType.FxCustom:
             {
                 var fxBaseInitialValues = new FxBaseInitialValues();
@@ -127,13 +143,6 @@ public class LoadedItem
 
                 FxBaseInitialValues = fxBaseInitialValues;
                 break;
-            }
-
-            case HircType.MusicPlaylist:
-            {
-                // MusicPlaylistInitialValues not implemented yet
-
-                return false;
             }
 
             default:

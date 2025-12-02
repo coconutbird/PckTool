@@ -19,6 +19,6 @@ public enum HircType : byte
     DialogueEvent = 15,
     FeedbackBus = 16,
     FeedbackNode = 17,
-    MusicPlaylist = 18,
+    FxShareSet = 18,
     FxCustom = 19
 }

@@ -1,4 +1,5 @@
 ﻿using SoundsUnpack.WWise.Enums;
+using SoundsUnpack.WWise.Helpers;
 
 namespace SoundsUnpack.WWise.Structs;
 
@@ -46,7 +47,7 @@ public class ActionInitialValues
             return false;
         }
 
-        var actionCategory = GetActionCategory(actionType);
+        var actionCategory = ActionTypeHelpers.GetActionCategory((ActionType) actionType);
         switch (actionCategory)
         {
             case ActionCategory.Play:
@@ -62,8 +63,7 @@ public class ActionInitialValues
                 break;
             }
 
-            case ActionCategory.Set:
-            case ActionCategory.Reset:
+            case ActionCategory.Value:
             {
                 var valueActionParams = new ValueActionParams();
                 if (!valueActionParams.Read(reader))
@@ -76,10 +76,10 @@ public class ActionInitialValues
                 break;
             }
 
-            case ActionCategory.Stop:
+            case ActionCategory.Active:
             {
                 var activeActionParams = new ActiveActionParams();
-                if (!activeActionParams.Read(reader))
+                if (!activeActionParams.Read(reader, (ActionType) actionType))
                 {
                     return false;
                 }
@@ -99,30 +99,5 @@ public class ActionInitialValues
         PropBundle2 = propBundle2;
 
         return true;
-    }
-
-    private static ActionCategory GetActionCategory(ushort actionType)
-    {
-        if (actionType >= 0x400 && actionType <= 0x499)
-        {
-            return ActionCategory.Play;
-        }
-
-        if (actionType >= 0x800 && actionType <= 0x899)
-        {
-            return ActionCategory.Set;
-        }
-
-        if (actionType >= 0x900 && actionType <= 0x999)
-        {
-            return ActionCategory.Reset;
-        }
-
-        if (actionType >= 0x100 && actionType <= 0x199)
-        {
-            return ActionCategory.Stop;
-        }
-
-        throw new ArgumentOutOfRangeException(nameof(actionType), "Unknown action type");
     }
 }
