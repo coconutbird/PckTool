@@ -26,6 +26,9 @@ public class LoadedItem
     // CAkEvent
     public EventInitialValues? EventInitialValues { get; set; }
 
+    // CAkFxCustom
+    public FxBaseInitialValues? FxBaseInitialValues { get; set; }
+
     public bool Read(BinaryReader reader)
     {
         Type = (HircType)reader.ReadByte();
@@ -35,7 +38,7 @@ public class LoadedItem
         var baseOffset = reader.BaseStream.Position;
 
         Id = reader.ReadUInt32();
-        
+
         Console.WriteLine($"Loading HIRC Item - Type: {Type}, ID: {Id}");
 
         switch (Type)
@@ -114,12 +117,31 @@ public class LoadedItem
                 break;
             }
 
+            case HircType.FxCustom:
+            {
+                var fxBaseInitialValues = new FxBaseInitialValues();
+                if (!fxBaseInitialValues.Read(reader))
+                {
+                    return false;
+                }
+
+                FxBaseInitialValues = fxBaseInitialValues;
+                break;
+            }
+
+            case HircType.MusicPlaylist:
+            {
+                // MusicPlaylistInitialValues not implemented yet
+
+                return false;
+            }
+
             default:
                 Console.WriteLine("Unsupported HIRC type: " + Type);
 
                 return false;
         }
-        
+
         var expectedPosition = baseOffset + sectionSize;
         if (reader.BaseStream.Position != expectedPosition)
         {

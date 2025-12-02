@@ -6,6 +6,70 @@ public class MediaInformation
     public uint InMemoryMediaSize { get; set; }
     public byte SourceBits { get; set; }
 
+    public bool IsLanguageSpecific
+    {
+        get => (SourceBits & 0x01) != 0;
+        set
+        {
+            if (value)
+            {
+                SourceBits |= 0x01;
+            }
+            else
+            {
+                SourceBits &= 0xFE;
+            }
+        }
+    }
+
+    public bool Prefetch
+    {
+        get => (SourceBits & 0x02) != 0;
+        set
+        {
+            if (value)
+            {
+                SourceBits |= 0x02;
+            }
+            else
+            {
+                SourceBits &= 0xFD;
+            }
+        }
+    }
+
+    public bool NonCachable
+    {
+        get => (SourceBits & 0x04) != 0;
+        set
+        {
+            if (value)
+            {
+                SourceBits |= 0x04;
+            }
+            else
+            {
+                SourceBits &= 0xFB;
+            }
+        }
+    }
+
+    public bool HasSource
+    {
+        get => (SourceBits & 0x80) != 0;
+        set
+        {
+            if (value)
+            {
+                SourceBits |= 0x80;
+            }
+            else
+            {
+                SourceBits &= 0x7F;
+            }
+        }
+    }
+
     public bool Read(BinaryReader reader)
     {
         var sourceId = reader.ReadInt32();

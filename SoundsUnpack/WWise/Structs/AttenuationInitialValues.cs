@@ -5,8 +5,8 @@ public class AttenuationInitialValues
     public bool IsConeEnabled { get; set; }
     public sbyte[] CurveToUse { get; set; } = new sbyte[6];
     public List<ConversionTable> Curves { get; set; } = [];
-    public object InitialRtpc { get; set; } // TODO: Define proper type
-    
+    public InitialRtpc InitialRtpc { get; set; }
+
     public bool Read(BinaryReader reader)
     {
         IsConeEnabled = reader.ReadByte() == 1;
@@ -18,28 +18,28 @@ public class AttenuationInitialValues
         }
 
         var numberOfCurves = reader.ReadByte();
-        
+
         var curves = new List<ConversionTable>();
         for (var i = 0; i < numberOfCurves; ++i)
         {
             var curve = new ConversionTable();
-            
+
             if (!curve.Read(reader))
             {
                 return false;
             }
-            
+
             curves.Add(curve);
         }
 
-        // InitialRtpc reading logic would go here
-        var numberOfRtpcs = reader.ReadUInt16();
-        if (numberOfRtpcs > 0)
+        var initialRtpc = new InitialRtpc();
+        if (!initialRtpc.Read(reader))
         {
-            return false; // Not implemented
+            return false;
         }
-        
+
         Curves = curves;
+        InitialRtpc = initialRtpc;
 
         return true;
     }
