@@ -3,6 +3,7 @@
 using SoundsUnpack.WWise.Bank;
 using SoundsUnpack.WWise.Chunks;
 using SoundsUnpack.WWise.Enums;
+using SoundsUnpack.WWise.Structs;
 
 namespace SoundsUnpack.WWise;
 
@@ -230,19 +231,16 @@ public class SoundBank
                     var rtpcGraphPointIntegers = new List<RtpcGraphPointBase<uint>>();
                     var rtpcGraphPointIntegerCount = reader.ReadUInt32();
 
-                    if (rtpcGraphPointIntegerCount > 0)
+                    for (var j = 0; j < rtpcGraphPointIntegerCount; ++j)
                     {
-                        for (var j = 0; j < rtpcGraphPointIntegerCount; ++j)
-                        {
-                            var point = new RtpcGraphPointBase<uint>
-                            {
-                                From = reader.ReadUInt32(),
-                                To = reader.ReadUInt32(),
-                                InterpolationType = (CurveInterpolation) reader.ReadUInt32()
-                            };
+                        var point = new RtpcGraphPointBase<uint>();
 
-                            rtpcGraphPointIntegers.Add(point);
+                        if (!point.Read(reader))
+                        {
+                            return false;
                         }
+
+                        rtpcGraphPointIntegers.Add(point);
                     }
                 }
 

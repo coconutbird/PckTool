@@ -1,7 +1,4 @@
-﻿using SoundsUnpack.WWise.Bank;
-using SoundsUnpack.WWise.Enums;
-
-namespace SoundsUnpack.WWise.Structs;
+﻿namespace SoundsUnpack.WWise.Structs;
 
 public class RtpcManager
 {
@@ -26,12 +23,12 @@ public class RtpcManager
 
         for (var i = 0; i < numberOfGraphPoints; ++i)
         {
-            var graphPoint = new RtpcGraphPointBase<float>
+            var graphPoint = new RtpcGraphPointBase<float>();
+
+            if (!graphPoint.Read(reader))
             {
-                From = reader.ReadSingle(),
-                To = reader.ReadSingle(),
-                InterpolationType = (CurveInterpolation) reader.ReadUInt32()
-            };
+                return false;
+            }
 
             graphPoints.Add(graphPoint);
         }

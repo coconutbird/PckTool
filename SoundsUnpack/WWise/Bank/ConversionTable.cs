@@ -1,4 +1,4 @@
-﻿using SoundsUnpack.WWise.Enums;
+﻿using SoundsUnpack.WWise.Structs;
 
 namespace SoundsUnpack.WWise.Bank;
 
@@ -21,11 +21,14 @@ public class ConversionTable
 
         for (var i = 0; i < numberOfPoints; ++i)
         {
-            var x = reader.ReadSingle();
-            var y = reader.ReadSingle();
-            var interpolation = (CurveInterpolation) reader.ReadUInt32();
+            var point = new RtpcGraphPointBase<float>();
 
-            Points.Add(new RtpcGraphPointBase<float> { From = x, To = y, InterpolationType = interpolation });
+            if (!point.Read(reader))
+            {
+                return false;
+            }
+
+            Points.Add(point);
         }
 
         return true;

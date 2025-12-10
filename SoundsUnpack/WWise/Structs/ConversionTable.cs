@@ -1,7 +1,4 @@
-﻿using SoundsUnpack.WWise.Bank;
-using SoundsUnpack.WWise.Enums;
-
-namespace SoundsUnpack.WWise.Structs;
+﻿namespace SoundsUnpack.WWise.Structs;
 
 public class ConversionTable
 {
@@ -13,15 +10,18 @@ public class ConversionTable
         var scaling = reader.ReadByte();
         var points = new List<RtpcGraphPointBase<float>>();
 
-        var numberOfRtpcs = reader.ReadUInt16();
+        var numberOfPoints = reader.ReadUInt16();
 
-        for (var i = 0; i < numberOfRtpcs; ++i)
+        for (var i = 0; i < numberOfPoints; ++i)
         {
-            var from = reader.ReadSingle();
-            var to = reader.ReadSingle();
-            var interpolationType = (CurveInterpolation) reader.ReadUInt32();
+            var point = new RtpcGraphPointBase<float>();
 
-            points.Add(new RtpcGraphPointBase<float> { From = from, To = to, InterpolationType = interpolationType });
+            if (!point.Read(reader))
+            {
+                return false;
+            }
+
+            points.Add(point);
         }
 
         Scaling = scaling;
