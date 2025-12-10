@@ -12,22 +12,22 @@ public class HircChunk : BaseChunk
     /// <summary>
     ///     Index of items by ID for O(1) lookup.
     /// </summary>
-    private Dictionary<uint, LoadedItem>? _itemIndex;
+    private Dictionary<uint, HircItem>? _itemIndex;
 
-    public override bool IsValid => LoadedItems is not null;
+    public override bool IsValid => Items is not null;
 
     /// <summary>
-    ///     All loaded HIRC items in this chunk.
+    ///     All HIRC items in this chunk.
     /// </summary>
-    public List<LoadedItem>? LoadedItems { get; private set; }
+    public List<HircItem>? Items { get; private set; }
 
     /// <summary>
-    ///     Gets a loaded item by its ID.
+    ///     Gets a HIRC item by its ID.
     ///     Returns null if the item is not found.
     /// </summary>
     /// <param name="id">The item ID to look up.</param>
-    /// <returns>The loaded item, or null if not found.</returns>
-    public LoadedItem? GetItemById(uint id)
+    /// <returns>The HIRC item, or null if not found.</returns>
+    public HircItem? GetItemById(uint id)
     {
         if (_itemIndex is null) return null;
 
@@ -36,28 +36,28 @@ public class HircChunk : BaseChunk
 
     protected override bool ReadInternal(SoundBank soundBank, BinaryReader reader, uint size, long startPosition)
     {
-        var loadedItems = new List<LoadedItem>();
+        var items = new List<HircItem>();
 
         var numberOfReleasableHircItem = reader.ReadUInt32();
 
         for (var i = 0; i < numberOfReleasableHircItem; ++i)
         {
-            var loadedItem = new LoadedItem();
-
             Console.WriteLine("Idx: " + i);
 
-            if (!loadedItem.Read(reader))
+            var item = HircItem.Read(reader);
+
+            if (item is null)
             {
                 return false;
             }
 
-            loadedItems.Add(loadedItem);
+            items.Add(item);
         }
 
-        LoadedItems = loadedItems;
+        Items = items;
 
         // Build index for O(1) lookup by ID
-        _itemIndex = loadedItems.ToDictionary(item => item.Id);
+        _itemIndex = items.ToDictionary(item => item.Id);
 
         return true;
     }
