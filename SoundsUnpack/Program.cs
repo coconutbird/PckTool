@@ -3,7 +3,6 @@
 using Microsoft.Win32;
 
 using SoundsUnpack.WWise;
-using SoundsUnpack.WWise.Enums;
 
 namespace SoundsUnpack;
 
@@ -58,6 +57,7 @@ public static class Program
         }
 
         var failed = 1;
+
         foreach (var fileEntry in package.SoundBanksLut.Entries)
         {
             var language = package.LanguageMap[fileEntry.LanguageId];
@@ -85,27 +85,8 @@ public static class Program
                 return;
             }
 
-            if (soundbank.HircChunk is not null)
-            {
-                var items = soundbank.HircChunk.LoadedItems;
-
-                if (items is not null)
-                {
-                    foreach (var item in items)
-                    {
-                        if (item.Type != HircType.Event)
-                        {
-                            continue;
-                        }
-
-                        var sound = soundTable.GetSoundByCueIndex(item.Id);
-
-                        var soundItem = soundbank.HircChunk.ResolveSoundFileIds(soundbank, item).ToArray();
-
-                        sound?.FileIds.AddRange(soundItem);
-                    }
-                }
-            }
+            // Resolve all event -> file ID mappings for this soundbank
+            soundTable.ResolveFileIds(soundbank);
 
             var path = Path.Join("dumps", language);
 
@@ -115,8 +96,9 @@ public static class Program
 
             EnsureDirectoryCreated(bnkFile);
 
-            // I need a counter with a string index
+            // Track how many times each cue name is used for unique filenames
             var usedFiles = new Dictionary<string, int>();
+
             foreach (var wem in soundbank.DataChunk?.Data ?? [])
             {
                 if (!wem.IsValid)
@@ -126,19 +108,20 @@ public static class Program
                     continue;
                 }
 
-                var soundFile = soundTable.GetSoundByFileId(wem.Id);
+                var cueName = soundTable.GetCueNameByFileId(wem.Id);
                 var wemFileName = $"{wem.Id}";
 
-                if (soundFile?.CueName is not null)
+                if (cueName is not null)
                 {
-                    wemFileName += $"_{soundFile.CueName}";
+                    wemFileName += $"_{cueName}";
 
-                    if (!usedFiles.ContainsKey(soundFile.CueName))
+                    if (!usedFiles.TryGetValue(cueName, out var count))
                     {
-                        usedFiles[soundFile.CueName] = 0;
+                        count = 0;
                     }
 
-                    wemFileName += $"_{usedFiles[soundFile.CueName]++}";
+                    wemFileName += $"_{count}";
+                    usedFiles[cueName] = count + 1;
                 }
 
                 var wemFile = Path.Join(path, $"{soundbank.SoundbankId:X8}", $"{wemFileName}.wem");

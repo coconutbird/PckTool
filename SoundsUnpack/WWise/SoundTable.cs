@@ -2,52 +2,135 @@
 
 namespace SoundsUnpack.WWise;
 
+/// <summary>
+///     Maps cue names (event names) to their associated sound file IDs.
+///     Provides efficient lookup in both directions:
+///     - CueIndex (event hash) -> CueName
+///     - FileId (wem source ID) -> CueName
+/// </summary>
 public class SoundTable
 {
+    /// <summary>
+    ///     Maps CueIndex (FNV1A-32 hash of cue name) to the cue entry.
+    /// </summary>
+    private readonly Dictionary<uint, CueEntry> _cueIndexMap = new();
+
+    /// <summary>
+    ///     Maps FileId (wem source ID) to the cue name for O(1) lookup.
+    /// </summary>
+    private readonly Dictionary<uint, string> _fileIdToCueName = new();
+
+    /// <summary>
+    ///     All registered cue entries.
+    /// </summary>
+    public IReadOnlyCollection<CueEntry> Cues => _cueIndexMap.Values;
+
+    /// <summary>
+    ///     Loads cue name definitions from an XML file.
+    ///     Expected format: Sound elements with CueName and CueIndex children.
+    /// </summary>
     public bool Load(string path)
     {
+        if (!File.Exists(path)) return false;
+
         var doc = XDocument.Load(path);
 
         foreach (var sound in doc.Descendants("Sound"))
         {
             var cueName = sound.Element("CueName")?.Value;
-            var cueIndex = sound.Element("CueIndex")?.Value;
 
-            if (cueName is null || cueIndex is null)
-            {
-                continue;
-            }
+            if (string.IsNullOrEmpty(cueName)) continue;
 
-            var soundEntry = new Sound { CueName = cueName };
+            var cueIndex = Hash.GetIdFromString(cueName);
 
-            _idSoundMap.Add(soundEntry.CueIndex, soundEntry);
+            if (_cueIndexMap.ContainsKey(cueIndex)) continue;
+
+            _cueIndexMap[cueIndex] = new CueEntry(cueName, cueIndex);
         }
 
         return true;
     }
 
-    public Sound? GetSoundByFileId(uint id)
+    /// <summary>
+    ///     Resolves and registers file IDs for a soundbank's events.
+    ///     This populates the FileId -> CueName mapping for efficient lookup.
+    /// </summary>
+    public void ResolveFileIds(SoundBank soundbank)
     {
-        return _idSoundMap.Values.FirstOrDefault(x => x.FileIds.Contains(id));
+        if (soundbank.HircChunk?.LoadedItems is null) return;
+
+        foreach (var item in soundbank.HircChunk.LoadedItems)
+        {
+            if (item.Type != Enums.HircType.Event) continue;
+
+            if (!_cueIndexMap.TryGetValue(item.Id, out var cueEntry)) continue;
+
+            var fileIds = soundbank.HircChunk.ResolveSoundFileIds(soundbank, item);
+
+            foreach (var fileId in fileIds)
+            {
+                cueEntry.AddFileId(fileId);
+                _fileIdToCueName.TryAdd(fileId, cueEntry.CueName);
+            }
+        }
     }
 
-    public Sound? GetSoundByCueIndex(uint id)
+    /// <summary>
+    ///     Gets the cue name associated with a file ID (wem source ID).
+    ///     Returns null if the file ID is not associated with any known cue.
+    /// </summary>
+    public string? GetCueNameByFileId(uint fileId)
     {
-        return _idSoundMap.GetValueOrDefault(id);
+        return _fileIdToCueName.GetValueOrDefault(fileId);
     }
 
-    public Sound? GetSoundByName(string name)
+    /// <summary>
+    ///     Gets the cue entry by its index (FNV1A-32 hash of the cue name).
+    /// </summary>
+    public CueEntry? GetCueByIndex(uint cueIndex)
     {
-        return _idSoundMap.GetValueOrDefault(Hash.GetIdFromString(name));
+        return _cueIndexMap.GetValueOrDefault(cueIndex);
     }
 
-    public class Sound
+    /// <summary>
+    ///     Gets the cue entry by its name.
+    /// </summary>
+    public CueEntry? GetCueByName(string name)
     {
-        public string CueName { get; set; } = string.Empty;
-        public uint CueIndex => Hash.GetIdFromString(CueName);
-
-        public List<uint> FileIds { get; set; } = [];
+        return _cueIndexMap.GetValueOrDefault(Hash.GetIdFromString(name));
     }
 
-    private readonly Dictionary<uint, Sound> _idSoundMap = new();
+    /// <summary>
+    ///     Represents a cue (event) entry with its name and associated file IDs.
+    /// </summary>
+    public class CueEntry
+    {
+        private readonly HashSet<uint> _fileIds = [];
+
+        public CueEntry(string cueName, uint cueIndex)
+        {
+            CueName = cueName;
+            CueIndex = cueIndex;
+        }
+
+        /// <summary>
+        ///     The human-readable cue name (event name).
+        /// </summary>
+        public string CueName { get; }
+
+        /// <summary>
+        ///     The FNV1A-32 hash of the cue name.
+        /// </summary>
+        public uint CueIndex { get; }
+
+        /// <summary>
+        ///     The file IDs (wem source IDs) associated with this cue.
+        /// </summary>
+        public IReadOnlySet<uint> FileIds => _fileIds;
+
+        internal void AddFileId(uint fileId)
+        {
+            _fileIds.Add(fileId);
+        }
+    }
 }
