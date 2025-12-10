@@ -2,190 +2,321 @@
 
 namespace SoundsUnpack.WWise.Helpers;
 
+/// <summary>
+///     Helper methods for determining action type categories.
+///     Based on wwiser's wparser_cls.py CAkAction dispatch table.
+/// </summary>
 public static class ActionTypeHelpers
 {
+    /// <summary>
+    ///     Gets the action category for the given action type.
+    ///     Maps to wwiser's CAkAction class hierarchy for v113.
+    /// </summary>
     public static ActionCategory GetActionCategory(ActionType actionType)
     {
-        if (IsValueActionType(actionType))
-        {
-            return ActionCategory.Value;
-        }
+        if (IsPlayActionType(actionType)) return ActionCategory.Play;
 
-        if (IsActiveActionType(actionType))
-        {
-            return ActionCategory.Active;
-        }
+        if (IsActiveActionType(actionType)) return ActionCategory.Active;
 
-        if (IsPlayActionType(actionType))
-        {
-            return ActionCategory.Play;
-        }
+        if (IsStateActionType(actionType)) return ActionCategory.State;
 
-        throw new ArgumentOutOfRangeException(nameof(actionType), $"Unknown action category for type: {actionType}");
+        if (IsSwitchActionType(actionType)) return ActionCategory.Switch;
+
+        if (IsGameParamActionType(actionType)) return ActionCategory.GameParam;
+
+        if (IsValueActionType(actionType)) return ActionCategory.Value;
+
+        if (IsBypassFXActionType(actionType)) return ActionCategory.BypassFX;
+
+        if (IsNoneParamsActionType(actionType)) return ActionCategory.None;
+
+        return ActionCategory.Unknown;
     }
 
-    public static bool IsValidActionType(ActionType actionType)
+    // ============================================
+    // Play Actions - CAkActionPlay
+    // ============================================
+
+    public static bool IsPlayActionType(ActionType actionType)
     {
-        var category = GetActionCategory(actionType);
-
-        return category != ActionCategory.Unknown;
+        return actionType switch
+        {
+            ActionType.Play => true,
+            ActionType.PlayAndContinue => true,
+            ActionType.PlayEvent => true,
+            ActionType.PlayEventUnknown_O => true,
+            _ => false
+        };
     }
+
+    // ============================================
+    // Active Actions - CAkActionActive (Stop, Pause, Resume)
+    // ============================================
 
     public static bool IsActiveActionType(ActionType actionType)
     {
-        return IsStopActionType(actionType) || IsResumeActionType(actionType);
-    }
-
-    public static bool IsValueActionType(ActionType actionType)
-    {
-        if (IsMuteActionType(actionType))
-        {
-            return true;
-        }
-
-        switch (actionType)
-        {
-            // all set action types are value action types
-            case ActionType.SetState:
-            case ActionType.SetSwitch:
-            case ActionType.SetVolume_M:
-            case ActionType.SetVolume_O:
-            case ActionType.SetPitch_M:
-            case ActionType.SetPitch_O:
-            case ActionType.SetLPF_M:
-            case ActionType.SetLPF_O:
-            case ActionType.SetHPF_M:
-            case ActionType.SetHPF_O:
-            case ActionType.SetBusVolume_M:
-            case ActionType.SetBusVolume_O:
-            case ActionType.SetGameParameter:
-            case ActionType.SetGameParameter_O:
-            case ActionType.SetFX_M:
-            case ActionType.SetBypassFXSlot_M:
-            case ActionType.SetBypassFXSlot_O:
-            case ActionType.SetBypassAllFX_M:
-                return true;
-
-            case ActionType.ResetBypassFX_M:
-            case ActionType.ResetBypassFX_O:
-            case ActionType.ResetBypassFX_ALL:
-            case ActionType.ResetBypassFX_ALL_O:
-            case ActionType.ResetBypassFX_AE:
-            case ActionType.ResetBypassFX_AE_O:
-            case ActionType.ResetVolume_M:
-            case ActionType.ResetVolume_O:
-            case ActionType.ResetVolume_ALL:
-            case ActionType.ResetVolume_ALL_O:
-            case ActionType.ResetVolume_AE:
-            case ActionType.ResetVolume_AE_O:
-            case ActionType.ResetPitch_M:
-            case ActionType.ResetPitch_O:
-            case ActionType.ResetPitch_ALL:
-            case ActionType.ResetPitch_ALL_O:
-            case ActionType.ResetPitch_AE:
-            case ActionType.ResetPitch_AE_O:
-            case ActionType.ResetLPF_M:
-            case ActionType.ResetLPF_O:
-            case ActionType.ResetLPF_ALL:
-            case ActionType.ResetLPF_ALL_O:
-            case ActionType.ResetLPF_AE:
-            case ActionType.ResetLPF_AE_O:
-            case ActionType.ResetHPF_M:
-            case ActionType.ResetHPF_O:
-            case ActionType.ResetHPF_ALL:
-            case ActionType.ResetHPF_ALL_O:
-            case ActionType.ResetHPF_AE:
-            case ActionType.ResetHPF_AE_O:
-            case ActionType.ResetBusVolume_M:
-            case ActionType.ResetBusVolume_O:
-            case ActionType.ResetBusVolume_ALL:
-            case ActionType.ResetBusVolume_AE:
-            case ActionType.ResetGameParameter:
-            case ActionType.ResetGameParameter_O:
-            case ActionType.ResetPlaylist_E:
-            case ActionType.ResetPlaylist_E_O:
-            case ActionType.ResetSetFX_M:
-            case ActionType.ResetSetFX_ALL:
-            case ActionType.ResetBypassFXSlot_M:
-            case ActionType.ResetBypassFXSlot_O:
-            case ActionType.ResetBypassFXSlot_ALL:
-            case ActionType.ResetBypassFXSlot_ALL_O:
-            case ActionType.ResetBypassAllFX_M:
-            case ActionType.ResetBypassAllFX_O:
-            case ActionType.ResetBypassAllFX_ALL:
-            case ActionType.ResetBypassAllFX_ALL_O:
-            case ActionType.ResetAllBypassFX_M:
-            case ActionType.ResetAllBypassFX_O:
-            case ActionType.ResetAllBypassFX_ALL:
-            case ActionType.ResetAllBypassFX_ALL_O:
-                return true;
-
-            default:
-                return false;
-        }
+        return IsStopActionType(actionType) || IsPauseActionType(actionType) || IsResumeActionType(actionType);
     }
 
     public static bool IsStopActionType(ActionType actionType)
     {
-        switch (actionType)
+        return actionType switch
         {
-            case ActionType.Stop_E:
-            case ActionType.Stop_E_O:
-            case ActionType.Stop_ALL:
-            case ActionType.Stop_ALL_O:
-            case ActionType.Stop_AE:
-            case ActionType.Stop_AE_O:
-            case ActionType.StopEvent:
-                return true;
+            ActionType.Stop_E => true,
+            ActionType.Stop_E_O => true,
+            ActionType.Stop_ALL => true,
+            ActionType.Stop_ALL_O => true,
+            ActionType.Stop_AE => true,
+            ActionType.Stop_AE_O => true,
+            ActionType.StopEvent => true,
+            _ => false
+        };
+    }
 
-            default:
-                return false;
-        }
+    public static bool IsPauseActionType(ActionType actionType)
+    {
+        return actionType switch
+        {
+            ActionType.Pause_E => true,
+            ActionType.Pause_E_O => true,
+            ActionType.Pause_ALL => true,
+            ActionType.Pause_ALL_O => true,
+            ActionType.Pause_AE => true,
+            ActionType.Pause_AE_O => true,
+            ActionType.PauseEvent => true,
+            _ => false
+        };
     }
 
     public static bool IsResumeActionType(ActionType actionType)
     {
-        switch (actionType)
+        return actionType switch
         {
-            case ActionType.Resume_E:
-            case ActionType.Resume_E_O:
-            case ActionType.Resume_ALL:
-            case ActionType.Resume_ALL_O:
-            case ActionType.Resume_AE:
-            case ActionType.Resume_AE_O:
-            case ActionType.ResumeEvent:
-                return true;
+            ActionType.Resume_E => true,
+            ActionType.Resume_E_O => true,
+            ActionType.Resume_ALL => true,
+            ActionType.Resume_ALL_O => true,
+            ActionType.Resume_AE => true,
+            ActionType.Resume_AE_O => true,
+            ActionType.ResumeEvent => true,
+            _ => false
+        };
+    }
 
-            default:
-                return false;
-        }
+    // ============================================
+    // State Actions - CAkActionSetState
+    // Has unique params: StateGroupID, TargetStateID
+    // ============================================
+
+    public static bool IsStateActionType(ActionType actionType)
+    {
+        return actionType == ActionType.SetState;
+    }
+
+    // ============================================
+    // Switch Actions - CAkActionSetSwitch
+    // Has unique params: SwitchGroupID, SwitchStateID
+    // ============================================
+
+    public static bool IsSwitchActionType(ActionType actionType)
+    {
+        return actionType == ActionType.SetSwitch;
+    }
+
+    // ============================================
+    // GameParameter Actions - CAkActionSetGameParameter
+    // Uses SetValue params + GameParameter specific params
+    // ============================================
+
+    public static bool IsGameParamActionType(ActionType actionType)
+    {
+        return actionType switch
+        {
+            ActionType.SetGameParameter => true,
+            ActionType.SetGameParameter_O => true,
+            ActionType.ResetGameParameter => true,
+            ActionType.ResetGameParameter_O => true,
+            _ => false
+        };
+    }
+
+    // ============================================
+    // Value Actions - CAkActionSetValue (Mute, SetVolume, SetPitch, SetLPF, etc.)
+    // Uses SetValue params with PropActionSpecificParams
+    // ============================================
+
+    public static bool IsValueActionType(ActionType actionType)
+    {
+        // Mute/Unmute
+        if (IsMuteActionType(actionType)) return true;
+
+        return actionType switch
+        {
+            // SetVolume
+            ActionType.SetVolume_M => true,
+            ActionType.SetVolume_O => true,
+            ActionType.ResetVolume_M => true,
+            ActionType.ResetVolume_O => true,
+            ActionType.ResetVolume_ALL => true,
+            ActionType.ResetVolume_ALL_O => true,
+            ActionType.ResetVolume_AE => true,
+            ActionType.ResetVolume_AE_O => true,
+
+            // SetPitch
+            ActionType.SetPitch_M => true,
+            ActionType.SetPitch_O => true,
+            ActionType.ResetPitch_M => true,
+            ActionType.ResetPitch_O => true,
+            ActionType.ResetPitch_ALL => true,
+            ActionType.ResetPitch_ALL_O => true,
+            ActionType.ResetPitch_AE => true,
+            ActionType.ResetPitch_AE_O => true,
+
+            // SetLPF
+            ActionType.SetLPF_M => true,
+            ActionType.SetLPF_O => true,
+            ActionType.ResetLPF_M => true,
+            ActionType.ResetLPF_O => true,
+            ActionType.ResetLPF_ALL => true,
+            ActionType.ResetLPF_ALL_O => true,
+            ActionType.ResetLPF_AE => true,
+            ActionType.ResetLPF_AE_O => true,
+
+            // SetHPF
+            ActionType.SetHPF_M => true,
+            ActionType.SetHPF_O => true,
+            ActionType.ResetHPF_M => true,
+            ActionType.ResetHPF_O => true,
+            ActionType.ResetHPF_ALL => true,
+            ActionType.ResetHPF_ALL_O => true,
+            ActionType.ResetHPF_AE => true,
+            ActionType.ResetHPF_AE_O => true,
+
+            // SetBusVolume (AkPropID_BusVolume)
+            ActionType.SetBusVolume_M => true,
+            ActionType.SetBusVolume_O => true,
+            ActionType.ResetBusVolume_M => true,
+            ActionType.ResetBusVolume_O => true,
+            ActionType.ResetBusVolume_ALL => true,
+            ActionType.ResetBusVolume_AE => true,
+
+            _ => false
+        };
     }
 
     public static bool IsMuteActionType(ActionType actionType)
     {
-        switch (actionType)
+        return actionType switch
         {
-            case ActionType.Mute_M:
-            case ActionType.Mute_O:
-                return true;
-
-            default:
-                return false;
-        }
+            ActionType.Mute_M => true,
+            ActionType.Mute_O => true,
+            ActionType.Unmute_M => true,
+            ActionType.Unmute_O => true,
+            ActionType.Unmute_ALL => true,
+            ActionType.Unmute_ALL_O => true,
+            ActionType.Unmute_AE => true,
+            ActionType.Unmute_AE_O => true,
+            _ => false
+        };
     }
 
-    private static bool IsPlayActionType(ActionType actionType)
-    {
-        switch (actionType)
-        {
-            case ActionType.Play:
-            case ActionType.PlayAndContinue:
-            case ActionType.PlayEvent:
-            case ActionType.PlayEventUnknown_O:
-                return true;
+    // ============================================
+    // BypassFX Actions - CAkActionBypassFX
+    // Has unique params: IsBypass, TargetMask, ExceptParams
+    // ============================================
 
-            default:
-                return false;
-        }
+    public static bool IsBypassFXActionType(ActionType actionType)
+    {
+        return actionType switch
+        {
+            // BypassFX (0x1Axx, 0x1Bxx)
+            ActionType.BypassFX_M => true,
+            ActionType.BypassFX_O => true,
+            ActionType.ResetBypassFX_M => true,
+            ActionType.ResetBypassFX_O => true,
+            ActionType.ResetBypassFX_ALL => true,
+            ActionType.ResetBypassFX_ALL_O => true,
+            ActionType.ResetBypassFX_AE => true,
+            ActionType.ResetBypassFX_AE_O => true,
+
+            // BypassFXSlot (0x33xx, 0x34xx)
+            ActionType.SetBypassFXSlot_M => true,
+            ActionType.SetBypassFXSlot_O => true,
+            ActionType.ResetBypassFXSlot_M => true,
+            ActionType.ResetBypassFXSlot_O => true,
+            ActionType.ResetBypassFXSlot_ALL => true,
+            ActionType.ResetBypassFXSlot_ALL_O => true,
+
+            // BypassAllFX (0x35xx, 0x36xx, 0x37xx)
+            ActionType.SetBypassAllFX_M => true,
+            ActionType.SetBypassAllFX_O => true,
+            ActionType.ResetBypassAllFX_M => true,
+            ActionType.ResetBypassAllFX_O => true,
+            ActionType.ResetBypassAllFX_ALL => true,
+            ActionType.ResetBypassAllFX_ALL_O => true,
+            ActionType.ResetAllBypassFX_M => true,
+            ActionType.ResetAllBypassFX_O => true,
+            ActionType.ResetAllBypassFX_ALL => true,
+            ActionType.ResetAllBypassFX_ALL_O => true,
+
+            _ => false
+        };
+    }
+
+    // ============================================
+    // None Params Actions - CAkAction (empty SetActionParams)
+    // UseState, Break, Trigger, Duck, Release, Seek, SetFX, etc.
+    // ============================================
+
+    public static bool IsNoneParamsActionType(ActionType actionType)
+    {
+        return actionType switch
+        {
+            // UseState/UnuseState
+            ActionType.UseState_E => true,
+            ActionType.UnuseState_E => true,
+
+            // Break
+            ActionType.Break_E => true,
+            ActionType.Break_E_O => true,
+
+            // Trigger
+            ActionType.Trigger => true,
+            ActionType.Trigger_O => true,
+            ActionType.Trigger_E => true,
+            ActionType.Trigger_E_O => true,
+            ActionType.Trigger_150 => true,
+            ActionType.Trigger_O_150 => true,
+
+            // Duck
+            ActionType.Duck => true,
+
+            // Release (has its own params but treating as None for now)
+            ActionType.Release => true,
+            ActionType.Release_O => true,
+
+            // Seek (has its own params but treating as None for now)
+            ActionType.Seek_E => true,
+            ActionType.Seek_E_O => true,
+            ActionType.Seek_ALL => true,
+            ActionType.Seek_ALL_O => true,
+            ActionType.Seek_AE => true,
+            ActionType.Seek_AE_O => true,
+
+            // ResetPlaylist
+            ActionType.ResetPlaylist_E => true,
+            ActionType.ResetPlaylist_E_O => true,
+
+            // SetFX (has its own params but treating as None for now)
+            ActionType.SetFX_M => true,
+            ActionType.ResetSetFX_M => true,
+            ActionType.ResetSetFX_ALL => true,
+
+            // NoOp
+            ActionType.NoOp => true,
+            ActionType.None => true,
+
+            _ => false
+        };
     }
 }

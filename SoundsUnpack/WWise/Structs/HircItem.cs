@@ -31,9 +31,9 @@ public abstract class HircItem
         var id = reader.ReadUInt32();
 
         // Remaining size after reading the ID (4 bytes)
-        var remainingSize = (int)(sectionSize - 4);
+        var remainingSize = (int) (sectionSize - 4);
 
-        Log.Info($"Reading HIRC item: Type {type}, Size {sectionSize}, ID {id}");
+        // Log.Info($"Reading HIRC item: Type {type}, Size {sectionSize}, ID {id}");
 
         HircItem? item = type switch
         {
@@ -192,7 +192,16 @@ public sealed class ActionItem : HircItem
         var actionType = (ActionType) reader.ReadUInt16();
         var values = new ActionInitialValues();
 
-        if (!values.Read(reader, actionType)) return null;
+        try
+        {
+            if (!values.Read(reader, actionType)) return null;
+        }
+        catch (Exception e)
+        {
+            Log.Error(e, $"Failed to parse action item {id} with action type {actionType}");
+
+            return null;
+        }
 
         return new ActionItem { Id = id, ActionType = actionType, Values = values };
     }
@@ -253,6 +262,7 @@ public sealed class StateItem : HircItem
     internal static StateItem ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
         var rawData = reader.ReadBytes(remainingSize);
+
         return new StateItem { Id = id, RawData = rawData };
     }
 }
@@ -268,6 +278,7 @@ public sealed class SwitchCntrItem : HircItem
     internal static SwitchCntrItem ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
         var rawData = reader.ReadBytes(remainingSize);
+
         return new SwitchCntrItem { Id = id, RawData = rawData };
     }
 }
@@ -283,6 +294,7 @@ public sealed class LayerCntrItem : HircItem
     internal static LayerCntrItem ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
         var rawData = reader.ReadBytes(remainingSize);
+
         return new LayerCntrItem { Id = id, RawData = rawData };
     }
 }
@@ -298,6 +310,7 @@ public sealed class SegmentItem : HircItem
     internal static SegmentItem ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
         var rawData = reader.ReadBytes(remainingSize);
+
         return new SegmentItem { Id = id, RawData = rawData };
     }
 }
@@ -313,6 +326,7 @@ public sealed class TrackItem : HircItem
     internal static TrackItem ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
         var rawData = reader.ReadBytes(remainingSize);
+
         return new TrackItem { Id = id, RawData = rawData };
     }
 }
@@ -328,6 +342,7 @@ public sealed class MusicSwitchItem : HircItem
     internal static MusicSwitchItem ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
         var rawData = reader.ReadBytes(remainingSize);
+
         return new MusicSwitchItem { Id = id, RawData = rawData };
     }
 }
@@ -343,6 +358,7 @@ public sealed class MusicRanSeqItem : HircItem
     internal static MusicRanSeqItem ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
         var rawData = reader.ReadBytes(remainingSize);
+
         return new MusicRanSeqItem { Id = id, RawData = rawData };
     }
 }
@@ -358,6 +374,7 @@ public sealed class DialogueEventItem : HircItem
     internal static DialogueEventItem ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
         var rawData = reader.ReadBytes(remainingSize);
+
         return new DialogueEventItem { Id = id, RawData = rawData };
     }
 }
@@ -373,6 +390,7 @@ public sealed class FeedbackBusItem : HircItem
     internal static FeedbackBusItem ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
         var rawData = reader.ReadBytes(remainingSize);
+
         return new FeedbackBusItem { Id = id, RawData = rawData };
     }
 }
@@ -388,6 +406,7 @@ public sealed class FeedbackNodeItem : HircItem
     internal static FeedbackNodeItem ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
         var rawData = reader.ReadBytes(remainingSize);
+
         return new FeedbackNodeItem { Id = id, RawData = rawData };
     }
 }
@@ -403,6 +422,7 @@ public sealed class AuxBusItem : HircItem
     internal static AuxBusItem ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
         var rawData = reader.ReadBytes(remainingSize);
+
         return new AuxBusItem { Id = id, RawData = rawData };
     }
 }
@@ -418,6 +438,7 @@ public sealed class LfoModulatorItem : HircItem
     internal static LfoModulatorItem ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
         var rawData = reader.ReadBytes(remainingSize);
+
         return new LfoModulatorItem { Id = id, RawData = rawData };
     }
 }
@@ -433,6 +454,7 @@ public sealed class EnvelopeModulatorItem : HircItem
     internal static EnvelopeModulatorItem ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
         var rawData = reader.ReadBytes(remainingSize);
+
         return new EnvelopeModulatorItem { Id = id, RawData = rawData };
     }
 }
@@ -448,6 +470,7 @@ public sealed class AudioDeviceItem : HircItem
     internal static AudioDeviceItem ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
         var rawData = reader.ReadBytes(remainingSize);
+
         return new AudioDeviceItem { Id = id, RawData = rawData };
     }
 }

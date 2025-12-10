@@ -22,8 +22,6 @@ public class PropBundle
             var propValue = reader.ReadBytes(Prop.GetSizeOfType(propId, isRandomizer));
             var prop = new Prop { Id = propId, RawValue = propValue };
 
-            Console.WriteLine($"    Prop: {prop.Id}, Value: {propValue.Length} bytes");
-
             Props.Add(prop);
         }
 

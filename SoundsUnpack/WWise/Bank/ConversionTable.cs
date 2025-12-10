@@ -10,41 +10,41 @@ namespace SoundsUnpack.WWise.Bank;
 /// </summary>
 public class ConversionTable
 {
-  public bool IsValid => true;
+    public bool IsValid => true;
 
-  /// <summary>
-  ///     2D array of curves indexed by [CurveXType][CurveYType]
-  ///     For v113: [0-1][0-2] = 6 curves total
-  /// </summary>
-  public List<ObsOccCurve> Curves { get; set; } = [];
+    /// <summary>
+    ///     2D array of curves indexed by [CurveXType][CurveYType]
+    ///     For v113: [0-1][0-2] = 6 curves total
+    /// </summary>
+    public List<ObsOccCurve> Curves { get; set; } = [];
 
-  public bool Read(BinaryReader reader, uint size)
-  {
-    // For v113 (v90-150): max_x=2, max_y=3
-    const int maxX = 2;
-    const int maxY = 3;
-
-    var curves = new List<ObsOccCurve>();
-
-    for (var x = 0; x < maxX; x++)
+    public bool Read(BinaryReader reader, uint size)
     {
-      for (var y = 0; y < maxY; y++)
-      {
-        var curve = new ObsOccCurve { XType = x, YType = y };
+        // For v113 (v90-150): max_x=2, max_y=3
+        const int maxX = 2;
+        const int maxY = 3;
 
-        if (!curve.Read(reader))
+        var curves = new List<ObsOccCurve>();
+
+        for (var x = 0; x < maxX; x++)
         {
-          return false;
+            for (var y = 0; y < maxY; y++)
+            {
+                var curve = new ObsOccCurve { XType = x, YType = y };
+
+                if (!curve.Read(reader))
+                {
+                    return false;
+                }
+
+                curves.Add(curve);
+            }
         }
 
-        curves.Add(curve);
-      }
+        Curves = curves;
+
+        return true;
     }
-
-    Curves = curves;
-
-    return true;
-  }
 }
 
 /// <summary>
@@ -53,43 +53,43 @@ public class ConversionTable
 /// </summary>
 public class ObsOccCurve
 {
-  /// <summary>
-  ///     X-axis type: 0=Obstruction, 1=Occlusion
-  /// </summary>
-  public int XType { get; set; }
+    /// <summary>
+    ///     X-axis type: 0=Obstruction, 1=Occlusion
+    /// </summary>
+    public int XType { get; set; }
 
-  /// <summary>
-  ///     Y-axis type: 0=Volume, 1=LPF, 2=HPF
-  /// </summary>
-  public int YType { get; set; }
+    /// <summary>
+    ///     Y-axis type: 0=Volume, 1=LPF, 2=HPF
+    /// </summary>
+    public int YType { get; set; }
 
-  public bool CurveEnabled { get; set; }
-  public byte CurveScaling { get; set; }
-  public List<RtpcGraphPointBase<float>> Points { get; set; } = [];
+    public bool CurveEnabled { get; set; }
+    public byte CurveScaling { get; set; }
+    public List<RtpcGraphPointBase<float>> Points { get; set; } = [];
 
-  public bool Read(BinaryReader reader)
-  {
-    // For v>36: u8 enabled, u8 scaling, u16 size
-    CurveEnabled = reader.ReadByte() != 0;
-    CurveScaling = reader.ReadByte();
-
-    var numberOfPoints = reader.ReadUInt16();
-    var points = new List<RtpcGraphPointBase<float>>();
-
-    for (var i = 0; i < numberOfPoints; i++)
+    public bool Read(BinaryReader reader)
     {
-      var point = new RtpcGraphPointBase<float>();
+        // For v>36: u8 enabled, u8 scaling, u16 size
+        CurveEnabled = reader.ReadByte() != 0;
+        CurveScaling = reader.ReadByte();
 
-      if (!point.Read(reader))
-      {
-        return false;
-      }
+        var numberOfPoints = reader.ReadUInt16();
+        var points = new List<RtpcGraphPointBase<float>>();
 
-      points.Add(point);
+        for (var i = 0; i < numberOfPoints; i++)
+        {
+            var point = new RtpcGraphPointBase<float>();
+
+            if (!point.Read(reader))
+            {
+                return false;
+            }
+
+            points.Add(point);
+        }
+
+        Points = points;
+
+        return true;
     }
-
-    Points = points;
-
-    return true;
-  }
 }

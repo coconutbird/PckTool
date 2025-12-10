@@ -75,7 +75,7 @@ public static class Program
 
             if (!soundbank.Read(new BinaryReader(new MemoryStream(fileEntry.Data))))
             {
-                Console.WriteLine("  Failed to parse soundbank: " + failed++);
+                Log.Error("  Failed to parse soundbank: " + failed++);
 
                 // well we failed to parse the whole thing, but we can still extract the wems
                 if (!soundbank.IsMediaLoaded)

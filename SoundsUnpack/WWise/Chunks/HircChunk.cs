@@ -42,8 +42,6 @@ public class HircChunk : BaseChunk
 
         for (var i = 0; i < numberOfReleasableHircItem; ++i)
         {
-            Console.WriteLine("Idx: " + i);
-
             var item = HircItem.Read(reader);
 
             if (item is null)
