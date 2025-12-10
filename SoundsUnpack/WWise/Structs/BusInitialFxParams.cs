@@ -10,20 +10,23 @@ public class BusInitialFxParams
     public bool Read(BinaryReader reader)
     {
         // TODO: actually implement this
-        
+
         return false;
-        
+
         var numberOfFx = reader.ReadByte();
         var bitFxBypass = reader.ReadByte() != 0;
+
         if (bitFxBypass)
         {
             throw new NotImplementedException("BitsFxBypass with bypass");
         }
 
         var fxChunks = new List<FxChunk>();
+
         for (var i = 0; i < numberOfFx; i++)
         {
             var fxChunk = new FxChunk();
+
             if (!fxChunk.Read(reader))
             {
                 return false;
@@ -35,7 +38,7 @@ public class BusInitialFxParams
         var fxId0 = reader.ReadUInt32();
         var isShareSet = reader.ReadByte() != 0;
 
-        BitsFxBypass = bitFxBypass ? (byte)1 : (byte)0;
+        BitsFxBypass = bitFxBypass ? (byte) 1 : (byte) 0;
         FxChunks = fxChunks;
         FxId0 = fxId0;
         IsShareSet = isShareSet;

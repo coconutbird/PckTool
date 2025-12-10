@@ -10,6 +10,7 @@ public class PropActionSpecificParams
         ValueMeaning = reader.ReadByte();
 
         var randomizerModifier = new RandomizerModifier();
+
         if (!randomizerModifier.Read(reader))
         {
             return false;

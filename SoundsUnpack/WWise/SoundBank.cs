@@ -20,12 +20,19 @@ public class SoundBank
 
     public bool Read(BinaryReader reader)
     {
-        while (ProcessSubChunk(reader, out var completed))
+        try
         {
-            if (completed)
+            while (ProcessSubChunk(reader, out var completed))
             {
-                return true;
+                if (completed)
+                {
+                    return true;
+                }
             }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
         }
 
         return false;
@@ -36,6 +43,7 @@ public class SoundBank
         if (reader.BaseStream.Position >= reader.BaseStream.Length)
         {
             completed = true;
+
             return true;
         }
 
@@ -98,13 +106,15 @@ public class SoundBank
         {
             var position = reader.BaseStream.Position;
 
-            var uiType = (BnkStringType)reader.ReadUInt32();
+            var uiType = (BnkStringType) reader.ReadUInt32();
+
             if (uiType != BnkStringType.Bank)
             {
                 return false;
             }
 
             var numberOfStrings = reader.ReadUInt32();
+
             for (var i = 0; i < numberOfStrings; ++i)
             {
                 var bankId = reader.ReadUInt32();
@@ -130,18 +140,19 @@ public class SoundBank
                 var numberOfStateGroups = reader.ReadUInt32();
 
                 var mapTransitions = new List<SubHircSection>();
+
                 for (var i = 0; i < numberOfStateGroups; ++i)
                 {
                     var stateGroupId = reader.ReadUInt32();
                     var defaultTransitionTime = reader.ReadInt32();
                     var numberOfTransitions = reader.ReadUInt32();
+
                     for (var j = 0; j < numberOfTransitions; ++j)
                     {
                         var stateType = reader.ReadUInt32();
                         var group = new SubHircSection
                         {
-                            Type = (HircType)reader.ReadByte(),
-                            SectionSize = reader.ReadUInt32()
+                            Type = (HircType) reader.ReadByte(), SectionSize = reader.ReadUInt32()
                         };
 
                         mapTransitions.Add(group);
@@ -149,6 +160,7 @@ public class SoundBank
                 }
 
                 var numberOfSwitchGroups = reader.ReadUInt32();
+
                 for (var i = 0; i < numberOfSwitchGroups; ++i)
                 {
                     var switchGroupId = reader.ReadUInt32();
@@ -156,6 +168,7 @@ public class SoundBank
 
                     var rtpcGraphPointIntegers = new List<RtpcGraphPointBase<uint>>();
                     var rtpcGraphPointIntegerCount = reader.ReadUInt32();
+
                     if (rtpcGraphPointIntegerCount > 0)
                     {
                         for (var j = 0; j < rtpcGraphPointIntegerCount; ++j)
@@ -164,14 +177,16 @@ public class SoundBank
                             {
                                 From = reader.ReadUInt32(),
                                 To = reader.ReadUInt32(),
-                                InterpolationType = (CurveInterpolation)reader.ReadUInt32()
+                                InterpolationType = (CurveInterpolation) reader.ReadUInt32()
                             };
+
                             rtpcGraphPointIntegers.Add(point);
                         }
                     }
                 }
 
                 var numberOfParams = reader.ReadUInt32();
+
                 for (var i = 0; i < numberOfParams; ++i)
                 {
                     var rtpcId = reader.ReadUInt32();
@@ -217,6 +232,7 @@ public class SoundBank
         }
 
         var expectedPosition = baseOffset + chunk.Size;
+
         if (reader.BaseStream.Position != expectedPosition)
         {
             Console.WriteLine(
@@ -246,11 +262,7 @@ public class SoundBank
             var tag = reader.ReadUInt32();
             var size = reader.ReadUInt32();
 
-            return new SubChunk
-            {
-                Tag = tag,
-                Size = size
-            };
+            return new SubChunk { Tag = tag, Size = size };
         }
     }
 

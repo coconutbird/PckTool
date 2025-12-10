@@ -7,9 +7,11 @@ public class ExceptParams
     public bool Read(BinaryReader reader)
     {
         var exceptionListSize = reader.ReadUInt32();
+
         for (var i = 0; i < exceptionListSize; ++i)
         {
             var listElementException = new ElementException();
+
             if (!listElementException.Read(reader))
             {
                 return false;

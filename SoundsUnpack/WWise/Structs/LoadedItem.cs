@@ -18,7 +18,7 @@ public class LoadedItem
 
     // CAkActorMixer
     public ActorMixerInitialValues? ActorMixerInitialValues { get; set; }
-    
+
     // CAkBus
     public BusInitialValues? BusInitialValues { get; set; }
 
@@ -34,7 +34,7 @@ public class LoadedItem
 
     public bool Read(BinaryReader reader)
     {
-        Type = (HircType)reader.ReadByte();
+        Type = (HircType) reader.ReadByte();
 
         var sectionSize = reader.ReadUInt32();
 
@@ -49,60 +49,70 @@ public class LoadedItem
             case HircType.Attenuation:
             {
                 var attenuationValues = new AttenuationInitialValues();
+
                 if (!attenuationValues.Read(reader))
                 {
                     return false;
                 }
 
                 AttenuationValues = attenuationValues;
+
                 break;
             }
 
             case HircType.Sound:
             {
                 var soundValues = new SoundInitialValues();
+
                 if (!soundValues.Read(reader))
                 {
                     return false;
                 }
 
                 SoundValues = soundValues;
+
                 break;
             }
 
             case HircType.RanSeqCntr:
             {
                 var ranSeqCntrInitialValues = new RanSeqCntrInitialValues();
+
                 if (!ranSeqCntrInitialValues.Read(reader))
                 {
                     return false;
                 }
 
                 RanSeqCntrInitialValues = ranSeqCntrInitialValues;
+
                 break;
             }
 
             case HircType.ActorMixer:
             {
                 var actorMixerInitialValues = new ActorMixerInitialValues();
+
                 if (!actorMixerInitialValues.Read(reader))
                 {
                     return false;
                 }
 
                 ActorMixerInitialValues = actorMixerInitialValues;
+
                 break;
             }
 
             case HircType.Bus:
             {
                 var busInitialValues = new BusInitialValues();
+
                 if (!busInitialValues.Read(reader))
                 {
                     return false;
                 }
-                
+
                 BusInitialValues = busInitialValues;
+
                 break;
             }
 
@@ -110,6 +120,7 @@ public class LoadedItem
             {
                 var actionType = reader.ReadUInt16();
                 var actionInitialValues = new ActionInitialValues();
+
                 if (!actionInitialValues.Read(reader, actionType))
                 {
                     return false;
@@ -117,18 +128,21 @@ public class LoadedItem
 
                 ActionType = actionType;
                 ActionInitialValues = actionInitialValues;
+
                 break;
             }
 
             case HircType.Event:
             {
                 var eventInitialValues = new EventInitialValues();
+
                 if (!eventInitialValues.Read(reader))
                 {
                     return false;
                 }
 
                 EventInitialValues = eventInitialValues;
+
                 break;
             }
 
@@ -136,12 +150,14 @@ public class LoadedItem
             case HircType.FxCustom:
             {
                 var fxBaseInitialValues = new FxBaseInitialValues();
+
                 if (!fxBaseInitialValues.Read(reader))
                 {
                     return false;
                 }
 
                 FxBaseInitialValues = fxBaseInitialValues;
+
                 break;
             }
 
@@ -152,6 +168,7 @@ public class LoadedItem
         }
 
         var expectedPosition = baseOffset + sectionSize;
+
         if (reader.BaseStream.Position != expectedPosition)
         {
             Console.WriteLine(

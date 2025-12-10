@@ -6,8 +6,8 @@ public class PlayActionParams
 
     public byte FadeCurve
     {
-        get => (byte)(BitVector & 0x0F);
-        set => BitVector = (byte)((BitVector & 0xF0) | (value & 0x0F));
+        get => (byte) (BitVector & 0x0F);
+        set => BitVector = (byte) ((BitVector & 0xF0) | (value & 0x0F));
     }
 
     public uint FileId { get; set; }

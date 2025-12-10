@@ -12,7 +12,7 @@ public class FxBaseInitialValues
 
     public bool Read(BinaryReader reader)
     {
-        var fxId = (PluginId)reader.ReadUInt32();
+        var fxId = (PluginId) reader.ReadUInt32();
         var size = reader.ReadUInt32();
 
         PluginParam? pluginParam = null;
@@ -24,6 +24,7 @@ public class FxBaseInitialValues
             case PluginId.Wwise_Compressor:
             {
                 pluginParam = new PluginParam();
+
                 if (!pluginParam.Read(reader, size))
                 {
                     return false;
@@ -35,6 +36,7 @@ public class FxBaseInitialValues
             case PluginId.Wwise_Silence:
             {
                 fxSrcSilenceParams = new FxSrcSilenceParams();
+
                 if (!fxSrcSilenceParams.Read(reader))
                 {
                     return false;
@@ -46,6 +48,7 @@ public class FxBaseInitialValues
             case PluginId.Wwise_Delay:
             {
                 delayFxParams = new DelayFxParams();
+
                 if (!delayFxParams.Read(reader))
                 {
                     return false;
@@ -59,18 +62,21 @@ public class FxBaseInitialValues
         }
 
         var numberOfBankData = reader.ReadByte();
+
         if (numberOfBankData > 0)
         {
             throw new NotImplementedException("FxBaseInitialValues with Bank Data is not implemented.");
         }
 
         var initialRtpc = new InitialRtpc();
+
         if (!initialRtpc.Read(reader))
         {
             return false;
         }
 
         var numberInit = reader.ReadUInt16();
+
         if (numberInit > 0)
         {
             throw new NotImplementedException("FxBaseInitialValues with Init Parameters is not implemented.");

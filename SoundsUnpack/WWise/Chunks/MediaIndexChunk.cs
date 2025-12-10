@@ -9,9 +9,11 @@ public class MediaIndexChunk
     public bool Read(BinaryReader reader, uint size)
     {
         var numberOfMedia = size / MediaHeader.SizeOf;
+
         for (var i = 0; i < numberOfMedia; ++i)
         {
             var mediaHeader = new MediaHeader();
+
             if (!mediaHeader.Read(reader))
             {
                 return false;

@@ -101,6 +101,7 @@ public class RanSeqCntrInitialValues
     public bool Read(BinaryReader reader)
     {
         var nodeBaseParams = new NodeBaseParams();
+
         if (!nodeBaseParams.Read(reader))
         {
             return false;
@@ -119,12 +120,14 @@ public class RanSeqCntrInitialValues
         var bitVector = reader.ReadByte();
 
         var children = new Children();
+
         if (!children.Read(reader))
         {
             return false;
         }
 
         var playlist = new Playlist();
+
         if (!playlist.Read(reader))
         {
             return false;

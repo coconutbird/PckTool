@@ -3,19 +3,19 @@
 public enum PropType : byte
 {
     Volume = 0x00,
-    LowFrequencyEffects = 0x01,       // LFE
+    LowFrequencyEffects = 0x01, // LFE
     Pitch = 0x02,
-    LowPassFilter = 0x03,             // LPF
-    HighPassFilter = 0x04,            // HPF
+    LowPassFilter = 0x03,  // LPF
+    HighPassFilter = 0x04, // HPF
     BusVolume = 0x05,
-    Priority = 0x06,                  // sometimes StatePropNum in decomp
+    Priority = 0x06, // sometimes StatePropNum in decomp
     PriorityDistanceOffset = 0x07,
     FeedbackVolume = 0x08,
-    FeedbackLowPassFilter = 0x09,     // FeedbackLPF
+    FeedbackLowPassFilter = 0x09, // FeedbackLPF
     MuteRatio = 0x0A,
-    PanLeftRight = 0x0B,              // PAN_LR
-    PanFrontRear = 0x0C,              // PAN_FR
-    CenterPercent = 0x0D,             // CenterPCT
+    PanLeftRight = 0x0B,  // PAN_LR
+    PanFrontRear = 0x0C,  // PAN_FR
+    CenterPercent = 0x0D, // CenterPCT
     DelayTime = 0x0E,
     TransitionTime = 0x0F,
     Probability = 0x10,

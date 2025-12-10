@@ -6,7 +6,7 @@ public class PluginParam
 
     public bool Read(BinaryReader reader, uint size)
     {
-        var paramBlock = reader.ReadBytes((int)size);
+        var paramBlock = reader.ReadBytes((int) size);
 
         ParamBlock = paramBlock;
 

@@ -14,18 +14,14 @@ public class ConversionTable
         var points = new List<RtpcGraphPointBase<float>>();
 
         var numberOfRtpcs = reader.ReadUInt16();
+
         for (var i = 0; i < numberOfRtpcs; ++i)
         {
             var from = reader.ReadSingle();
             var to = reader.ReadSingle();
-            var interpolationType = (CurveInterpolation)reader.ReadUInt32();
+            var interpolationType = (CurveInterpolation) reader.ReadUInt32();
 
-            points.Add(new RtpcGraphPointBase<float>
-            {
-                From = from,
-                To = to,
-                InterpolationType = interpolationType
-            });
+            points.Add(new RtpcGraphPointBase<float> { From = from, To = to, InterpolationType = interpolationType });
         }
 
         Scaling = scaling;

@@ -4,8 +4,10 @@ public class FilePackageLut<TKey> where TKey : notnull
 {
     public bool Read(BinaryReader reader, uint size)
     {
-        if (typeof(TKey) != typeof(uint) && typeof(TKey) != typeof(int) && typeof(TKey) != typeof(ulong) &&
-            typeof(TKey) != typeof(long))
+        if (typeof(TKey) != typeof(uint)
+            && typeof(TKey) != typeof(int)
+            && typeof(TKey) != typeof(ulong)
+            && typeof(TKey) != typeof(long))
         {
             throw new NotSupportedException("Only uint keys are supported in this example.");
         }
@@ -19,21 +21,22 @@ public class FilePackageLut<TKey> where TKey : notnull
         for (var i = 0; i < fileCount; ++i)
         {
             TKey fileId;
+
             if (typeof(TKey) == typeof(uint))
             {
-                fileId = (TKey)(object)reader.ReadUInt32();
+                fileId = (TKey) (object) reader.ReadUInt32();
             }
             else if (typeof(TKey) == typeof(int))
             {
-                fileId = (TKey)(object)reader.ReadInt32();
+                fileId = (TKey) (object) reader.ReadInt32();
             }
             else if (typeof(TKey) == typeof(ulong))
             {
-                fileId = (TKey)(object)reader.ReadUInt64();
+                fileId = (TKey) (object) reader.ReadUInt64();
             }
             else
             {
-                fileId = (TKey)(object)reader.ReadInt64();
+                fileId = (TKey) (object) reader.ReadInt64();
             }
 
             var blockSize = reader.ReadUInt32();
@@ -49,15 +52,16 @@ public class FilePackageLut<TKey> where TKey : notnull
 
             reader.BaseStream.Position = position;
 
-            Entries.Add(new FileEntry
-            {
-                FileId = fileId,
-                BlockSize = blockSize,
-                FileSize = fileSize,
-                StartBlock = startBlock,
-                LanguageId = languageId,
-                Data = buffer
-            });
+            Entries.Add(
+                new FileEntry
+                {
+                    FileId = fileId,
+                    BlockSize = blockSize,
+                    FileSize = fileSize,
+                    StartBlock = startBlock,
+                    LanguageId = languageId,
+                    Data = buffer
+                });
         }
 
         reader.BaseStream.Position = baseOffset + size;

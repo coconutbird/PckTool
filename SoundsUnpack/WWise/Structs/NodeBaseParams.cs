@@ -114,6 +114,7 @@ public class NodeBaseParams
     public bool Read(BinaryReader reader)
     {
         var nodeInitialFxParams = new NodeInitialFxParams();
+
         if (!nodeInitialFxParams.Read(reader))
         {
             return false;
@@ -125,36 +126,42 @@ public class NodeBaseParams
         var bitVector = reader.ReadByte();
 
         var nodeInitialParams = new NodeInitialParams();
+
         if (!nodeInitialParams.Read(reader))
         {
             return false;
         }
 
         var positioningParams = new PositioningParams();
+
         if (!positioningParams.Read(reader))
         {
             return false;
         }
 
         var auxParams = new AuxParams();
+
         if (!auxParams.Read(reader))
         {
             return false;
         }
 
         var advSettingsParams = new AdvSettingsParams();
+
         if (!advSettingsParams.Read(reader))
         {
             return false;
         }
 
         var stateChunk = new StateChunk();
+
         if (!stateChunk.Read(reader))
         {
             return false;
         }
 
         var initialRtpc = new InitialRtpc();
+
         if (!initialRtpc.Read(reader))
         {
             return false;

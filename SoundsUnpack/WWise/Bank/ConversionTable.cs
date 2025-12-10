@@ -21,14 +21,9 @@ public class ConversionTable
         {
             var x = reader.ReadSingle();
             var y = reader.ReadSingle();
-            var interpolation = (CurveInterpolation)reader.ReadUInt32();
+            var interpolation = (CurveInterpolation) reader.ReadUInt32();
 
-            Points.Add(new RtpcGraphPointBase<float>
-            {
-                From = x,
-                To = y,
-                InterpolationType = interpolation
-            });
+            Points.Add(new RtpcGraphPointBase<float> { From = x, To = y, InterpolationType = interpolation });
         }
 
         return true;

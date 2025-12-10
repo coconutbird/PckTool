@@ -12,6 +12,7 @@ public class AttenuationInitialValues
         IsConeEnabled = reader.ReadByte() == 1;
 
         CurveToUse = new sbyte[7];
+
         for (var i = 0; i < 7; i++)
         {
             CurveToUse[i] = reader.ReadSByte();
@@ -20,6 +21,7 @@ public class AttenuationInitialValues
         var numberOfCurves = reader.ReadByte();
 
         var curves = new List<ConversionTable>();
+
         for (var i = 0; i < numberOfCurves; ++i)
         {
             var curve = new ConversionTable();
@@ -33,6 +35,7 @@ public class AttenuationInitialValues
         }
 
         var initialRtpc = new InitialRtpc();
+
         if (!initialRtpc.Read(reader))
         {
             return false;

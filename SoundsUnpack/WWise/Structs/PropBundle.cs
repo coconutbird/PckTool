@@ -10,6 +10,7 @@ public class PropBundle
     {
         var numberOfProps = reader.ReadByte();
         var ids = new byte[numberOfProps];
+
         for (var i = 0; i < numberOfProps; ++i)
         {
             ids[i] = reader.ReadByte();
@@ -17,14 +18,10 @@ public class PropBundle
 
         for (var i = 0; i < numberOfProps; ++i)
         {
-            var propId = (PropType)ids[i];
+            var propId = (PropType) ids[i];
             var propValue = reader.ReadBytes(Prop.GetSizeOfType(propId, isRandomizer));
-            var prop = new Prop
-            {
-                Id = propId,
-                RawValue = propValue
-            };
-            
+            var prop = new Prop { Id = propId, RawValue = propValue };
+
             Console.WriteLine($"    Prop: {prop.Id}, Value: {propValue.Length} bytes");
 
             Props.Add(prop);

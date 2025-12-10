@@ -36,23 +36,27 @@ public class ActionInitialValues
         var ext4 = reader.ReadByte();
 
         var propBundle1 = new PropBundle();
+
         if (!propBundle1.Read(reader))
         {
             return false;
         }
 
         var propBundle2 = new PropBundle();
+
         if (!propBundle2.Read(reader, true))
         {
             return false;
         }
 
         var actionCategory = ActionTypeHelpers.GetActionCategory((ActionType) actionType);
+
         switch (actionCategory)
         {
             case ActionCategory.Play:
             {
                 var playActionParams = new PlayActionParams();
+
                 if (!playActionParams.Read(reader))
                 {
                     return false;
@@ -66,6 +70,7 @@ public class ActionInitialValues
             case ActionCategory.Value:
             {
                 var valueActionParams = new ValueActionParams();
+
                 if (!valueActionParams.Read(reader))
                 {
                     return false;
@@ -79,6 +84,7 @@ public class ActionInitialValues
             case ActionCategory.Active:
             {
                 var activeActionParams = new ActiveActionParams();
+
                 if (!activeActionParams.Read(reader, (ActionType) actionType))
                 {
                     return false;

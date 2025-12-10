@@ -61,6 +61,7 @@ public class AuxParams
         if (HasAux)
         {
             var auxIds = new uint[4];
+
             for (var i = 0; i < auxIds.Length; i++)
             {
                 auxIds[i] = reader.ReadUInt32();

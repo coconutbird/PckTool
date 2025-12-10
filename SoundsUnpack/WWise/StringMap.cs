@@ -9,6 +9,7 @@ public class StringMap
         var baseOffset = reader.BaseStream.Position;
 
         var numberOfStrings = reader.ReadUInt32();
+
         for (var i = 0; i < numberOfStrings; ++i)
         {
             var offset = reader.ReadUInt32();
@@ -37,10 +38,7 @@ public class StringMap
         return true;
     }
 
-    public void Write(BinaryWriter writer)
-    {
-
-    }
+    public void Write(BinaryWriter writer) { }
 
     public Dictionary<uint, string> Map { get; } = new();
 }

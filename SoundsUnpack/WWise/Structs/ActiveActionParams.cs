@@ -9,8 +9,8 @@ public class ActiveActionParams
 
     public byte FadeCurve
     {
-        get => (byte)(BitVector & 0x0F);
-        set => BitVector = (byte)((BitVector & 0xF0) | (value & 0x0F));
+        get => (byte) (BitVector & 0x0F);
+        set => BitVector = (byte) ((BitVector & 0xF0) | (value & 0x0F));
     }
 
     public ResumeActionSpecificParams? ResumeActionSpecificParams { get; set; }
@@ -22,9 +22,11 @@ public class ActiveActionParams
         var bitVector = reader.ReadByte();
 
         ResumeActionSpecificParams? resumeActionSpecificParams = null;
+
         if (ActionTypeHelpers.IsResumeActionType(actionType))
         {
             resumeActionSpecificParams = new ResumeActionSpecificParams();
+
             if (!resumeActionSpecificParams.Read(reader))
             {
                 return false;
@@ -34,6 +36,7 @@ public class ActiveActionParams
         }
 
         var exceptParams = new ExceptParams();
+
         if (!exceptParams.Read(reader))
         {
             return false;

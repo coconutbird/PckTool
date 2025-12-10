@@ -7,9 +7,11 @@ public class InitialRtpc
     public bool Read(BinaryReader reader)
     {
         var numberOfRtpcs = reader.ReadUInt16();
+
         for (var i = 0; i < numberOfRtpcs; ++i)
         {
             var rtpcManager = new RtpcManager();
+
             if (!rtpcManager.Read(reader))
             {
                 return false;

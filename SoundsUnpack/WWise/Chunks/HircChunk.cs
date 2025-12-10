@@ -11,9 +11,12 @@ public class HircChunk
         LoadedItems.Clear();
 
         var numberOfReleasableHircItem = reader.ReadUInt32();
+
         for (var i = 0; i < numberOfReleasableHircItem; ++i)
         {
             var loadedItem = new LoadedItem();
+
+            Console.WriteLine("Idx: " + i);
 
             if (!loadedItem.Read(reader))
             {

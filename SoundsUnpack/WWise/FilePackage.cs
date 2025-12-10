@@ -1,14 +1,11 @@
 ﻿namespace SoundsUnpack.WWise;
 
-
 public class FilePackage(string fileName) : IDisposable
 {
     public Dictionary<uint, string> LanguageMap { get; private set; } = new();
     public FilePackageLut<uint> SoundBanksLut { get; private set; } = new();
     public FilePackageLut<uint> StmFilesLut { get; private set; } = new();
     public FilePackageLut<ulong> ExternalLuts { get; private set; } = new();
-
-    // public List<SoundBank> SoundBanks { get; } = new();
 
     public bool Load()
     {
@@ -21,6 +18,7 @@ public class FilePackage(string fileName) : IDisposable
         }
 
         var version = _reader.ReadUInt32();
+
         if (version != ValidVersion)
         {
             return false;
@@ -71,6 +69,31 @@ public class FilePackage(string fileName) : IDisposable
         ExternalLuts = externalLuts;
 
         return true;
+    }
+
+    public void Save(string fileName)
+    {
+        using var writer = new BinaryWriter(File.Create(fileName));
+
+        // write tag
+        writer.Write(_validHeaderTag);
+
+        writer.Write(0x0); // header size, will be filled in later
+
+        writer.Write(ValidVersion);
+
+        writer.Write(0x0); // language map size, will be filled in later
+        writer.Write(0x0); // sound banks lut size, will be filled in later
+        writer.Write(0x0); // stm files lut size, will be filled in later
+        writer.Write(0x0); // external luts size, will be filled in later
+
+        // write language map
+        writer.Write(LanguageMap.Count);
+
+        foreach (var (id, name) in LanguageMap)
+        {
+            writer.Write(name);
+        }
     }
 
     public void Dispose()

@@ -27,6 +27,7 @@ public static class ActionTypeHelpers
     public static bool IsValidActionType(ActionType actionType)
     {
         var category = GetActionCategory(actionType);
+
         return category != ActionCategory.Unknown;
     }
 

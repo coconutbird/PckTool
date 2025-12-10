@@ -23,13 +23,14 @@ public class RtpcManager
         var scaling = reader.ReadByte();
         var numberOfGraphPoints = reader.ReadUInt16();
         var graphPoints = new List<RtpcGraphPointBase<float>>();
+
         for (var i = 0; i < numberOfGraphPoints; ++i)
         {
             var graphPoint = new RtpcGraphPointBase<float>
             {
                 From = reader.ReadSingle(),
                 To = reader.ReadSingle(),
-                InterpolationType = (CurveInterpolation)reader.ReadUInt32()
+                InterpolationType = (CurveInterpolation) reader.ReadUInt32()
             };
 
             graphPoints.Add(graphPoint);

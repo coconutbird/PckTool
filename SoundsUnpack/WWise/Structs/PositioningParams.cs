@@ -56,13 +56,13 @@ public class PositioningParams
 
     public byte SpatializationMode
     {
-        get => (byte)(Bits3D & 0x03)!;
+        get => (byte) (Bits3D & 0x03)!;
         set
         {
             Is3DPositioningAvailable = true;
             Bits3D ??= 0;
             Bits3D &= 0xFC;
-            Bits3D |= (byte)(value & 0x03);
+            Bits3D |= (byte) (value & 0x03);
         }
     }
 
@@ -121,9 +121,11 @@ public class PositioningParams
 
                 var pathVertices = new List<PathVertex>();
                 var numberOfVertices = reader.ReadUInt32();
+
                 for (var i = 0; i < numberOfVertices; ++i)
                 {
                     var pathVertex = new PathVertex();
+
                     if (!pathVertex.Read(reader))
                     {
                         return false;
@@ -134,9 +136,11 @@ public class PositioningParams
 
                 var playlistItems = new List<PlaylistItem>();
                 var numberOfPlaylistItems = reader.ReadUInt32();
+
                 for (var i = 0; i < numberOfPlaylistItems; ++i)
                 {
                     var playlistItem = new PlaylistItem();
+
                     if (!playlistItem.Read(reader))
                     {
                         return false;
@@ -146,6 +150,7 @@ public class PositioningParams
                 }
 
                 var ak3DAutomationParams = new Ak3DAutomationParams();
+
                 if (!ak3DAutomationParams.Read(reader))
                 {
                     return false;

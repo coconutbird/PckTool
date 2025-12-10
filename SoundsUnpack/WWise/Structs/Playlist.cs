@@ -9,9 +9,11 @@ public class Playlist
         Items.Clear();
 
         var numberOfItems = reader.ReadUInt16();
+
         for (var i = 0; i < numberOfItems; ++i)
         {
             var item = new PlaylistItem();
+
             if (!item.Read(reader))
             {
                 return false;

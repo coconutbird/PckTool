@@ -8,12 +8,14 @@ public class ActorMixerInitialValues
     public bool Read(BinaryReader reader)
     {
         var nodeBaseParams = new NodeBaseParams();
+
         if (!nodeBaseParams.Read(reader))
         {
             return false;
         }
 
         var children = new Children();
+
         if (!children.Read(reader))
         {
             return false;

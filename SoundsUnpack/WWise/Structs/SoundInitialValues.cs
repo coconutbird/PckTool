@@ -8,12 +8,14 @@ public class SoundInitialValues
     public bool Read(BinaryReader reader)
     {
         var bankSourceData = new BankSourceData();
+
         if (!bankSourceData.Read(reader))
         {
             return false;
         }
 
         var nodeBaseParams = new NodeBaseParams();
+
         if (!nodeBaseParams.Read(reader))
         {
             return false;

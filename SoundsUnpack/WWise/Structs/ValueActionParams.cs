@@ -6,8 +6,8 @@ public class ValueActionParams
 
     public byte FadeCurve
     {
-        get => (byte)(BitVector & 0x0F);
-        set => BitVector = (byte)((BitVector & 0xF0) | (value & 0x0F));
+        get => (byte) (BitVector & 0x0F);
+        set => BitVector = (byte) ((BitVector & 0xF0) | (value & 0x0F));
     }
 
     public PropActionSpecificParams PropActionSpecificParams { get; set; }
@@ -18,12 +18,14 @@ public class ValueActionParams
         var bitVector = reader.ReadByte();
 
         var propActionSpecificParams = new PropActionSpecificParams();
+
         if (!propActionSpecificParams.Read(reader))
         {
             return false;
         }
 
         var exceptParams = new ExceptParams();
+
         if (!exceptParams.Read(reader))
         {
             return false;

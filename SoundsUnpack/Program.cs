@@ -2,6 +2,7 @@
 using System.Reflection.Metadata.Ecma335;
 using System.Runtime.InteropServices;
 using System.Text;
+
 using SoundsUnpack.WWise;
 
 namespace SoundsUnpack;
@@ -15,6 +16,7 @@ public static class BinaryReaderExtensions
         while (true)
         {
             var buffer = reader.ReadUInt16();
+
             if (buffer == 0)
             {
                 return builder.ToString();
@@ -30,6 +32,7 @@ public static class Program
     private static void EnsureDirectoryCreated(string path)
     {
         path = Path.GetDirectoryName(Path.GetFullPath(path))!;
+
         if (!Directory.Exists(path))
         {
             Directory.CreateDirectory(path);
@@ -38,9 +41,8 @@ public static class Program
 
     public static void Main(string[] args)
     {
-        var package =
-            new FilePackage(
-                "C:\\Program Files (x86)\\Steam\\steamapps\\common\\HaloWarsDE\\sound\\wwise_2013\\GeneratedSoundBanks\\Windows\\Sounds.pck");
+        var package = new FilePackage(
+            "C:\\Program Files (x86)\\Steam\\steamapps\\common\\HaloWarsDE\\sound\\wwise_2013\\GeneratedSoundBanks\\Windows\\Sounds.pck");
 
         if (!package.Load())
         {
@@ -50,13 +52,21 @@ public static class Program
         }
 
         var b = package.SoundBanksLut.Entries.FirstOrDefault(x => x.FileId == Hash.GetIdFromString("init.bnk"));
+
         if (b != null)
         {
             Console.WriteLine("Found init.bnk in package!");
         }
 
+        var failed = 1;
+
         foreach (var soundbank in package.SoundBanksLut.Entries)
         {
+            // /if (soundbank.FileId != 0x51BF5ACF)
+            // /{
+            // /    continue;
+            // /}
+
             var language = package.LanguageMap[soundbank.LanguageId];
 
             Console.WriteLine(
@@ -66,7 +76,7 @@ public static class Program
 
             if (!parser.Read(new BinaryReader(new MemoryStream(soundbank.Data))))
             {
-                Console.WriteLine("  Failed to parse soundbank");
+                Console.WriteLine("  Failed to parse soundbank: " + failed++);
 
                 continue;
             }
@@ -75,7 +85,7 @@ public static class Program
 
             EnsureDirectoryCreated(path);
 
-            var bnkFile = Path.Join(path, $"{parser.SoundbankId:X8}.bnk");
+            var bnkFile = Path.Join(path, $"{soundbank.FileId:x8}.bnk");
 
             EnsureDirectoryCreated(bnkFile);
 

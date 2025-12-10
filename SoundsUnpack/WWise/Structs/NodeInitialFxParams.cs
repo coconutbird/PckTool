@@ -22,6 +22,7 @@ public class NodeInitialFxParams
             for (var i = 0; i < NumFx; ++i)
             {
                 var chunk = new FxChunk();
+
                 if (!chunk.Read(reader))
                 {
                     return false;

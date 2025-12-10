@@ -8,12 +8,14 @@ public class NodeInitialParams
     public bool Read(BinaryReader reader)
     {
         var propBundle1 = new PropBundle();
+
         if (!propBundle1.Read(reader))
         {
             return false;
         }
 
         var propBundle2 = new PropBundle();
+
         if (!propBundle2.Read(reader, true))
         {
             return false;
