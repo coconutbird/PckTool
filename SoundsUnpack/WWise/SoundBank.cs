@@ -74,8 +74,10 @@ public class SoundBank
         }
     }
 
-    public bool IsValid => BankHeaderChunk is not null && SoundbankId is not null;
-    public bool IsLoaded => BankHeaderChunk is not null;
+    public bool IsValid =>
+        BankHeaderChunk?.IsValid == true && MediaIndexChunk?.IsValid == true && DataChunk?.IsValid == true;
+
+    public bool IsMediaLoaded => IsValid && DataChunk?.Data is not null;
 
     public BankHeaderChunk? BankHeaderChunk { get; private set; }
     public CustomPlatformChunk? PlatformChunk { get; private set; }

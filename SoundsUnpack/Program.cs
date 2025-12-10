@@ -60,8 +60,8 @@ public static class Program
             {
                 Console.WriteLine("  Failed to parse soundbank: " + failed++);
 
-                // well we failed to parse the whole thing, but it's still loaded enough to have the data
-                if (!soundbank.IsLoaded)
+                // well we failed to parse the whole thing, but we can still extract the wems
+                if (!soundbank.IsMediaLoaded)
                 {
                     continue;
                 }
@@ -85,11 +85,6 @@ public static class Program
                 }
 
                 var wemFile = Path.Join(path, $"{soundbank.SoundbankId:X8}", $"{wem.Id:X8}.wem");
-
-                if (wem.Id == 2447981426)
-                {
-                    Console.WriteLine("Debug");
-                }
 
                 EnsureDirectoryCreated(wemFile);
 
