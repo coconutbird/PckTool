@@ -30,10 +30,14 @@ public abstract class HircItem
         var baseOffset = reader.BaseStream.Position;
         var id = reader.ReadUInt32();
 
-        Console.WriteLine($"Loading HIRC Item - Type: {type}, ID: {id}");
+        // Remaining size after reading the ID (4 bytes)
+        var remainingSize = (int)(sectionSize - 4);
+
+        Log.Info($"Reading HIRC item: Type {type}, Size {sectionSize}, ID {id}");
 
         HircItem? item = type switch
         {
+            // Fully implemented parsers
             HircType.Attenuation => AttenuationItem.ReadItem(reader, id),
             HircType.Sound => SoundItem.ReadItem(reader, id),
             HircType.RanSeqCntr => RanSeqCntrItem.ReadItem(reader, id),
@@ -42,12 +46,29 @@ public abstract class HircItem
             HircType.Action => ActionItem.ReadItem(reader, id),
             HircType.Event => EventItem.ReadItem(reader, id),
             HircType.FxShareSet or HircType.FxCustom => FxItem.ReadItem(reader, id, type),
+
+            // Stub implementations (raw bytes preserved)
+            HircType.State => StateItem.ReadItem(reader, id, remainingSize),
+            HircType.SwitchCntr => SwitchCntrItem.ReadItem(reader, id, remainingSize),
+            HircType.LayerCntr => LayerCntrItem.ReadItem(reader, id, remainingSize),
+            HircType.Segment => SegmentItem.ReadItem(reader, id, remainingSize),
+            HircType.Track => TrackItem.ReadItem(reader, id, remainingSize),
+            HircType.MusicSwitch => MusicSwitchItem.ReadItem(reader, id, remainingSize),
+            HircType.MusicRanSeq => MusicRanSeqItem.ReadItem(reader, id, remainingSize),
+            HircType.DialogueEvent => DialogueEventItem.ReadItem(reader, id, remainingSize),
+            HircType.FeedbackBus => FeedbackBusItem.ReadItem(reader, id, remainingSize),
+            HircType.FeedbackNode => FeedbackNodeItem.ReadItem(reader, id, remainingSize),
+            HircType.AuxBus => AuxBusItem.ReadItem(reader, id, remainingSize),
+            HircType.LfoModulator => LfoModulatorItem.ReadItem(reader, id, remainingSize),
+            HircType.EnvelopeModulator => EnvelopeModulatorItem.ReadItem(reader, id, remainingSize),
+            HircType.AudioDevice => AudioDeviceItem.ReadItem(reader, id, remainingSize),
+
             _ => null
         };
 
         if (item is null)
         {
-            Console.WriteLine("Unsupported or failed HIRC type: " + type);
+            Log.Error($"Failed to parse HIRC item: Type {type}, Size {sectionSize}, ID {id}");
 
             return null;
         }
@@ -56,8 +77,11 @@ public abstract class HircItem
 
         if (reader.BaseStream.Position != expectedPosition)
         {
-            Console.WriteLine(
-                $"Warning: HircItem read position mismatch for type {type}. Expected {expectedPosition}, got {reader.BaseStream.Position}.");
+            Log.Error(
+                $"HIRC item read position mismatch for type {type}. Expected {expectedPosition}, got {reader.BaseStream.Position}.");
+
+            // Seek to correct position to allow parsing to continue
+            reader.BaseStream.Position = expectedPosition;
         }
 
         return item;
@@ -215,3 +239,217 @@ public sealed class FxItem : HircItem
         return new FxItem(type) { Id = id, Values = values };
     }
 }
+
+#region Stub Implementations
+
+/// <summary>
+///     Represents a CAkState HIRC item (stub - raw bytes preserved).
+/// </summary>
+public sealed class StateItem : HircItem
+{
+    public override HircType Type => HircType.State;
+    public required byte[] RawData { get; init; }
+
+    internal static StateItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    {
+        var rawData = reader.ReadBytes(remainingSize);
+        return new StateItem { Id = id, RawData = rawData };
+    }
+}
+
+/// <summary>
+///     Represents a CAkSwitchCntr HIRC item (stub - raw bytes preserved).
+/// </summary>
+public sealed class SwitchCntrItem : HircItem
+{
+    public override HircType Type => HircType.SwitchCntr;
+    public required byte[] RawData { get; init; }
+
+    internal static SwitchCntrItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    {
+        var rawData = reader.ReadBytes(remainingSize);
+        return new SwitchCntrItem { Id = id, RawData = rawData };
+    }
+}
+
+/// <summary>
+///     Represents a CAkLayerCntr HIRC item (stub - raw bytes preserved).
+/// </summary>
+public sealed class LayerCntrItem : HircItem
+{
+    public override HircType Type => HircType.LayerCntr;
+    public required byte[] RawData { get; init; }
+
+    internal static LayerCntrItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    {
+        var rawData = reader.ReadBytes(remainingSize);
+        return new LayerCntrItem { Id = id, RawData = rawData };
+    }
+}
+
+/// <summary>
+///     Represents a CAkMusicSegment HIRC item (stub - raw bytes preserved).
+/// </summary>
+public sealed class SegmentItem : HircItem
+{
+    public override HircType Type => HircType.Segment;
+    public required byte[] RawData { get; init; }
+
+    internal static SegmentItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    {
+        var rawData = reader.ReadBytes(remainingSize);
+        return new SegmentItem { Id = id, RawData = rawData };
+    }
+}
+
+/// <summary>
+///     Represents a CAkMusicTrack HIRC item (stub - raw bytes preserved).
+/// </summary>
+public sealed class TrackItem : HircItem
+{
+    public override HircType Type => HircType.Track;
+    public required byte[] RawData { get; init; }
+
+    internal static TrackItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    {
+        var rawData = reader.ReadBytes(remainingSize);
+        return new TrackItem { Id = id, RawData = rawData };
+    }
+}
+
+/// <summary>
+///     Represents a CAkMusicSwitchCntr HIRC item (stub - raw bytes preserved).
+/// </summary>
+public sealed class MusicSwitchItem : HircItem
+{
+    public override HircType Type => HircType.MusicSwitch;
+    public required byte[] RawData { get; init; }
+
+    internal static MusicSwitchItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    {
+        var rawData = reader.ReadBytes(remainingSize);
+        return new MusicSwitchItem { Id = id, RawData = rawData };
+    }
+}
+
+/// <summary>
+///     Represents a CAkMusicRanSeqCntr HIRC item (stub - raw bytes preserved).
+/// </summary>
+public sealed class MusicRanSeqItem : HircItem
+{
+    public override HircType Type => HircType.MusicRanSeq;
+    public required byte[] RawData { get; init; }
+
+    internal static MusicRanSeqItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    {
+        var rawData = reader.ReadBytes(remainingSize);
+        return new MusicRanSeqItem { Id = id, RawData = rawData };
+    }
+}
+
+/// <summary>
+///     Represents a CAkDialogueEvent HIRC item (stub - raw bytes preserved).
+/// </summary>
+public sealed class DialogueEventItem : HircItem
+{
+    public override HircType Type => HircType.DialogueEvent;
+    public required byte[] RawData { get; init; }
+
+    internal static DialogueEventItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    {
+        var rawData = reader.ReadBytes(remainingSize);
+        return new DialogueEventItem { Id = id, RawData = rawData };
+    }
+}
+
+/// <summary>
+///     Represents a CAkFeedbackBus HIRC item (stub - raw bytes preserved).
+/// </summary>
+public sealed class FeedbackBusItem : HircItem
+{
+    public override HircType Type => HircType.FeedbackBus;
+    public required byte[] RawData { get; init; }
+
+    internal static FeedbackBusItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    {
+        var rawData = reader.ReadBytes(remainingSize);
+        return new FeedbackBusItem { Id = id, RawData = rawData };
+    }
+}
+
+/// <summary>
+///     Represents a CAkFeedbackNode HIRC item (stub - raw bytes preserved).
+/// </summary>
+public sealed class FeedbackNodeItem : HircItem
+{
+    public override HircType Type => HircType.FeedbackNode;
+    public required byte[] RawData { get; init; }
+
+    internal static FeedbackNodeItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    {
+        var rawData = reader.ReadBytes(remainingSize);
+        return new FeedbackNodeItem { Id = id, RawData = rawData };
+    }
+}
+
+/// <summary>
+///     Represents a CAkAuxBus HIRC item (stub - raw bytes preserved).
+/// </summary>
+public sealed class AuxBusItem : HircItem
+{
+    public override HircType Type => HircType.AuxBus;
+    public required byte[] RawData { get; init; }
+
+    internal static AuxBusItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    {
+        var rawData = reader.ReadBytes(remainingSize);
+        return new AuxBusItem { Id = id, RawData = rawData };
+    }
+}
+
+/// <summary>
+///     Represents a CAkLFOModulator HIRC item (stub - raw bytes preserved).
+/// </summary>
+public sealed class LfoModulatorItem : HircItem
+{
+    public override HircType Type => HircType.LfoModulator;
+    public required byte[] RawData { get; init; }
+
+    internal static LfoModulatorItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    {
+        var rawData = reader.ReadBytes(remainingSize);
+        return new LfoModulatorItem { Id = id, RawData = rawData };
+    }
+}
+
+/// <summary>
+///     Represents a CAkEnvelopeModulator HIRC item (stub - raw bytes preserved).
+/// </summary>
+public sealed class EnvelopeModulatorItem : HircItem
+{
+    public override HircType Type => HircType.EnvelopeModulator;
+    public required byte[] RawData { get; init; }
+
+    internal static EnvelopeModulatorItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    {
+        var rawData = reader.ReadBytes(remainingSize);
+        return new EnvelopeModulatorItem { Id = id, RawData = rawData };
+    }
+}
+
+/// <summary>
+///     Represents a CAkAudioDevice HIRC item (stub - raw bytes preserved).
+/// </summary>
+public sealed class AudioDeviceItem : HircItem
+{
+    public override HircType Type => HircType.AudioDevice;
+    public required byte[] RawData { get; init; }
+
+    internal static AudioDeviceItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    {
+        var rawData = reader.ReadBytes(remainingSize);
+        return new AudioDeviceItem { Id = id, RawData = rawData };
+    }
+}
+
+#endregion
