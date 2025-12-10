@@ -292,8 +292,11 @@ public class SoundBank
 
         if (reader.BaseStream.Position != expectedPosition)
         {
-            Console.WriteLine(
-                $"Warning: Sub-chunk read position mismatch for chunk {chunk.MagicString}. Expected {expectedPosition}, got {reader.BaseStream.Position}.");
+            Log.Warn(
+                "Sub-chunk read position mismatch for chunk {0}. Expected {1}, got {2}.",
+                chunk.MagicString,
+                expectedPosition,
+                reader.BaseStream.Position);
 
             reader.BaseStream.Position = expectedPosition;
 

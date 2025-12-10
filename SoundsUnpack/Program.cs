@@ -51,7 +51,7 @@ public static class Program
 
         if (!package.Load())
         {
-            Console.WriteLine("Failed to find sounds file");
+            Log.Error("Failed to find sounds file");
 
             return;
         }
@@ -61,15 +61,18 @@ public static class Program
         var soundbanksByLanguage = new Dictionary<uint, Dictionary<uint, SoundBank>>();
         var failed = 1;
 
-        Console.WriteLine("Loading soundbanks...");
+        Log.Info("Loading soundbanks...");
 
         foreach (var fileEntry in package.SoundBanksLut.Entries)
         {
             var languageId = fileEntry.LanguageId;
             var language = package.LanguageMap[languageId];
 
-            Console.WriteLine(
-                $"Soundbank ID: {fileEntry.FileId:X8} Language: {language} Size: {fileEntry.FileSize} bytes");
+            Log.Info(
+                "Soundbank ID: {0:X8} Language: {1} Size: {2} bytes",
+                fileEntry.FileId,
+                language,
+                fileEntry.FileSize);
 
             var soundbank = new SoundBank();
 
@@ -88,7 +91,7 @@ public static class Program
 
             if (bankId is null)
             {
-                Console.WriteLine("  Soundbank has no ID, skipping");
+                Log.Warn("  Soundbank has no ID, skipping");
 
                 continue;
             }
@@ -108,12 +111,12 @@ public static class Program
 
         if (!soundTable.Load(@"C:\Users\dev\Downloads\soundtable.xml"))
         {
-            Console.WriteLine("Failed to load sound table");
+            Log.Error("Failed to load sound table");
 
             return;
         }
 
-        Console.WriteLine("Resolving cue names...");
+        Log.Info("Resolving cue names...");
 
         // Build a global lookup for cross-language bank references (e.g., SFX banks)
         // This allows soundbanks to reference banks from any language
@@ -133,7 +136,7 @@ public static class Program
         foreach (var (languageId, languageBanks) in soundbanksByLanguage)
         {
             var language = package.LanguageMap[languageId];
-            Console.WriteLine($"  Resolving for language: {language} ({languageBanks.Count} banks)");
+            Log.Info("  Resolving for language: {0} ({1} banks)", language, languageBanks.Count);
 
             // Create a lookup function that:
             // 1. First tries to find the bank in the current language (preferred)
@@ -158,7 +161,7 @@ public static class Program
         }
 
         // Phase 3: Extract WEM files with resolved cue names
-        Console.WriteLine("Extracting WEM files...");
+        Log.Info("Extracting WEM files...");
 
         foreach (var (languageId, languageBanks) in soundbanksByLanguage)
         {
@@ -181,7 +184,7 @@ public static class Program
                 {
                     if (!wem.IsValid)
                     {
-                        Console.WriteLine("  Invalid WEM data!");
+                        Log.Warn("  Invalid WEM data!");
 
                         continue;
                     }
@@ -214,7 +217,7 @@ public static class Program
             }
         }
 
-        Console.WriteLine("Done!");
+        Log.Info("Done!");
     }
 
     private static string? FindHaloWarsGameDirectory()

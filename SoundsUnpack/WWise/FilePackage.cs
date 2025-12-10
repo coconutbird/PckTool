@@ -191,47 +191,48 @@ public class FilePackage(string fileName) : IDisposable
         // Log results
         if (logToConsole)
         {
-            Console.WriteLine("=== FilePackage Comparison Report ===");
-            Console.WriteLine();
+            Log.Info("=== FilePackage Comparison Report ===");
+            Log.Info("");
 
             // Summary counts
-            Console.WriteLine($"Language Map: {LanguageMap.Count} entries");
-            Console.WriteLine($"SoundBanks: {SoundBanksLut.Entries.Count} entries");
-            Console.WriteLine($"StmFiles: {StmFilesLut.Entries.Count} entries");
-            Console.WriteLine($"ExternalLuts: {ExternalLuts.Entries.Count} entries");
-            Console.WriteLine();
+            Log.Info("Language Map: {0} entries", LanguageMap.Count);
+            Log.Info("SoundBanks: {0} entries", SoundBanksLut.Entries.Count);
+            Log.Info("StmFiles: {0} entries", StmFilesLut.Entries.Count);
+            Log.Info("ExternalLuts: {0} entries", ExternalLuts.Entries.Count);
+            Log.Info("");
 
             if (warnings.Count > 0)
             {
-                Console.WriteLine($"--- Warnings ({warnings.Count}) ---");
+                Log.Warn("--- Warnings ({0}) ---", warnings.Count);
 
                 foreach (var warning in warnings)
                 {
-                    Console.WriteLine($"  [WARN] {warning}");
+                    Log.Warn("  [WARN] {0}", warning);
                 }
 
-                Console.WriteLine();
+                Log.Info("");
             }
 
             if (differences.Count > 0)
             {
-                Console.WriteLine($"--- Differences ({differences.Count}) ---");
+                Log.Error("--- Differences ({0}) ---", differences.Count);
 
                 foreach (var diff in differences)
                 {
-                    Console.WriteLine($"  [DIFF] {diff}");
+                    Log.Error("  [DIFF] {0}", diff);
                 }
 
-                Console.WriteLine();
+                Log.Info("");
             }
 
-            Console.WriteLine("=== Summary ===");
-            Console.WriteLine($"Total differences: {differences.Count}");
-            Console.WriteLine($"Total warnings: {warnings.Count}");
-            Console.WriteLine(
-                $"Round-trip status: {(differences.Count == 0 ? "SUCCESS - Data identical" : "FAILED - Data corrupted")}");
+            Log.Info("=== Summary ===");
+            Log.Info("Total differences: {0}", differences.Count);
+            Log.Info("Total warnings: {0}", warnings.Count);
+            Log.Info(
+                "Round-trip status: {0}",
+                differences.Count == 0 ? "SUCCESS - Data identical" : "FAILED - Data corrupted");
 
-            Console.WriteLine();
+            Log.Info("");
         }
 
         return differences.Count == 0;
