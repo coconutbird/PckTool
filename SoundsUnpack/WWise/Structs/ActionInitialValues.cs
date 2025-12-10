@@ -30,7 +30,7 @@ public class ActionInitialValues
     public ValueActionParams? ValueActionParams { get; set; }
     public ActiveActionParams? ActiveActionParams { get; set; }
 
-    public bool Read(BinaryReader reader, ushort actionType)
+    public bool Read(BinaryReader reader, ActionType actionType)
     {
         var ext = reader.ReadUInt32();
         var ext4 = reader.ReadByte();
@@ -49,7 +49,7 @@ public class ActionInitialValues
             return false;
         }
 
-        var actionCategory = ActionTypeHelpers.GetActionCategory((ActionType) actionType);
+        var actionCategory = ActionTypeHelpers.GetActionCategory(actionType);
 
         switch (actionCategory)
         {

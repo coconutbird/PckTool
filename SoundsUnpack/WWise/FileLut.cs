@@ -57,16 +57,21 @@ public class FilePackageLut<TKey> where TKey : INumber<TKey>
 
             reader.BaseStream.Position = position;
 
-            Entries.Add(
-                new FileEntry
-                {
-                    FileId = fileId,
-                    BlockSize = blockSize,
-                    FileSize = fileSize,
-                    StartBlock = startBlock,
-                    LanguageId = languageId,
-                    Data = buffer
-                });
+            var entry = new FileEntry
+            {
+                FileId = fileId,
+                BlockSize = blockSize,
+                StartBlock = startBlock,
+                LanguageId = languageId,
+                Data = buffer
+            };
+
+            if (!entry.IsValid)
+            {
+                return false;
+            }
+
+            Entries.Add(entry);
         }
 
         reader.BaseStream.Position = baseOffset + size;
@@ -74,39 +79,150 @@ public class FilePackageLut<TKey> where TKey : INumber<TKey>
         return true;
     }
 
+    /// <summary>
+    ///     Writes the LUT header entries to a BinaryWriter and returns the total size written.
+    ///     Note: This only writes the LUT metadata, not the actual file data.
+    ///     The StartBlock values in entries should be updated before calling this.
+    /// </summary>
+    public uint Write(BinaryWriter writer)
+    {
+        var startPosition = writer.BaseStream.Position;
+
+        // Write count
+        writer.Write((uint) Entries.Count);
+
+        foreach (var entry in Entries)
+        {
+            // Write file ID based on type
+            if (typeof(TKey) == typeof(uint))
+            {
+                writer.Write((uint) (object) entry.FileId);
+            }
+            else if (typeof(TKey) == typeof(int))
+            {
+                writer.Write((int) (object) entry.FileId);
+            }
+            else if (typeof(TKey) == typeof(ulong))
+            {
+                writer.Write((ulong) (object) entry.FileId);
+            }
+            else
+            {
+                writer.Write((long) (object) entry.FileId);
+            }
+
+            writer.Write(entry.BlockSize);
+            writer.Write(entry.Data.Length);
+            writer.Write(entry.StartBlock);
+            writer.Write(entry.LanguageId);
+        }
+
+        return (uint) (writer.BaseStream.Position - startPosition);
+    }
+
+    /// <summary>
+    ///     Calculates the size in bytes that the LUT header will occupy when written.
+    /// </summary>
+    public uint CalculateHeaderSize()
+    {
+        // 4 bytes for count
+        // Per entry: FileId (4 or 8 bytes) + BlockSize (4) + FileSize (4) + StartBlock (4) + LanguageId (4)
+        var fileIdSize = typeof(TKey) == typeof(ulong) || typeof(TKey) == typeof(long) ? 8u : 4u;
+        var entrySize = fileIdSize + 4 + 4 + 4 + 4;
+
+        return 4 + (uint) (Entries.Count * entrySize);
+    }
+
+    /// <summary>
+    ///     Calculates the total size in bytes of all file data in this LUT.
+    /// </summary>
+    public uint CalculateTotalDataSize()
+    {
+        uint totalSize = 0;
+
+        foreach (var entry in Entries)
+        {
+            // Align to block size if needed
+            if (entry.BlockSize > 0 && totalSize % entry.BlockSize != 0)
+            {
+                totalSize += entry.BlockSize - totalSize % entry.BlockSize;
+            }
+
+            totalSize += (uint) entry.Data.Length;
+        }
+
+        return totalSize;
+    }
+
     public class FileEntry
     {
         /// <summary>
+        ///     Validates that the buffer and metadata are consistent.
+        ///     Returns true if:
+        ///     - Data is not null and has content
+        ///     - Data.Length does not exceed FileSize (aligned size)
+        ///     - StartBlock is aligned to BlockSize (if BlockSize > 0)
+        /// </summary>
+        public bool IsValid
+        {
+            get
+            {
+                // Data must exist and have content
+                if (Data.Length == 0) return false;
+
+                // Data length should not exceed the aligned file size
+                if (Data.Length > FileSize) return false;
+
+                // StartBlock should be aligned to BlockSize
+                if (BlockSize > 0 && StartBlock % BlockSize != 0) return false;
+
+                return true;
+            }
+        }
+
+        /// <summary>
         ///     The unique identifier of the file. This is an FNV1A-32 or FNV1A-64 hash of the file name.
         /// </summary>
-        public required TKey FileId { get; init; }
+        public required TKey FileId { get; set; }
 
         /// <summary>
         ///     The block size of the file in bytes.
         ///     This is the alignment requirement for the file data in the package.
         /// </summary>
-        public required uint BlockSize { get; init; }
+        public required uint BlockSize { get; set; }
 
         /// <summary>
-        ///     The size of the file in bytes.
+        ///     The size of the file in bytes, aligned to BlockSize.
         /// </summary>
-        public required long FileSize { get; init; }
+        public long FileSize
+        {
+            get
+            {
+                var size = Data.Length;
+
+                if (BlockSize > 0 && size % BlockSize != 0)
+                {
+                    size += (int) (BlockSize - size % BlockSize);
+                }
+
+                return size;
+            }
+        }
 
         /// <summary>
         ///     The starting file offset (in bytes) of the file data in the package.
         /// </summary>
-        public required uint StartBlock { get; init; }
+        public required uint StartBlock { get; set; }
 
         /// <summary>
         ///     The language ID of the file.
         /// </summary>
-        public required uint LanguageId { get; init; }
+        public required uint LanguageId { get; set; }
 
-        // public required SubChunk[] Chunks { get; init; }
         /// <summary>
         ///     The raw file buffer.
         /// </summary>
-        public required byte[] Data { get; init; }
+        public required byte[] Data { get; set; }
 
         /// <summary>
         ///     Returns the magic number of the file (first 4 bytes).

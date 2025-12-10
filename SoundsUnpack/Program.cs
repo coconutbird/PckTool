@@ -3,6 +3,7 @@
 using Microsoft.Win32;
 
 using SoundsUnpack.WWise;
+using SoundsUnpack.WWise.Enums;
 
 namespace SoundsUnpack;
 
@@ -56,16 +57,7 @@ public static class Program
             return;
         }
 
-        var hash = Hash.GetIdFromString("init.bnk");
-        var b = package.SoundBanksLut.Entries.FirstOrDefault(x => x.FileId == hash);
-
-        if (b != null)
-        {
-            Console.WriteLine("Found init.bnk in package!");
-        }
-
         var failed = 1;
-
         foreach (var fileEntry in package.SoundBanksLut.Entries)
         {
             var language = package.LanguageMap[fileEntry.LanguageId];
@@ -86,14 +78,45 @@ public static class Program
                 }
             }
 
+            var soundTable = new SoundTable();
+
+            if (!soundTable.Load("C:\\Users\\dev\\Downloads\\soundtable.xml"))
+            {
+                return;
+            }
+
+            if (soundbank.HircChunk is not null)
+            {
+                var items = soundbank.HircChunk.LoadedItems;
+
+                if (items is not null)
+                {
+                    foreach (var item in items)
+                    {
+                        if (item.Type != HircType.Event)
+                        {
+                            continue;
+                        }
+
+                        var sound = soundTable.GetSoundByCueIndex(item.Id);
+
+                        var soundItem = soundbank.HircChunk.ResolveSoundFileIds(soundbank, item).ToArray();
+
+                        sound?.FileIds.AddRange(soundItem);
+                    }
+                }
+            }
+
             var path = Path.Join("dumps", language);
 
             EnsureDirectoryCreated(path);
 
-            var bnkFile = Path.Join(path, $"{fileEntry.FileId:x8}.bnk");
+            var bnkFile = Path.Join(path, $"{fileEntry.FileId:X8}.bnk");
 
             EnsureDirectoryCreated(bnkFile);
 
+            // I need a counter with a string index
+            var usedFiles = new Dictionary<string, int>();
             foreach (var wem in soundbank.DataChunk?.Data ?? [])
             {
                 if (!wem.IsValid)
@@ -103,7 +126,22 @@ public static class Program
                     continue;
                 }
 
-                var wemFile = Path.Join(path, $"{soundbank.SoundbankId:X8}", $"{wem.Id:X8}.wem");
+                var soundFile = soundTable.GetSoundByFileId(wem.Id);
+                var wemFileName = $"{wem.Id}";
+
+                if (soundFile?.CueName is not null)
+                {
+                    wemFileName += $"_{soundFile.CueName}";
+
+                    if (!usedFiles.ContainsKey(soundFile.CueName))
+                    {
+                        usedFiles[soundFile.CueName] = 0;
+                    }
+
+                    wemFileName += $"_{usedFiles[soundFile.CueName]++}";
+                }
+
+                var wemFile = Path.Join(path, $"{soundbank.SoundbankId:X8}", $"{wemFileName}.wem");
 
                 EnsureDirectoryCreated(wemFile);
 

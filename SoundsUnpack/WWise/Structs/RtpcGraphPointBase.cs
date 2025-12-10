@@ -38,4 +38,3 @@ public class RtpcGraphPointBase<TValueType> where TValueType : struct, INumber<T
         };
     }
 }
-

@@ -23,7 +23,7 @@ public class LoadedItem
     public BusInitialValues? BusInitialValues { get; set; }
 
     // CAkAction*
-    public ushort? ActionType { get; set; }
+    public ActionType? ActionType { get; set; }
     public ActionInitialValues? ActionInitialValues { get; set; }
 
     // CAkEvent
@@ -118,7 +118,7 @@ public class LoadedItem
 
             case HircType.Action:
             {
-                var actionType = reader.ReadUInt16();
+                var actionType = (ActionType) reader.ReadUInt16();
                 var actionInitialValues = new ActionInitialValues();
 
                 if (!actionInitialValues.Read(reader, actionType))

@@ -2,7 +2,7 @@
 
 public class MediaInformation
 {
-    public int SourceId { get; set; }
+    public uint SourceId { get; set; }
     public uint InMemoryMediaSize { get; set; }
     public byte SourceBits { get; set; }
 
@@ -72,7 +72,7 @@ public class MediaInformation
 
     public bool Read(BinaryReader reader)
     {
-        var sourceId = reader.ReadInt32();
+        var sourceId = reader.ReadUInt32();
         var inMemoryMediaSize = reader.ReadUInt32();
         var sourceBits = reader.ReadByte();
 

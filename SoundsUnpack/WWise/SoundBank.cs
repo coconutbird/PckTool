@@ -9,8 +9,6 @@ namespace SoundsUnpack.WWise;
 
 public class SoundBank
 {
-    private const uint ValidVersion = 0x71;
-
     public uint? SoundbankId
     {
         get => BankHeaderChunk?.SoundBankId;
@@ -305,12 +303,6 @@ public class SoundBank
         return true;
     }
 
-    public class Wem
-    {
-        public required uint WemId { get; init; }
-        public required byte[] Data { get; init; } = [];
-    }
-
     private class SubChunk
     {
         public required uint Tag { get; init; }
@@ -325,12 +317,5 @@ public class SoundBank
 
             return new SubChunk { Tag = tag, Size = size };
         }
-    }
-
-    private class DataIndexChunk
-    {
-        public required uint WemId { get; init; }
-        public required uint Offset { get; init; }
-        public required uint Size { get; init; }
     }
 }

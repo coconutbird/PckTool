@@ -2,7 +2,7 @@
 
 public class Children
 {
-    public List<int> ChildIds { get; set; } = new();
+    public List<uint> ChildIds { get; set; } = new();
 
     public bool Read(BinaryReader reader)
     {
@@ -10,7 +10,7 @@ public class Children
 
         for (var i = 0; i < numberOfChildren; i++)
         {
-            ChildIds.Add(reader.ReadInt32());
+            ChildIds.Add(reader.ReadUInt32());
         }
 
         return true;
