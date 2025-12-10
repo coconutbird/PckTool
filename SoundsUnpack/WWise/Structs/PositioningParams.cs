@@ -72,13 +72,12 @@ public class PositioningParams
 
     public byte SpatializationMode
     {
-        get => (byte) (Bits3D & 0x03)!;
+        get => (byte) (Bits3D & 0x01)!; // 1 bit for v113 (v90-v126)
         set
         {
             Is3DPositioningAvailable = true;
             Bits3D ??= 0;
-            Bits3D &= 0xFC;
-            Bits3D |= (byte) (value & 0x03);
+            Bits3D = (byte) ((Bits3D.Value & 0xFE) | (value & 0x01));
         }
     }
 
@@ -89,15 +88,7 @@ public class PositioningParams
         {
             Is3DPositioningAvailable = true;
             Bits3D ??= 0;
-
-            if (value)
-            {
-                Bits3D |= 0x08;
-            }
-            else
-            {
-                Bits3D &= 0xF7;
-            }
+            Bits3D = (byte) (value ? Bits3D.Value | 0x08 : Bits3D.Value & 0xF7);
         }
     }
 
@@ -108,15 +99,7 @@ public class PositioningParams
         {
             Is3DPositioningAvailable = true;
             Bits3D ??= 0;
-
-            if (value)
-            {
-                Bits3D |= 0x10;
-            }
-            else
-            {
-                Bits3D &= 0xEF;
-            }
+            Bits3D = (byte) (value ? Bits3D.Value | 0x10 : Bits3D.Value & 0xEF);
         }
     }
 
@@ -140,7 +123,11 @@ public class PositioningParams
             // TODO: verify if AttenuationId is always present when 3D positioning is available
             AttenuationId = reader.ReadUInt32();
 
-            if (PositioningInfoOverrideParent && AttenuationId == 0)
+            // v113 (v90-v122): has_automation = (e3DPositionType != 1)
+            // e3DPositionType is bits 0-1 of Bits3D
+            var e3DPositionType = Bits3D & 0x03;
+
+            if (e3DPositionType != 1)
             {
                 var pathMode = reader.ReadByte();
                 var transitionTime = reader.ReadInt32();

@@ -40,16 +40,16 @@ public class MediaInformation
 
     public bool NonCachable
     {
-        get => (SourceBits & 0x04) != 0;
+        get => (SourceBits & 0x08) != 0; // bit 3 for v113+
         set
         {
             if (value)
             {
-                SourceBits |= 0x04;
+                SourceBits |= 0x08;
             }
             else
             {
-                SourceBits &= 0xFB;
+                SourceBits &= 0xF7;
             }
         }
     }

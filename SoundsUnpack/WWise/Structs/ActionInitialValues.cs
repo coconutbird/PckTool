@@ -85,7 +85,7 @@ public class ActionInitialValues
             {
                 var activeActionParams = new ActiveActionParams();
 
-                if (!activeActionParams.Read(reader, (ActionType) actionType))
+                if (!activeActionParams.Read(reader, actionType))
                 {
                     return false;
                 }
