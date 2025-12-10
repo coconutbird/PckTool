@@ -52,9 +52,22 @@ public class AuxParams
         }
     }
 
+    public uint[]? AuxIds { get; set; } = null;
+
     public bool Read(BinaryReader reader)
     {
         BitVector = reader.ReadByte();
+
+        if (HasAux)
+        {
+            var auxIds = new uint[4];
+            for (var i = 0; i < auxIds.Length; i++)
+            {
+                auxIds[i] = reader.ReadUInt32();
+            }
+
+            AuxIds = auxIds;
+        }
 
         return true;
     }

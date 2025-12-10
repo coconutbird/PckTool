@@ -52,6 +52,11 @@ public static class ActionTypeHelpers
 
     public static bool IsValueActionType(ActionType actionType)
     {
+        if (IsMuteActionType(actionType))
+        {
+            return true;
+        }
+
         switch (actionType)
         {
             // all set action types are value action types
@@ -163,6 +168,19 @@ public static class ActionTypeHelpers
             case ActionType.Resume_AE:
             case ActionType.Resume_AE_O:
             case ActionType.ResumeEvent:
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    public static bool IsMuteActionType(ActionType actionType)
+    {
+        switch (actionType)
+        {
+            case ActionType.Mute_M:
+            case ActionType.Mute_O:
                 return true;
 
             default:

@@ -11,13 +11,13 @@ public class FxChunk
     {
         var fxIndex = reader.ReadByte();
         var fxId = reader.ReadUInt32();
-        var isShareSet = reader.ReadByte();
-        var isRendered = reader.ReadByte();
+        var isShareSet = reader.ReadByte() != 0;
+        var isRendered = reader.ReadByte() != 0;
 
         FxIndex = fxIndex;
         FxId = fxId;
-        IsShareSet = isShareSet != 0;
-        IsRendered = isRendered != 0;
+        IsShareSet = isShareSet;
+        IsRendered = isRendered;
 
         return true;
     }
