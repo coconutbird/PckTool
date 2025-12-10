@@ -182,7 +182,12 @@ public class SoundTable
         {
             var actionItem = currentBank.HircChunk?.GetItemById(actionId);
 
-            if (actionItem is null) continue;
+            if (actionItem is null)
+            {
+                Log.Error($"Failed to find action item {actionId} for event {eventItem.Id}");
+
+                continue;
+            }
 
             foreach (var fileId in ResolveSoundFileIds(bankLookup, currentBank, actionItem))
             {

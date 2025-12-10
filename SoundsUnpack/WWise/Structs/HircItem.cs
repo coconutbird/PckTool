@@ -52,8 +52,8 @@ public abstract class HircItem
             HircType.SwitchCntr => SwitchCntrItem.ReadItem(reader, id, remainingSize),
             HircType.LayerCntr => LayerCntrItem.ReadItem(reader, id, remainingSize),
             HircType.Segment => SegmentItem.ReadItem(reader, id, remainingSize),
-            HircType.Track => TrackItem.ReadItem(reader, id, remainingSize),
-            HircType.MusicSwitch => MusicSwitchItem.ReadItem(reader, id, remainingSize),
+            HircType.Track => TrackItem.ReadItem(reader, id),
+            HircType.MusicSwitch => MusicSwitchItem.ReadItem(reader, id),
             HircType.MusicRanSeq => MusicRanSeqItem.ReadItem(reader, id, remainingSize),
             HircType.DialogueEvent => DialogueEventItem.ReadItem(reader, id, remainingSize),
             HircType.FeedbackBus => FeedbackBusItem.ReadItem(reader, id, remainingSize),
@@ -316,34 +316,38 @@ public sealed class SegmentItem : HircItem
 }
 
 /// <summary>
-///     Represents a CAkMusicTrack HIRC item (stub - raw bytes preserved).
+///     Represents a CAkMusicTrack HIRC item.
 /// </summary>
 public sealed class TrackItem : HircItem
 {
     public override HircType Type => HircType.Track;
-    public required byte[] RawData { get; init; }
+    public required MusicTrackInitialValues Values { get; init; }
 
-    internal static TrackItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    internal static TrackItem? ReadItem(BinaryReader reader, uint id)
     {
-        var rawData = reader.ReadBytes(remainingSize);
+        var values = new MusicTrackInitialValues();
 
-        return new TrackItem { Id = id, RawData = rawData };
+        if (!values.Read(reader)) return null;
+
+        return new TrackItem { Id = id, Values = values };
     }
 }
 
 /// <summary>
-///     Represents a CAkMusicSwitchCntr HIRC item (stub - raw bytes preserved).
+///     Represents a CAkMusicSwitchCntr HIRC item.
 /// </summary>
 public sealed class MusicSwitchItem : HircItem
 {
     public override HircType Type => HircType.MusicSwitch;
-    public required byte[] RawData { get; init; }
+    public required MusicSwitchCntrInitialValues Values { get; init; }
 
-    internal static MusicSwitchItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    internal static MusicSwitchItem? ReadItem(BinaryReader reader, uint id)
     {
-        var rawData = reader.ReadBytes(remainingSize);
+        var values = new MusicSwitchCntrInitialValues();
 
-        return new MusicSwitchItem { Id = id, RawData = rawData };
+        if (!values.Read(reader)) return null;
+
+        return new MusicSwitchItem { Id = id, Values = values };
     }
 }
 
