@@ -1,7 +1,4 @@
-﻿using System;
-using System.Reflection.Metadata.Ecma335;
-using System.Runtime.InteropServices;
-using System.Text;
+﻿using System.Text;
 
 using SoundsUnpack.WWise;
 
@@ -29,16 +26,6 @@ public static class BinaryReaderExtensions
 
 public static class Program
 {
-    private static void EnsureDirectoryCreated(string path)
-    {
-        path = Path.GetDirectoryName(Path.GetFullPath(path))!;
-
-        if (!Directory.Exists(path))
-        {
-            Directory.CreateDirectory(path);
-        }
-    }
-
     public static void Main(string[] args)
     {
         var package = new FilePackage(
@@ -60,38 +47,44 @@ public static class Program
 
         var failed = 1;
 
-        foreach (var soundbank in package.SoundBanksLut.Entries)
+        foreach (var fileEntry in package.SoundBanksLut.Entries)
         {
-            // /if (soundbank.FileId != 0x51BF5ACF)
-            // /{
-            // /    continue;
-            // /}
-
-            var language = package.LanguageMap[soundbank.LanguageId];
+            var language = package.LanguageMap[fileEntry.LanguageId];
 
             Console.WriteLine(
-                $"Soundbank ID: {soundbank.FileId:X8} Language: {language} Size: {soundbank.FileSize} bytes");
+                $"Soundbank ID: {fileEntry.FileId:X8} Language: {language} Size: {fileEntry.FileSize} bytes");
 
-            var parser = new SoundBank();
+            var soundbank = new SoundBank();
 
-            if (!parser.Read(new BinaryReader(new MemoryStream(soundbank.Data))))
+            if (!soundbank.Read(new BinaryReader(new MemoryStream(fileEntry.Data))))
             {
                 Console.WriteLine("  Failed to parse soundbank: " + failed++);
 
-                continue;
+                // well we failed to parse the whole thing, but it's still loaded enough to have the data
+                if (!soundbank.IsLoaded)
+                {
+                    continue;
+                }
             }
 
             var path = Path.Join("dumps", language);
 
             EnsureDirectoryCreated(path);
 
-            var bnkFile = Path.Join(path, $"{soundbank.FileId:x8}.bnk");
+            var bnkFile = Path.Join(path, $"{fileEntry.FileId:x8}.bnk");
 
             EnsureDirectoryCreated(bnkFile);
 
-            foreach (var wem in parser.DataChunk?.Data ?? [])
+            foreach (var wem in soundbank.DataChunk?.Data ?? [])
             {
-                var wemFile = Path.Join(path, $"{parser.SoundbankId:X8}", $"{wem.Id:X8}.wem");
+                if (!wem.IsValid)
+                {
+                    Console.WriteLine("  Invalid WEM data!");
+
+                    continue;
+                }
+
+                var wemFile = Path.Join(path, $"{soundbank.SoundbankId:X8}", $"{wem.Id:X8}.wem");
 
                 if (wem.Id == 2447981426)
                 {
@@ -103,20 +96,19 @@ public static class Program
                 File.WriteAllBytes(wemFile, wem.Data);
             }
 
-            File.WriteAllBytes(bnkFile, soundbank.Data);
+            File.WriteAllBytes(bnkFile, fileEntry.Data);
         }
 
-        // SoundBanks.AddRange(soundBanks.Entries.Select(bankEntry =>
-        // {
-        //     var soundbank = new SoundBank();
-        //     return soundbank.Read(new BinaryReader(new MemoryStream(bankEntry.Data))) ? soundbank : null;
-        // }).Where(sb => sb != null)!);
-
-        // File.WriteAllBytes("./dump.bin", SoundBanks[0].Wems[0].Data);
-        // 
-        // var hash = Hash.Fnv1A32("init.bnk");
-        // var file = package.SoundBanks.FirstOrDefault(x => x.SoundbankId == hash);
-
         Console.WriteLine("Done!");
+    }
+
+    private static void EnsureDirectoryCreated(string path)
+    {
+        path = Path.GetDirectoryName(Path.GetFullPath(path))!;
+
+        if (!Directory.Exists(path))
+        {
+            Directory.CreateDirectory(path);
+        }
     }
 }

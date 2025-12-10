@@ -2,13 +2,15 @@
 
 namespace SoundsUnpack.WWise.Chunks;
 
-public class HircChunk
+public class HircChunk : BaseChunk
 {
-    public List<LoadedItem> LoadedItems { get; set; } = [];
+    public override bool IsValid => LoadedItems is not null;
 
-    public bool Read(BinaryReader reader, uint size)
+    public List<LoadedItem>? LoadedItems { get; private set; }
+
+    protected override bool ReadInternal(SoundBank soundBank, BinaryReader reader, uint size, long startPosition)
     {
-        LoadedItems.Clear();
+        var loadedItems = new List<LoadedItem>();
 
         var numberOfReleasableHircItem = reader.ReadUInt32();
 
@@ -23,8 +25,10 @@ public class HircChunk
                 return false;
             }
 
-            LoadedItems.Add(loadedItem);
+            loadedItems.Add(loadedItem);
         }
+
+        LoadedItems = loadedItems;
 
         return true;
     }

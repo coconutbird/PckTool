@@ -2,11 +2,13 @@
 
 namespace SoundsUnpack.WWise.Chunks;
 
-public class EnvSettingsChunk
+public class EnvSettingsChunk : BaseChunk
 {
-    public ConversionTable ConversionTable { get; set; } = new();
+    public override bool IsValid => ConversionTable?.IsValid == true;
 
-    public bool Read(BinaryReader reader, uint size)
+    public ConversionTable? ConversionTable { get; private set; }
+
+    protected override bool ReadInternal(SoundBank soundBank, BinaryReader reader, uint size, long startPosition)
     {
         var conversionTable = new ConversionTable();
 

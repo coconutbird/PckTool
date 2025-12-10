@@ -1,4 +1,6 @@
-﻿using SoundsUnpack.WWise.Bank;
+﻿using System.Text;
+
+using SoundsUnpack.WWise.Bank;
 using SoundsUnpack.WWise.Chunks;
 using SoundsUnpack.WWise.Enums;
 
@@ -6,10 +8,74 @@ namespace SoundsUnpack.WWise;
 
 public class SoundBank
 {
-    public uint SoundbankId { get; private set; }
-    public uint LanguageId { get; private set; }
-    public uint FeedbackInBank { get; private set; }
-    public uint ProjectId { get; private set; }
+    private const uint ValidVersion = 0x71;
+
+    public uint? SoundbankId
+    {
+        get => BankHeaderChunk?.SoundBankId;
+        set
+        {
+            if (BankHeaderChunk is not null)
+            {
+                BankHeaderChunk.SoundBankId = value;
+            }
+            else
+            {
+                throw new InvalidOperationException("BankHeaderChunk is not initialized");
+            }
+        }
+    }
+
+    public uint? LanguageId
+    {
+        get => BankHeaderChunk?.LanguageId;
+        set
+        {
+            if (BankHeaderChunk is not null)
+            {
+                BankHeaderChunk.LanguageId = value;
+            }
+            else
+            {
+                throw new InvalidOperationException("BankHeaderChunk is not initialized");
+            }
+        }
+    }
+
+    public uint? FeedbackInBank
+    {
+        get => BankHeaderChunk?.FeedbackInBank;
+        set
+        {
+            if (BankHeaderChunk is not null)
+            {
+                BankHeaderChunk.FeedbackInBank = value;
+            }
+            else
+            {
+                throw new InvalidOperationException("BankHeaderChunk is not initialized");
+            }
+        }
+    }
+
+    public uint? ProjectId
+    {
+        get => BankHeaderChunk?.ProjectId;
+        set
+        {
+            if (BankHeaderChunk is not null)
+            {
+                BankHeaderChunk.FeedbackInBank = value;
+            }
+            else
+            {
+                throw new InvalidOperationException("BankHeaderChunk is not initialized");
+            }
+        }
+    }
+
+    public bool IsValid => BankHeaderChunk is not null && SoundbankId is not null;
+    public bool IsLoaded => BankHeaderChunk is not null;
 
     public BankHeaderChunk? BankHeaderChunk { get; private set; }
     public CustomPlatformChunk? PlatformChunk { get; private set; }
@@ -32,7 +98,7 @@ public class SoundBank
         }
         catch (Exception e)
         {
-            Console.WriteLine(e.Message);
+            Log.Error(e, "Failed to parse soundbank");
         }
 
         return false;
@@ -57,7 +123,7 @@ public class SoundBank
         {
             var bankHeaderChunk = new BankHeaderChunk();
 
-            if (!bankHeaderChunk.Read(reader, chunk.Size))
+            if (!bankHeaderChunk.Read(this, reader, chunk.Size))
             {
                 return false;
             }
@@ -68,7 +134,7 @@ public class SoundBank
         {
             var mediaIndexChunk = new MediaIndexChunk();
 
-            if (!mediaIndexChunk.Read(reader, chunk.Size))
+            if (!mediaIndexChunk.Read(this, reader, chunk.Size))
             {
                 return false;
             }
@@ -77,14 +143,9 @@ public class SoundBank
         }
         else if (chunk.Tag == BnkChunkIds.BankDataChunkId)
         {
-            if (MediaIndexChunk is null)
-            {
-                return false;
-            }
-
             var dataChunk = new DataChunk();
 
-            if (!dataChunk.Read(reader, MediaIndexChunk, chunk.Size))
+            if (!dataChunk.Read(this, reader, chunk.Size))
             {
                 return false;
             }
@@ -95,7 +156,7 @@ public class SoundBank
         {
             var hircChunk = new HircChunk();
 
-            if (!hircChunk.Read(reader, chunk.Size))
+            if (!hircChunk.Read(this, reader, chunk.Size))
             {
                 return false;
             }
@@ -120,11 +181,9 @@ public class SoundBank
                 var bankId = reader.ReadUInt32();
                 var stringSize = reader.ReadByte();
                 var stringBuffer = reader.ReadBytes(stringSize);
-                var str = System.Text.Encoding.ASCII.GetString(stringBuffer);
+                var str = Encoding.ASCII.GetString(stringBuffer);
 
                 // TODO: Store string map
-
-                continue;
             }
 
             reader.BaseStream.Position = position + chunk.Size;
@@ -210,7 +269,7 @@ public class SoundBank
         {
             var envSettingsChunk = new EnvSettingsChunk();
 
-            if (!envSettingsChunk.Read(reader, chunk.Size))
+            if (!envSettingsChunk.Read(this, reader, chunk.Size))
             {
                 return false;
             }
@@ -219,7 +278,7 @@ public class SoundBank
         {
             var platform = new CustomPlatformChunk();
 
-            if (!platform.Read(reader, chunk.Size))
+            if (!platform.Read(this, reader, chunk.Size))
             {
                 return false;
             }
@@ -239,6 +298,8 @@ public class SoundBank
                 $"Warning: Sub-chunk read position mismatch for chunk {chunk.MagicString}. Expected {expectedPosition}, got {reader.BaseStream.Position}.");
 
             reader.BaseStream.Position = expectedPosition;
+            
+            return false;
         }
 
         return true;
@@ -255,7 +316,7 @@ public class SoundBank
         public required uint Tag { get; init; }
         public required uint Size { get; init; }
 
-        public string MagicString => System.Text.Encoding.ASCII.GetString(BitConverter.GetBytes(Tag));
+        public string MagicString => Encoding.ASCII.GetString(BitConverter.GetBytes(Tag));
 
         public static SubChunk Read(BinaryReader reader)
         {
@@ -272,6 +333,4 @@ public class SoundBank
         public required uint Offset { get; init; }
         public required uint Size { get; init; }
     }
-
-    private const uint ValidVersion = 0x71;
 }

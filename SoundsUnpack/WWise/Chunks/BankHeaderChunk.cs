@@ -1,22 +1,24 @@
 ﻿namespace SoundsUnpack.WWise.Chunks;
 
-public class BankHeaderChunk
+public class BankHeaderChunk : BaseChunk
 {
-    public uint BankGeneratorVersion { get; set; }
-    public uint SoundBankId { get; set; }
-    public uint LanguageId { get; set; }
-    public uint FeedbackInBank { get; set; }
-    public uint ProjectId { get; set; }
+    private const uint ValidVersion = 0x71;
 
-    public bool Read(BinaryReader reader, uint size)
+    public override bool IsValid =>
+        BankGeneratorVersion == ValidVersion
+        && SoundBankId is not null
+        && LanguageId is not null
+        && FeedbackInBank is not null
+        && ProjectId is not null;
+
+    public uint? BankGeneratorVersion { get; set; }
+    public uint? SoundBankId { get; set; }
+    public uint? LanguageId { get; set; }
+    public uint? FeedbackInBank { get; set; }
+    public uint? ProjectId { get; set; }
+
+    protected override bool ReadInternal(SoundBank soundBank, BinaryReader reader, uint size, long startPosition)
     {
-        if (reader.BaseStream.Position + SizeOf > reader.BaseStream.Length)
-        {
-            return false;
-        }
-
-        var basePosition = reader.BaseStream.Position;
-
         BankGeneratorVersion = reader.ReadUInt32();
         SoundBankId = reader.ReadUInt32();
         LanguageId = reader.ReadUInt32();
@@ -24,12 +26,10 @@ public class BankHeaderChunk
         ProjectId = reader.ReadUInt32();
 
         // Padding
-        var paddingSize = size - (reader.BaseStream.Position - basePosition);
+        var paddingSize = size - (reader.BaseStream.Position - startPosition);
 
         reader.BaseStream.Seek(paddingSize, SeekOrigin.Current);
 
-        return true;
+        return IsValid;
     }
-
-    public const int SizeOf = 0x20;
 }

@@ -4,6 +4,8 @@ namespace SoundsUnpack.WWise.Bank;
 
 public class ConversionTable
 {
+    public bool IsValid => true;
+
     public bool CurveEnabled { get; set; }
     public byte CurveScaling { get; set; }
     public List<RtpcGraphPointBase<float>> Points { get; set; } = new();

@@ -2,12 +2,16 @@
 
 namespace SoundsUnpack.WWise.Chunks;
 
-public class MediaIndexChunk
+public class MediaIndexChunk : BaseChunk
 {
-    public List<MediaHeader> LoadedMedia { get; } = new();
+    public override bool IsValid => LoadedMedia is not null;
 
-    public bool Read(BinaryReader reader, uint size)
+    public List<MediaHeader>? LoadedMedia { get; private set; }
+
+    protected override bool ReadInternal(SoundBank soundBank, BinaryReader reader, uint size, long startPosition)
     {
+        var loadedMedia = new List<MediaHeader>();
+
         var numberOfMedia = size / MediaHeader.SizeOf;
 
         for (var i = 0; i < numberOfMedia; ++i)
@@ -19,8 +23,10 @@ public class MediaIndexChunk
                 return false;
             }
 
-            LoadedMedia.Add(mediaHeader);
+            loadedMedia.Add(mediaHeader);
         }
+
+        LoadedMedia = loadedMedia;
 
         return true;
     }
