@@ -31,21 +31,6 @@ public static class ActionTypeHelpers
         return category != ActionCategory.Unknown;
     }
 
-    private static bool IsPlayActionType(ActionType actionType)
-    {
-        switch (actionType)
-        {
-            case ActionType.Play:
-            case ActionType.PlayAndContinue:
-            case ActionType.PlayEvent:
-            case ActionType.PlayEventUnknown_O:
-                return true;
-
-            default:
-                return false;
-        }
-    }
-
     public static bool IsActiveActionType(ActionType actionType)
     {
         return IsStopActionType(actionType) || IsResumeActionType(actionType);
@@ -182,6 +167,21 @@ public static class ActionTypeHelpers
         {
             case ActionType.Mute_M:
             case ActionType.Mute_O:
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    private static bool IsPlayActionType(ActionType actionType)
+    {
+        switch (actionType)
+        {
+            case ActionType.Play:
+            case ActionType.PlayAndContinue:
+            case ActionType.PlayEvent:
+            case ActionType.PlayEventUnknown_O:
                 return true;
 
             default:

@@ -2,6 +2,8 @@
 
 public class StringMap
 {
+    public Dictionary<uint, string> Map { get; } = new();
+
     public bool Read(BinaryReader reader, uint size)
     {
         Map.Clear();
@@ -39,6 +41,4 @@ public class StringMap
     }
 
     public void Write(BinaryWriter writer) { }
-
-    public Dictionary<uint, string> Map { get; } = new();
 }

@@ -2,10 +2,19 @@
 
 public class FilePackage(string fileName) : IDisposable
 {
+    private const uint ValidVersion = 0x1;
+    private readonly BinaryReader _reader = new(File.OpenRead(fileName));
+
+    private readonly uint _validHeaderTag = Hash.AkmmioFourcc('A', 'K', 'P', 'K');
     public Dictionary<uint, string> LanguageMap { get; private set; } = new();
     public FilePackageLut<uint> SoundBanksLut { get; private set; } = new();
     public FilePackageLut<uint> StmFilesLut { get; private set; } = new();
     public FilePackageLut<ulong> ExternalLuts { get; private set; } = new();
+
+    public void Dispose()
+    {
+        _reader.Dispose();
+    }
 
     public bool Load()
     {
@@ -95,14 +104,4 @@ public class FilePackage(string fileName) : IDisposable
             writer.Write(name);
         }
     }
-
-    public void Dispose()
-    {
-        _reader.Dispose();
-    }
-
-    private const uint ValidVersion = 0x1;
-
-    private readonly uint _validHeaderTag = Hash.AkmmioFourcc('A', 'K', 'P', 'K');
-    private readonly BinaryReader _reader = new(File.OpenRead(fileName));
 }

@@ -66,5 +66,5 @@ public enum PluginId : uint
     Wwise_Motion_Generator_2 = 0x01950005,     // AkMotion (used in CAkFeedbackNode, v125<=)
     Wwise_Motion_Source = 0x01990002,          // AkMotion (used in CAkSound, v132>=)
     Wwise_Motion_Source_2 = 0x01990005,        // AkMotion
-    Wwise_Motion_ = 0x01FB0007,                // AkMotion
+    Wwise_Motion_ = 0x01FB0007                 // AkMotion
 }

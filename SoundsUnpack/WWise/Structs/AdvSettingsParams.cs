@@ -10,9 +10,13 @@ public class AdvSettingsParams
         set
         {
             if (value)
+            {
                 BitVector |= 0x01;
+            }
             else
+            {
                 BitVector &= 0xFE;
+            }
         }
     }
 
@@ -22,9 +26,13 @@ public class AdvSettingsParams
         set
         {
             if (value)
+            {
                 BitVector |= 0x02;
+            }
             else
+            {
                 BitVector &= 0xFD;
+            }
         }
     }
 
@@ -34,9 +42,13 @@ public class AdvSettingsParams
         set
         {
             if (value)
+            {
                 BitVector |= 0x04;
+            }
             else
+            {
                 BitVector &= 0xFB;
+            }
         }
     }
 
@@ -46,9 +58,13 @@ public class AdvSettingsParams
         set
         {
             if (value)
+            {
                 BitVector |= 0x08;
+            }
             else
+            {
                 BitVector &= 0xF7;
+            }
         }
     }
 
@@ -64,9 +80,13 @@ public class AdvSettingsParams
         set
         {
             if (value)
+            {
                 BitVector2 |= 0x01;
+            }
             else
+            {
                 BitVector2 &= 0xFE;
+            }
         }
     }
 
@@ -76,9 +96,13 @@ public class AdvSettingsParams
         set
         {
             if (value)
+            {
                 BitVector2 |= 0x02;
+            }
             else
+            {
                 BitVector2 &= 0xFD;
+            }
         }
     }
 
@@ -88,9 +112,13 @@ public class AdvSettingsParams
         set
         {
             if (value)
+            {
                 BitVector2 |= 0x04;
+            }
             else
+            {
                 BitVector2 &= 0xFB;
+            }
         }
     }
 
@@ -100,9 +128,13 @@ public class AdvSettingsParams
         set
         {
             if (value)
+            {
                 BitVector2 |= 0x08;
+            }
             else
+            {
                 BitVector2 &= 0xF7;
+            }
         }
     }
 

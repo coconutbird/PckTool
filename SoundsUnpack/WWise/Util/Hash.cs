@@ -41,9 +41,9 @@ public static class Hash
 
         var bytes = Encoding.UTF8.GetBytes(input.ToLowerInvariant());
 
-        uint hash = 0x811C9DC5;
+        var hash = 0x811C9DC5;
 
-        foreach (byte b in bytes)
+        foreach (var b in bytes)
         {
             hash *= 0x1000193;
             hash ^= b;

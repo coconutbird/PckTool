@@ -10,9 +10,13 @@ public class PositioningParams
         set
         {
             if (value)
+            {
                 BitVector |= 0x01;
+            }
             else
+            {
                 BitVector &= 0xFE; // 11111110
+            }
         }
     }
 
@@ -22,9 +26,13 @@ public class PositioningParams
         set
         {
             if (value)
+            {
                 BitVector |= 0x02;
+            }
             else
+            {
                 BitVector &= 0xFD; // 11111101
+            }
         }
     }
 
@@ -34,9 +42,13 @@ public class PositioningParams
         set
         {
             if (value)
+            {
                 BitVector |= 0x04;
+            }
             else
+            {
                 BitVector &= 0xFB; // 11111011
+            }
         }
     }
 
@@ -46,9 +58,13 @@ public class PositioningParams
         set
         {
             if (value)
+            {
                 BitVector |= 0x08;
+            }
             else
+            {
                 BitVector &= 0xF7;
+            }
         }
     }
 
@@ -73,10 +89,15 @@ public class PositioningParams
         {
             Is3DPositioningAvailable = true;
             Bits3D ??= 0;
+
             if (value)
+            {
                 Bits3D |= 0x08;
+            }
             else
+            {
                 Bits3D &= 0xF7;
+            }
         }
     }
 
@@ -87,10 +108,15 @@ public class PositioningParams
         {
             Is3DPositioningAvailable = true;
             Bits3D ??= 0;
+
             if (value)
+            {
                 Bits3D |= 0x10;
+            }
             else
+            {
                 Bits3D &= 0xEF;
+            }
         }
     }
 

@@ -10,9 +10,13 @@ public class ResumeActionSpecificParams
         set
         {
             if (value)
+            {
                 BitVector |= 0x01;
+            }
             else
+            {
                 BitVector &= 0xFE; // 11111110
+            }
         }
     }
 
@@ -22,9 +26,13 @@ public class ResumeActionSpecificParams
         set
         {
             if (value)
+            {
                 BitVector |= 0x02;
+            }
             else
+            {
                 BitVector &= 0xFD; // 11111101
+            }
         }
     }
 
@@ -34,9 +42,13 @@ public class ResumeActionSpecificParams
         set
         {
             if (value)
+            {
                 BitVector |= 0x04;
+            }
             else
+            {
                 BitVector &= 0xFB; // 11111011
+            }
         }
     }
 

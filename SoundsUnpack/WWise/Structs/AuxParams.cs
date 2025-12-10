@@ -52,7 +52,7 @@ public class AuxParams
         }
     }
 
-    public uint[]? AuxIds { get; set; } = null;
+    public uint[]? AuxIds { get; set; }
 
     public bool Read(BinaryReader reader)
     {

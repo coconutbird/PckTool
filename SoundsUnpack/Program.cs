@@ -1,5 +1,7 @@
 ﻿using System.Text;
 
+using Microsoft.Win32;
+
 using SoundsUnpack.WWise;
 
 namespace SoundsUnpack;
@@ -28,8 +30,24 @@ public static class Program
 {
     public static void Main(string[] args)
     {
-        var package = new FilePackage(
-            "C:\\Program Files (x86)\\Steam\\steamapps\\common\\HaloWarsDE\\sound\\wwise_2013\\GeneratedSoundBanks\\Windows\\Sounds.pck");
+        var gameDir = FindHaloWarsGameDirectory();
+
+        if (gameDir is null)
+        {
+            Log.Error("Failed to find Halo Wars game directory");
+
+            return;
+        }
+
+        var soundsPackagePath = Path.Join(
+            gameDir,
+            "sound",
+            "wwise_2013",
+            "GeneratedSoundBanks",
+            "Windows",
+            "Sounds.pck");
+
+        var package = new FilePackage(soundsPackagePath);
 
         if (!package.Load())
         {
@@ -38,7 +56,8 @@ public static class Program
             return;
         }
 
-        var b = package.SoundBanksLut.Entries.FirstOrDefault(x => x.FileId == Hash.GetIdFromString("init.bnk"));
+        var hash = Hash.GetIdFromString("init.bnk");
+        var b = package.SoundBanksLut.Entries.FirstOrDefault(x => x.FileId == hash);
 
         if (b != null)
         {
@@ -95,6 +114,29 @@ public static class Program
         }
 
         Console.WriteLine("Done!");
+    }
+
+    private static string? FindHaloWarsGameDirectory()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            try
+            {
+                using var key = Registry.LocalMachine.OpenSubKey(
+                    @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 459220");
+
+                if (key?.GetValue("InstallLocation") is string installPath && Directory.Exists(installPath))
+                {
+                    return installPath;
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+
+        return null;
     }
 
     private static void EnsureDirectoryCreated(string path)

@@ -300,7 +300,7 @@ public class SoundBank
                 $"Warning: Sub-chunk read position mismatch for chunk {chunk.MagicString}. Expected {expectedPosition}, got {reader.BaseStream.Position}.");
 
             reader.BaseStream.Position = expectedPosition;
-            
+
             return false;
         }
 

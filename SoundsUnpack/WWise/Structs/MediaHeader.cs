@@ -2,6 +2,7 @@
 
 public class MediaHeader
 {
+    public const int SizeOf = 12;
     public uint Id { get; set; }
     public uint Offset { get; set; }
     public uint Size { get; set; }
@@ -19,6 +20,4 @@ public class MediaHeader
 
         return true;
     }
-
-    public const int SizeOf = 12;
 }
