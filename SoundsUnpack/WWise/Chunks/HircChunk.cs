@@ -1,13 +1,38 @@
-﻿using SoundsUnpack.WWise.Enums;
-using SoundsUnpack.WWise.Structs;
+﻿using SoundsUnpack.WWise.Structs;
 
 namespace SoundsUnpack.WWise.Chunks;
 
+/// <summary>
+///     Represents the HIRC (Hierarchy) chunk of a soundbank.
+///     Contains the hierarchy of sound objects (events, actions, sounds, containers, etc.).
+///     This is a data-only class that parses and stores HIRC data.
+/// </summary>
 public class HircChunk : BaseChunk
 {
+    /// <summary>
+    ///     Index of items by ID for O(1) lookup.
+    /// </summary>
+    private Dictionary<uint, LoadedItem>? _itemIndex;
+
     public override bool IsValid => LoadedItems is not null;
 
+    /// <summary>
+    ///     All loaded HIRC items in this chunk.
+    /// </summary>
     public List<LoadedItem>? LoadedItems { get; private set; }
+
+    /// <summary>
+    ///     Gets a loaded item by its ID.
+    ///     Returns null if the item is not found.
+    /// </summary>
+    /// <param name="id">The item ID to look up.</param>
+    /// <returns>The loaded item, or null if not found.</returns>
+    public LoadedItem? GetItemById(uint id)
+    {
+        if (_itemIndex is null) return null;
+
+        return _itemIndex.GetValueOrDefault(id);
+    }
 
     protected override bool ReadInternal(SoundBank soundBank, BinaryReader reader, uint size, long startPosition)
     {
@@ -31,117 +56,9 @@ public class HircChunk : BaseChunk
 
         LoadedItems = loadedItems;
 
+        // Build index for O(1) lookup by ID
+        _itemIndex = loadedItems.ToDictionary(item => item.Id);
+
         return true;
-    }
-
-    public IEnumerable<uint> ResolveSoundFileIds(SoundBank startBank, uint itemId)
-    {
-        var item = LoadedItems?.FirstOrDefault(x => x.Id == itemId);
-
-        if (item is null)
-        {
-            yield break;
-        }
-
-        foreach (var soundFileId in ResolveSoundFileIds(startBank, item))
-        {
-            yield return soundFileId;
-        }
-    }
-
-    public IEnumerable<uint> ResolveSoundFileIds(SoundBank startBank, LoadedItem item)
-    {
-        switch (item.Type)
-        {
-            case HircType.Event:
-            {
-                var actions = item.EventInitialValues?.Actions ?? [];
-
-                foreach (var action in actions)
-                {
-                    foreach (var soundFileId in ResolveSoundFileIds(startBank, action))
-                    {
-                        yield return soundFileId;
-                    }
-                }
-
-                yield break;
-            }
-
-            case HircType.Action:
-            {
-                var actionType = item.ActionType;
-
-                switch (actionType)
-                {
-                    case ActionType.Play:
-                    {
-                        var initialValues = item.ActionInitialValues;
-
-                        if (initialValues is null)
-                        {
-                            yield break;
-                        }
-
-                        var playActionParams = initialValues.PlayActionParams!;
-
-                        var targetBank = playActionParams.FileId;
-
-                        if (targetBank != startBank.SoundbankId)
-                        {
-                            throw new NotImplementedException("Cross-bank references are not implemented");
-                        }
-
-                        var targetItemId = initialValues.Ext;
-
-                        // TODO: resolve in context with every bank
-                        foreach (var soundFileId in ResolveSoundFileIds(startBank, targetItemId))
-                        {
-                            yield return soundFileId;
-                        }
-
-                        yield break;
-                    }
-
-                    default:
-                        yield break;
-                }
-            }
-
-            case HircType.RanSeqCntr:
-            {
-                var children = item.RanSeqCntrInitialValues?.Children;
-
-                if (children is null)
-                {
-                    yield break;
-                }
-
-                foreach (var child in children.ChildIds)
-                {
-                    foreach (var soundFileId in ResolveSoundFileIds(startBank, child))
-                    {
-                        yield return soundFileId;
-                    }
-                }
-
-                yield break;
-            }
-
-            case HircType.Sound:
-            {
-                var streamType = item.SoundValues?.BankSourceData.StreamType;
-
-                if (streamType == StreamType.DataBnk)
-                {
-                    yield return item.SoundValues!.BankSourceData.MediaInformation.SourceId;
-                }
-
-                yield break;
-            }
-
-            default:
-                yield break;
-        }
     }
 }

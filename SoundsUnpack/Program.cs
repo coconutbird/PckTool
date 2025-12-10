@@ -56,11 +56,17 @@ public static class Program
             return;
         }
 
+        // Phase 1: Load all soundbanks, grouped by language for cross-bank reference support
+        // Key: LanguageId -> (SoundbankId -> SoundBank)
+        var soundbanksByLanguage = new Dictionary<uint, Dictionary<uint, SoundBank>>();
         var failed = 1;
+
+        Console.WriteLine("Loading soundbanks...");
 
         foreach (var fileEntry in package.SoundBanksLut.Entries)
         {
-            var language = package.LanguageMap[fileEntry.LanguageId];
+            var languageId = fileEntry.LanguageId;
+            var language = package.LanguageMap[languageId];
 
             Console.WriteLine(
                 $"Soundbank ID: {fileEntry.FileId:X8} Language: {language} Size: {fileEntry.FileSize} bytes");
@@ -78,60 +84,134 @@ public static class Program
                 }
             }
 
-            var soundTable = new SoundTable();
+            var bankId = soundbank.SoundbankId;
 
-            if (!soundTable.Load("C:\\Users\\dev\\Downloads\\soundtable.xml"))
+            if (bankId is null)
             {
-                return;
+                Console.WriteLine("  Soundbank has no ID, skipping");
+
+                continue;
             }
 
-            // Resolve all event -> file ID mappings for this soundbank
-            soundTable.ResolveFileIds(soundbank);
-
-            var path = Path.Join("dumps", language);
-
-            EnsureDirectoryCreated(path);
-
-            var bnkFile = Path.Join(path, $"{fileEntry.FileId:X8}.bnk");
-
-            EnsureDirectoryCreated(bnkFile);
-
-            // Track how many times each cue name is used for unique filenames
-            var usedFiles = new Dictionary<string, int>();
-
-            foreach (var wem in soundbank.DataChunk?.Data ?? [])
+            // Get or create the language group
+            if (!soundbanksByLanguage.TryGetValue(languageId, out var languageBanks))
             {
-                if (!wem.IsValid)
-                {
-                    Console.WriteLine("  Invalid WEM data!");
+                languageBanks = new Dictionary<uint, SoundBank>();
+                soundbanksByLanguage[languageId] = languageBanks;
+            }
 
-                    continue;
+            languageBanks[bankId.Value] = soundbank;
+        }
+
+        // Phase 2: Load sound table and resolve all file IDs with cross-bank support
+        var soundTable = new SoundTable();
+
+        if (!soundTable.Load(@"C:\Users\dev\Downloads\soundtable.xml"))
+        {
+            Console.WriteLine("Failed to load sound table");
+
+            return;
+        }
+
+        Console.WriteLine("Resolving cue names...");
+
+        // Build a global lookup for cross-language bank references (e.g., SFX banks)
+        // This allows soundbanks to reference banks from any language
+        var globalBankLookup = new Dictionary<uint, SoundBank>();
+
+        foreach (var languageBanks in soundbanksByLanguage.Values)
+        {
+            foreach (var (bankId, soundbank) in languageBanks)
+            {
+                // If multiple languages have the same bank ID, prefer the first one encountered
+                // (typically language-neutral banks like SFX will only exist once)
+                globalBankLookup.TryAdd(bankId, soundbank);
+            }
+        }
+
+        // Resolve for each language group, with fallback to global lookup for cross-language refs
+        foreach (var (languageId, languageBanks) in soundbanksByLanguage)
+        {
+            var language = package.LanguageMap[languageId];
+            Console.WriteLine($"  Resolving for language: {language} ({languageBanks.Count} banks)");
+
+            // Create a lookup function that:
+            // 1. First tries to find the bank in the current language (preferred)
+            // 2. Falls back to global lookup for cross-language references (e.g., SFX banks)
+            SoundBank? BankLookup(uint bankId)
+            {
+                // Prefer same-language bank if it exists
+                if (languageBanks.TryGetValue(bankId, out var sameLanguageBank))
+                {
+                    return sameLanguageBank;
                 }
 
-                var cueName = soundTable.GetCueNameByFileId(wem.Id);
-                var wemFileName = $"{wem.Id}";
+                // Fall back to global lookup for cross-language references
+                return globalBankLookup.GetValueOrDefault(bankId);
+            }
 
-                if (cueName is not null)
+            // Resolve each bank in this language group with access to all banks
+            foreach (var soundbank in languageBanks.Values)
+            {
+                soundTable.ResolveFileIds(soundbank, BankLookup);
+            }
+        }
+
+        // Phase 3: Extract WEM files with resolved cue names
+        Console.WriteLine("Extracting WEM files...");
+
+        foreach (var (languageId, languageBanks) in soundbanksByLanguage)
+        {
+            var language = package.LanguageMap[languageId];
+
+            foreach (var (soundbankId, soundbank) in languageBanks)
+            {
+                var path = Path.Join("dumps", language);
+
+                EnsureDirectoryCreated(path);
+
+                var bnkFile = Path.Join(path, $"{soundbankId:X8}.bnk");
+
+                EnsureDirectoryCreated(bnkFile);
+
+                // Track how many times each cue name is used for unique filenames
+                var usedFiles = new Dictionary<string, int>();
+
+                foreach (var wem in soundbank.DataChunk?.Data ?? [])
                 {
-                    wemFileName += $"_{cueName}";
-
-                    if (!usedFiles.TryGetValue(cueName, out var count))
+                    if (!wem.IsValid)
                     {
-                        count = 0;
+                        Console.WriteLine("  Invalid WEM data!");
+
+                        continue;
                     }
 
-                    wemFileName += $"_{count}";
-                    usedFiles[cueName] = count + 1;
+                    var cueName = soundTable.GetCueNameByFileId(wem.Id);
+                    var wemFileName = $"{wem.Id}";
+
+                    if (cueName is not null)
+                    {
+                        wemFileName += $"_{cueName}";
+
+                        var count = usedFiles.GetValueOrDefault(cueName, 0);
+
+                        wemFileName += $"_{count}";
+                        usedFiles[cueName] = count + 1;
+                    }
+
+                    var wemFile = Path.Join(path, $"{soundbankId:X8}", $"{wemFileName}.wem");
+
+                    EnsureDirectoryCreated(wemFile);
+
+                    File.WriteAllBytes(wemFile, wem.Data);
                 }
 
-                var wemFile = Path.Join(path, $"{soundbank.SoundbankId:X8}", $"{wemFileName}.wem");
+                // Find the original file entry to write the .bnk file
+                var fileEntry =
+                    package.SoundBanksLut.Entries.First(e => e.FileId == soundbankId && e.LanguageId == languageId);
 
-                EnsureDirectoryCreated(wemFile);
-
-                File.WriteAllBytes(wemFile, wem.Data);
+                File.WriteAllBytes(bnkFile, fileEntry.Data);
             }
-
-            File.WriteAllBytes(bnkFile, fileEntry.Data);
         }
 
         Console.WriteLine("Done!");

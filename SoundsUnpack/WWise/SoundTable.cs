@@ -1,5 +1,8 @@
 ﻿using System.Xml.Linq;
 
+using SoundsUnpack.WWise.Enums;
+using SoundsUnpack.WWise.Structs;
+
 namespace SoundsUnpack.WWise;
 
 /// <summary>
@@ -7,6 +10,8 @@ namespace SoundsUnpack.WWise;
 ///     Provides efficient lookup in both directions:
 ///     - CueIndex (event hash) -> CueName
 ///     - FileId (wem source ID) -> CueName
+///     Also handles resolution of Event → Action → Sound → FileId chains
+///     with support for cross-bank and cross-language references.
 /// </summary>
 public class SoundTable
 {
@@ -38,14 +43,20 @@ public class SoundTable
         foreach (var sound in doc.Descendants("Sound"))
         {
             var cueName = sound.Element("CueName")?.Value;
+            var cueIndex = sound.Element("CueIndex")?.Value;
 
             if (string.IsNullOrEmpty(cueName)) continue;
 
-            var cueIndex = Hash.GetIdFromString(cueName);
+            var computedCueIndex = Hash.GetIdFromString(cueName);
 
-            if (_cueIndexMap.ContainsKey(cueIndex)) continue;
+            if (computedCueIndex != uint.Parse(cueIndex!))
+            {
+                throw new Exception("CueIndex does not match computed value");
+            }
 
-            _cueIndexMap[cueIndex] = new CueEntry(cueName, cueIndex);
+            if (_cueIndexMap.ContainsKey(computedCueIndex)) continue;
+
+            _cueIndexMap[computedCueIndex] = new CueEntry(cueName, computedCueIndex);
         }
 
         return true;
@@ -54,18 +65,22 @@ public class SoundTable
     /// <summary>
     ///     Resolves and registers file IDs for a soundbank's events.
     ///     This populates the FileId -> CueName mapping for efficient lookup.
+    ///     Uses the provided bank lookup for cross-bank reference resolution.
     /// </summary>
-    public void ResolveFileIds(SoundBank soundbank)
+    /// <param name="soundbank">The soundbank to process.</param>
+    /// <param name="bankLookup">Function to lookup soundbanks by ID for cross-bank references.</param>
+    public void ResolveFileIds(SoundBank soundbank, Func<uint, SoundBank?> bankLookup)
     {
         if (soundbank.HircChunk?.LoadedItems is null) return;
 
         foreach (var item in soundbank.HircChunk.LoadedItems)
         {
-            if (item.Type != Enums.HircType.Event) continue;
+            if (item.Type != HircType.Event) continue;
 
             if (!_cueIndexMap.TryGetValue(item.Id, out var cueEntry)) continue;
 
-            var fileIds = soundbank.HircChunk.ResolveSoundFileIds(soundbank, item);
+            // Resolve the event's file IDs using our internal resolution logic
+            var fileIds = ResolveSoundFileIds(bankLookup, soundbank, item);
 
             foreach (var fileId in fileIds)
             {
@@ -103,25 +118,19 @@ public class SoundTable
     /// <summary>
     ///     Represents a cue (event) entry with its name and associated file IDs.
     /// </summary>
-    public class CueEntry
+    public class CueEntry(string cueName, uint cueIndex)
     {
         private readonly HashSet<uint> _fileIds = [];
-
-        public CueEntry(string cueName, uint cueIndex)
-        {
-            CueName = cueName;
-            CueIndex = cueIndex;
-        }
 
         /// <summary>
         ///     The human-readable cue name (event name).
         /// </summary>
-        public string CueName { get; }
+        public string CueName { get; } = cueName;
 
         /// <summary>
         ///     The FNV1A-32 hash of the cue name.
         /// </summary>
-        public uint CueIndex { get; }
+        public uint CueIndex { get; } = cueIndex;
 
         /// <summary>
         ///     The file IDs (wem source IDs) associated with this cue.
@@ -133,4 +142,171 @@ public class SoundTable
             _fileIds.Add(fileId);
         }
     }
+
+#region Resolution Logic
+
+    /// <summary>
+    ///     Resolves sound file IDs for a loaded item, traversing the Event → Action → Sound → FileId chain.
+    ///     Supports cross-bank references via the bankLookup function.
+    /// </summary>
+    /// <param name="bankLookup">Function to lookup soundbanks by ID for cross-bank references.</param>
+    /// <param name="currentBank">The current soundbank being processed.</param>
+    /// <param name="item">The loaded item to resolve.</param>
+    /// <returns>Enumerable of resolved sound file IDs.</returns>
+    private IEnumerable<uint> ResolveSoundFileIds(
+        Func<uint, SoundBank?> bankLookup,
+        SoundBank currentBank,
+        LoadedItem item)
+    {
+        switch (item.Type)
+        {
+            case HircType.Event:
+                return ResolveEventFileIds(bankLookup, currentBank, item);
+
+            case HircType.Action:
+                return ResolveActionFileIds(bankLookup, currentBank, item);
+
+            case HircType.RanSeqCntr:
+                return ResolveRanSeqCntrFileIds(bankLookup, currentBank, item);
+
+            case HircType.Sound:
+                return ResolveSoundItemFileIds(item);
+
+            default:
+                return [];
+        }
+    }
+
+    /// <summary>
+    ///     Resolves file IDs for an Event item by resolving all its actions.
+    /// </summary>
+    private IEnumerable<uint> ResolveEventFileIds(
+        Func<uint, SoundBank?> bankLookup,
+        SoundBank currentBank,
+        LoadedItem eventItem)
+    {
+        var actions = eventItem.EventInitialValues?.Actions ?? [];
+
+        foreach (var actionId in actions)
+        {
+            var actionItem = currentBank.HircChunk?.GetItemById(actionId);
+
+            if (actionItem is null) continue;
+
+            foreach (var fileId in ResolveSoundFileIds(bankLookup, currentBank, actionItem))
+            {
+                yield return fileId;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Resolves file IDs for an Action item, handling cross-bank references for Play actions.
+    /// </summary>
+    private IEnumerable<uint> ResolveActionFileIds(
+        Func<uint, SoundBank?> bankLookup,
+        SoundBank currentBank,
+        LoadedItem actionItem)
+    {
+        if (actionItem.ActionType != ActionType.Play)
+        {
+            yield break;
+        }
+
+        var initialValues = actionItem.ActionInitialValues;
+
+        if (initialValues is null)
+        {
+            yield break;
+        }
+
+        var playActionParams = initialValues.PlayActionParams;
+
+        if (playActionParams is null)
+        {
+            yield break;
+        }
+
+        var targetBankId = playActionParams.FileId;
+        var targetItemId = initialValues.Ext;
+
+        // Determine which bank to resolve from
+        SoundBank targetBank;
+
+        if (targetBankId == currentBank.SoundbankId)
+        {
+            // Same bank reference
+            targetBank = currentBank;
+        }
+        else
+        {
+            // Cross-bank reference - lookup the target bank
+            var lookedUpBank = bankLookup(targetBankId);
+
+            if (lookedUpBank?.HircChunk is null)
+            {
+                // Target bank not found or has no HIRC chunk, skip
+                yield break;
+            }
+
+            targetBank = lookedUpBank;
+        }
+
+        // Find the target item in the target bank
+        var targetItem = targetBank.HircChunk?.GetItemById(targetItemId);
+
+        if (targetItem is null)
+        {
+            yield break;
+        }
+
+        // Recursively resolve in the target bank
+        foreach (var fileId in ResolveSoundFileIds(bankLookup, targetBank, targetItem))
+        {
+            yield return fileId;
+        }
+    }
+
+    /// <summary>
+    ///     Resolves file IDs for a RanSeqCntr (Random/Sequence Container) by resolving all its children.
+    /// </summary>
+    private IEnumerable<uint> ResolveRanSeqCntrFileIds(
+        Func<uint, SoundBank?> bankLookup,
+        SoundBank currentBank,
+        LoadedItem containerItem)
+    {
+        var children = containerItem.RanSeqCntrInitialValues?.Children;
+
+        if (children is null)
+        {
+            yield break;
+        }
+
+        foreach (var childId in children.ChildIds)
+        {
+            var childItem = currentBank.HircChunk?.GetItemById(childId);
+
+            if (childItem is null) continue;
+
+            foreach (var fileId in ResolveSoundFileIds(bankLookup, currentBank, childItem))
+            {
+                yield return fileId;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Resolves file IDs for a Sound item, extracting the source ID if it's embedded in the bank.
+    /// </summary>
+    private static IEnumerable<uint> ResolveSoundItemFileIds(LoadedItem soundItem)
+    {
+        var streamType = soundItem.SoundValues?.BankSourceData.StreamType;
+
+        if (streamType == StreamType.DataBnk)
+        {
+            yield return soundItem.SoundValues!.BankSourceData.MediaInformation.SourceId;
+        }
+    }
+
+#endregion
 }
