@@ -38,6 +38,15 @@ public static class Program
 
             return;
         }
+        
+        Log.Info("Found Halo Wars game directory: " + gameDir);
+        
+        var soundTablePath = FindSoundTableXml(gameDir);
+
+        if (soundTablePath is null)
+        {
+            Log.Warn("Failed to find sound table, cue names will not be resolved!");
+        }
 
         var soundsPackagePath = Path.Join(
             gameDir,
@@ -114,9 +123,9 @@ public static class Program
         // Phase 2: Load sound table and resolve all file IDs with cross-bank support
         var soundTable = new SoundTable();
 
-        if (!soundTable.Load(@"C:\Users\dev\Downloads\soundtable.xml"))
+        if (!string.IsNullOrWhiteSpace(soundTablePath) && !soundTable.Load(soundTablePath))
         {
-            Log.Error("Failed to load sound table");
+            Log.Error("Failed to load sound table, cue names will not be resolved!");
 
             return;
         }
@@ -250,6 +259,11 @@ public static class Program
         }
 
         return null;
+    }
+
+    private static string? FindSoundTableXml(string gameDir)
+    {
+        return Directory.GetFiles(gameDir, "soundtable.xml", SearchOption.AllDirectories).FirstOrDefault();
     }
 
     private static void EnsureDirectoryCreated(string path)
