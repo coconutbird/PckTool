@@ -165,6 +165,10 @@ public class SoundTable
             EventItem eventItem => ResolveEventFileIds(bankLookup, currentBank, eventItem),
             ActionItem actionItem => ResolveActionFileIds(bankLookup, currentBank, actionItem),
             RanSeqCntrItem containerItem => ResolveRanSeqCntrFileIds(bankLookup, currentBank, containerItem),
+            MusicSwitchItem musicSwitchItem => ResolveMusicSwitchFileIds(bankLookup, currentBank, musicSwitchItem),
+            MusicRanSeqItem musicRanSeqItem => ResolveMusicRanSeqFileIds(bankLookup, currentBank, musicRanSeqItem),
+            MusicSegmentItem segmentItem => ResolveMusicSegmentFileIds(bankLookup, currentBank, segmentItem),
+            MusicTrackItem trackItem => ResolveMusicTrackFileIds(trackItem),
             SoundItem soundItem => ResolveSoundItemFileIds(soundItem),
             _ => []
         };
@@ -268,11 +272,154 @@ public class SoundTable
         {
             var childItem = currentBank.HircChunk?.GetItemById(childId);
 
-            if (childItem is null) continue;
+            if (childItem is null)
+            {
+                Log.Error($"Failed to find child item {childId} for ran seq cntr {containerItem.Id}");
+
+                continue;
+            }
 
             foreach (var fileId in ResolveSoundFileIds(bankLookup, currentBank, childItem))
             {
                 yield return fileId;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Resolves file IDs for a MusicSwitchCntr by resolving all its children.
+    /// </summary>
+    private static IEnumerable<uint> ResolveMusicSwitchFileIds(
+        Func<uint, SoundBank?> bankLookup,
+        SoundBank currentBank,
+        MusicSwitchItem musicSwitchItem)
+    {
+        foreach (var childId in musicSwitchItem.Values.MusicTransNodeParams.MusicNodeParams.Children.ChildIds)
+        {
+            var childItem = currentBank.HircChunk?.GetItemById(childId);
+
+            if (childItem is null)
+            {
+                Log.Error($"Failed to find child item {childId} for music switch {musicSwitchItem.Id}");
+
+                continue;
+            }
+
+            foreach (var fileId in ResolveSoundFileIds(bankLookup, currentBank, childItem))
+            {
+                yield return fileId;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Resolves file IDs for a MusicSegment by resolving all its children (MusicTracks).
+    /// </summary>
+    private static IEnumerable<uint> ResolveMusicSegmentFileIds(
+        Func<uint, SoundBank?> bankLookup,
+        SoundBank currentBank,
+        MusicSegmentItem segmentItem)
+    {
+        foreach (var childId in segmentItem.Values.MusicNodeParams.Children.ChildIds)
+        {
+            var childItem = currentBank.HircChunk?.GetItemById(childId);
+
+            if (childItem is null)
+            {
+                Log.Error($"Failed to find child item {childId} for segment {segmentItem.Id}");
+
+                continue;
+            }
+
+            foreach (var fileId in ResolveSoundFileIds(bankLookup, currentBank, childItem))
+            {
+                yield return fileId;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Resolves file IDs for a MusicRanSeqCntr by resolving all its children and playlist segments.
+    /// </summary>
+    private static IEnumerable<uint> ResolveMusicRanSeqFileIds(
+        Func<uint, SoundBank?> bankLookup,
+        SoundBank currentBank,
+        MusicRanSeqItem musicRanSeqItem)
+    {
+        // Resolve children from MusicNodeParams (like MusicSwitch)
+        foreach (var childId in musicRanSeqItem.Values.MusicTransNodeParams.MusicNodeParams.Children.ChildIds)
+        {
+            var childItem = currentBank.HircChunk?.GetItemById(childId);
+
+            if (childItem is null)
+            {
+                Log.Error($"Failed to find child item {childId} for music ran seq {musicRanSeqItem.Id}");
+
+                continue;
+            }
+
+            foreach (var fileId in ResolveSoundFileIds(bankLookup, currentBank, childItem))
+            {
+                yield return fileId;
+            }
+        }
+
+        // Also resolve segment IDs from the playlist recursively
+        foreach (var fileId in ResolvePlaylistSegments(bankLookup, currentBank, musicRanSeqItem.Values.Playlist))
+        {
+            yield return fileId;
+        }
+    }
+
+    /// <summary>
+    ///     Recursively resolves segment IDs from a MusicRanSeq playlist.
+    /// </summary>
+    private static IEnumerable<uint> ResolvePlaylistSegments(
+        Func<uint, SoundBank?> bankLookup,
+        SoundBank currentBank,
+        List<MusicRanSeqPlaylistItem> playlistItems)
+    {
+        foreach (var item in playlistItems)
+        {
+            // If segment ID is non-zero, resolve it
+            if (item.SegmentId != 0)
+            {
+                var segmentItem = currentBank.HircChunk?.GetItemById(item.SegmentId);
+
+                if (segmentItem is null)
+                {
+                    Log.Error($"Failed to find segment {item.SegmentId} for playlist item {item.PlaylistItemId}");
+
+                    continue;
+                }
+
+                foreach (var fileId in ResolveSoundFileIds(bankLookup, currentBank, segmentItem))
+                {
+                    yield return fileId;
+                }
+            }
+
+            // Recursively process children
+            if (item.Children.Count > 0)
+            {
+                foreach (var fileId in ResolvePlaylistSegments(bankLookup, currentBank, item.Children))
+                {
+                    yield return fileId;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Resolves file IDs for a MusicTrack item, extracting source IDs from embedded sources.
+    /// </summary>
+    private static IEnumerable<uint> ResolveMusicTrackFileIds(MusicTrackItem trackItem)
+    {
+        foreach (var source in trackItem.Values.Sources)
+        {
+            if (source.StreamType == StreamType.DataBnk)
+            {
+                yield return source.MediaInformation.SourceId;
             }
         }
     }
@@ -283,6 +430,16 @@ public class SoundTable
     private static IEnumerable<uint> ResolveSoundItemFileIds(SoundItem soundItem)
     {
         if (soundItem.Values.BankSourceData.StreamType == StreamType.DataBnk)
+        {
+            yield return soundItem.Values.BankSourceData.MediaInformation.SourceId;
+        }
+
+        if (soundItem.Values.BankSourceData.StreamType == StreamType.Streaming)
+        {
+            yield return soundItem.Values.BankSourceData.MediaInformation.SourceId;
+        }
+
+        if (soundItem.Values.BankSourceData.StreamType == StreamType.PrefetchStreaming)
         {
             yield return soundItem.Values.BankSourceData.MediaInformation.SourceId;
         }

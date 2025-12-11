@@ -96,6 +96,11 @@ public static class Program
                 continue;
             }
 
+            if (!soundbank.IsValid)
+            {
+                Log.Warn("  Soundbank is not valid: {0}", bankId);
+            }
+
             // Get or create the language group
             if (!soundbanksByLanguage.TryGetValue(languageId, out var languageBanks))
             {
@@ -200,6 +205,10 @@ public static class Program
 
                         wemFileName += $"_{count}";
                         usedFiles[cueName] = count + 1;
+                    }
+                    else
+                    {
+                        Log.Warn("  No cue name found for {0:X8} ({1})", soundbankId, wemFileName);
                     }
 
                     var wemFile = Path.Join(path, $"{soundbankId:X8}", $"{wemFileName}.wem");

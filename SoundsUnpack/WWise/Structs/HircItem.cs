@@ -51,10 +51,10 @@ public abstract class HircItem
             HircType.State => StateItem.ReadItem(reader, id, remainingSize),
             HircType.SwitchCntr => SwitchCntrItem.ReadItem(reader, id, remainingSize),
             HircType.LayerCntr => LayerCntrItem.ReadItem(reader, id, remainingSize),
-            HircType.Segment => SegmentItem.ReadItem(reader, id, remainingSize),
-            HircType.Track => TrackItem.ReadItem(reader, id),
+            HircType.Segment => MusicSegmentItem.ReadItem(reader, id),
+            HircType.Track => MusicTrackItem.ReadItem(reader, id),
             HircType.MusicSwitch => MusicSwitchItem.ReadItem(reader, id),
-            HircType.MusicRanSeq => MusicRanSeqItem.ReadItem(reader, id, remainingSize),
+            HircType.MusicRanSeq => MusicRanSeqItem.ReadItem(reader, id),
             HircType.DialogueEvent => DialogueEventItem.ReadItem(reader, id, remainingSize),
             HircType.FeedbackBus => FeedbackBusItem.ReadItem(reader, id, remainingSize),
             HircType.FeedbackNode => FeedbackNodeItem.ReadItem(reader, id, remainingSize),
@@ -300,36 +300,38 @@ public sealed class LayerCntrItem : HircItem
 }
 
 /// <summary>
-///     Represents a CAkMusicSegment HIRC item (stub - raw bytes preserved).
+///     Represents a CAkMusicSegment HIRC item.
 /// </summary>
-public sealed class SegmentItem : HircItem
+public sealed class MusicSegmentItem : HircItem
 {
     public override HircType Type => HircType.Segment;
-    public required byte[] RawData { get; init; }
+    public required MusicSegmentInitialValues Values { get; init; }
 
-    internal static SegmentItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    internal static MusicSegmentItem? ReadItem(BinaryReader reader, uint id)
     {
-        var rawData = reader.ReadBytes(remainingSize);
+        var values = new MusicSegmentInitialValues();
 
-        return new SegmentItem { Id = id, RawData = rawData };
+        if (!values.Read(reader)) return null;
+
+        return new MusicSegmentItem { Id = id, Values = values };
     }
 }
 
 /// <summary>
 ///     Represents a CAkMusicTrack HIRC item.
 /// </summary>
-public sealed class TrackItem : HircItem
+public sealed class MusicTrackItem : HircItem
 {
     public override HircType Type => HircType.Track;
     public required MusicTrackInitialValues Values { get; init; }
 
-    internal static TrackItem? ReadItem(BinaryReader reader, uint id)
+    internal static MusicTrackItem? ReadItem(BinaryReader reader, uint id)
     {
         var values = new MusicTrackInitialValues();
 
         if (!values.Read(reader)) return null;
 
-        return new TrackItem { Id = id, Values = values };
+        return new MusicTrackItem { Id = id, Values = values };
     }
 }
 
@@ -352,18 +354,20 @@ public sealed class MusicSwitchItem : HircItem
 }
 
 /// <summary>
-///     Represents a CAkMusicRanSeqCntr HIRC item (stub - raw bytes preserved).
+///     Represents a CAkMusicRanSeqCntr HIRC item.
 /// </summary>
 public sealed class MusicRanSeqItem : HircItem
 {
     public override HircType Type => HircType.MusicRanSeq;
-    public required byte[] RawData { get; init; }
+    public required MusicRanSeqCntrInitialValues Values { get; init; }
 
-    internal static MusicRanSeqItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    internal static MusicRanSeqItem? ReadItem(BinaryReader reader, uint id)
     {
-        var rawData = reader.ReadBytes(remainingSize);
+        var values = new MusicRanSeqCntrInitialValues();
 
-        return new MusicRanSeqItem { Id = id, RawData = rawData };
+        if (!values.Read(reader)) return null;
+
+        return new MusicRanSeqItem { Id = id, Values = values };
     }
 }
 
