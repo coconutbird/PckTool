@@ -11,7 +11,24 @@
         <!-- Top toolbar -->
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10">
             <Button x:Name="OpenPckButton" Content="Open PCK..." Click="OnOpenPckClick"/>
+            <Button x:Name="LoadSoundTableButton" Content="Load Sound Table..." Click="OnLoadSoundTableClick"/>
             <TextBlock x:Name="FilePathText" VerticalAlignment="Center" Foreground="Gray"/>
+        </StackPanel>
+
+        <!-- Filter panel -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10"
+                    x:Name="FilterPanel" IsVisible="False">
+            <TextBlock Text="Language:" VerticalAlignment="Center"/>
+            <ComboBox x:Name="LanguageFilter" Width="150" SelectionChanged="OnLanguageFilterChanged">
+                <ComboBoxItem Content="All Languages" IsSelected="True"/>
+            </ComboBox>
+            <TextBlock Text="ID:" VerticalAlignment="Center"/>
+            <TextBox x:Name="IdFilter" Width="120" Watermark="Filter by ID..."
+                     TextChanged="OnSearchFilterChanged"/>
+            <TextBlock Text="Name:" VerticalAlignment="Center"/>
+            <TextBox x:Name="NameFilter" Width="180" Watermark="Filter by sound name..."
+                     TextChanged="OnSearchFilterChanged"/>
+            <Button Content="Clear" Click="OnClearFiltersClick"/>
         </StackPanel>
 
         <!-- Status bar -->
