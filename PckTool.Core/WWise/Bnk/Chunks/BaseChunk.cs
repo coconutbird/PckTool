@@ -8,6 +8,11 @@ public abstract class BaseChunk
     public abstract bool IsValid { get; }
 
     /// <summary>
+    ///     The chunk magic (4-character code).
+    /// </summary>
+    public abstract uint Magic { get; }
+
+    /// <summary>
     ///     Reads the chunk from the reader.
     /// </summary>
     /// <param name="soundBank"></param>
@@ -54,6 +59,34 @@ public abstract class BaseChunk
     }
 
     /// <summary>
+    ///     Writes the chunk to the writer (including magic and size header).
+    /// </summary>
+    /// <param name="soundBank">The soundbank context.</param>
+    /// <param name="writer">The binary writer.</param>
+    public void Write(SoundBank soundBank, BinaryWriter writer)
+    {
+        // Write magic
+        writer.Write(Magic);
+
+        // Reserve space for size (we'll fill it in after writing content)
+        var sizePosition = writer.BaseStream.Position;
+        writer.Write(0u);
+
+        var contentStart = writer.BaseStream.Position;
+
+        // Write chunk content
+        WriteInternal(soundBank, writer);
+
+        // Calculate and write size
+        var contentEnd = writer.BaseStream.Position;
+        var size = (uint) (contentEnd - contentStart);
+
+        writer.BaseStream.Position = sizePosition;
+        writer.Write(size);
+        writer.BaseStream.Position = contentEnd;
+    }
+
+    /// <summary>
     ///     Implement this method to read the chunk data.
     /// </summary>
     /// <param name="soundBank"></param>
@@ -62,4 +95,11 @@ public abstract class BaseChunk
     /// <param name="startPosition"></param>
     /// <returns></returns>
     protected abstract bool ReadInternal(SoundBank soundBank, BinaryReader reader, uint size, long startPosition);
+
+    /// <summary>
+    ///     Implement this method to write the chunk data (without magic/size header).
+    /// </summary>
+    /// <param name="soundBank"></param>
+    /// <param name="writer"></param>
+    protected abstract void WriteInternal(SoundBank soundBank, BinaryWriter writer);
 }

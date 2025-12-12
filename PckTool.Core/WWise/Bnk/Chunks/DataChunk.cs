@@ -1,8 +1,12 @@
-﻿namespace PckTool.Core.WWise.Bnk.Chunks;
+﻿using PckTool.Core.WWise.Util;
+
+namespace PckTool.Core.WWise.Bnk.Chunks;
 
 public class DataChunk : BaseChunk
 {
     public override bool IsValid => Data is not null;
+
+    public override uint Magic => Hash.AkmmioFourcc('D', 'A', 'T', 'A');
 
     public List<MediaIndexEntry>? Data { get; private set; }
 
@@ -37,6 +41,36 @@ public class DataChunk : BaseChunk
         reader.BaseStream.Position = startPosition + size;
 
         return true;
+    }
+
+    protected override void WriteInternal(SoundBank soundBank, BinaryWriter writer)
+    {
+        if (Data is null) return;
+
+        // Update MediaIndexChunk headers with correct offsets before writing
+        var mediaIndexChunk = soundBank.MediaIndexChunk;
+
+        if (mediaIndexChunk?.LoadedMedia is not null)
+        {
+            uint currentOffset = 0;
+
+            for (var i = 0; i < Data.Count && i < mediaIndexChunk.LoadedMedia.Count; i++)
+            {
+                var header = mediaIndexChunk.LoadedMedia[i];
+                var entry = Data[i];
+
+                header.Offset = currentOffset;
+                header.Size = (uint) entry.Data.Length;
+
+                currentOffset += header.Size;
+            }
+        }
+
+        // Write all media data sequentially
+        foreach (var entry in Data)
+        {
+            writer.Write(entry.Data);
+        }
     }
 
     public class MediaIndexEntry

@@ -1,4 +1,5 @@
 ﻿using PckTool.Core.WWise.Bnk.Structs;
+using PckTool.Core.WWise.Util;
 
 namespace PckTool.Core.WWise.Bnk.Chunks;
 
@@ -15,6 +16,8 @@ public class HircChunk : BaseChunk
     private Dictionary<uint, HircItem>? _itemIndex;
 
     public override bool IsValid => Items is not null;
+
+    public override uint Magic => Hash.AkmmioFourcc('H', 'I', 'R', 'C');
 
     /// <summary>
     ///     All HIRC items in this chunk.
@@ -58,5 +61,19 @@ public class HircChunk : BaseChunk
         _itemIndex = items.ToDictionary(item => item.Id);
 
         return true;
+    }
+
+    protected override void WriteInternal(SoundBank soundBank, BinaryWriter writer)
+    {
+        if (Items is null) return;
+
+        // Write item count
+        writer.Write((uint) Items.Count);
+
+        // Write each item (will throw NotImplementedException for unimplemented types)
+        foreach (var item in Items)
+        {
+            item.Write(writer);
+        }
     }
 }

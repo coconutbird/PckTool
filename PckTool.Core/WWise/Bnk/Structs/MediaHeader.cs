@@ -20,4 +20,11 @@ public class MediaHeader
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(Id);
+        writer.Write(Offset);
+        writer.Write(Size);
+    }
 }

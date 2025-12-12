@@ -3,7 +3,6 @@
 using PckTool.Core.WWise.Bnk;
 using PckTool.Core.WWise.Bnk.Enums;
 using PckTool.Core.WWise.Bnk.Structs;
-using PckTool.Core.WWise.Pck;
 using PckTool.Core.WWise.Util;
 
 namespace PckTool.Core.HaloWars;
@@ -15,7 +14,6 @@ namespace PckTool.Core.HaloWars;
 ///     - FileId (wem source ID) -> CueName
 ///     Also handles resolution of Event → Action → Sound → FileId chains
 ///     with support for cross-bank and cross-language references.
-///     
 ///     This is Halo Wars specific and parses the game's soundtable.xml format.
 /// </summary>
 public class SoundTable
@@ -452,4 +450,3 @@ public class SoundTable
 
 #endregion
 }
-

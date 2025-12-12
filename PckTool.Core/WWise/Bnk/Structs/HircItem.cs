@@ -19,6 +19,36 @@ public abstract class HircItem
     public abstract HircType Type { get; }
 
     /// <summary>
+    ///     Writes this HIRC item to the writer (including type, size, and ID header).
+    /// </summary>
+    /// <param name="writer">The binary writer.</param>
+    public void Write(BinaryWriter writer)
+    {
+        // Write type
+        writer.Write((byte) Type);
+
+        // Reserve space for size
+        var sizePosition = writer.BaseStream.Position;
+        writer.Write(0u);
+
+        var contentStart = writer.BaseStream.Position;
+
+        // Write ID
+        writer.Write(Id);
+
+        // Write item-specific content
+        WriteInternal(writer);
+
+        // Calculate and write size (includes ID)
+        var contentEnd = writer.BaseStream.Position;
+        var size = (uint) (contentEnd - contentStart);
+
+        writer.BaseStream.Position = sizePosition;
+        writer.Write(size);
+        writer.BaseStream.Position = contentEnd;
+    }
+
+    /// <summary>
     ///     Factory method to read and create the appropriate HircItem subtype.
     /// </summary>
     /// <param name="reader">The binary reader positioned at the start of the HIRC item.</param>
@@ -85,6 +115,15 @@ public abstract class HircItem
         }
 
         return item;
+    }
+
+    /// <summary>
+    ///     Implement this method to write item-specific data (after the ID).
+    /// </summary>
+    /// <param name="writer">The binary writer.</param>
+    protected virtual void WriteInternal(BinaryWriter writer)
+    {
+        throw new NotImplementedException($"Write is not implemented for HIRC item type {Type}.");
     }
 }
 

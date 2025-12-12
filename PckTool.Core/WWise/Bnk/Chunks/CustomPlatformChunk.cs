@@ -1,10 +1,14 @@
 ﻿using System.Text;
 
+using PckTool.Core.WWise.Util;
+
 namespace PckTool.Core.WWise.Bnk.Chunks;
 
 public class CustomPlatformChunk : BaseChunk
 {
     public override bool IsValid => !string.IsNullOrEmpty(PlatformName);
+
+    public override uint Magic => Hash.AkmmioFourcc('P', 'L', 'A', 'T');
 
     public string PlatformName { get; set; } = string.Empty;
 
@@ -16,5 +20,12 @@ public class CustomPlatformChunk : BaseChunk
         PlatformName = customPlatformString;
 
         return true;
+    }
+
+    protected override void WriteInternal(SoundBank soundBank, BinaryWriter writer)
+    {
+        var bytes = Encoding.UTF8.GetBytes(PlatformName);
+        writer.Write((uint) bytes.Length);
+        writer.Write(bytes);
     }
 }

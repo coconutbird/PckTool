@@ -45,6 +45,14 @@ public class ConversionTable
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        foreach (var curve in Curves)
+        {
+            curve.Write(writer);
+        }
+    }
 }
 
 /// <summary>
@@ -91,5 +99,17 @@ public class ObsOccCurve
         Points = points;
 
         return true;
+    }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write((byte) (CurveEnabled ? 1 : 0));
+        writer.Write(CurveScaling);
+        writer.Write((ushort) Points.Count);
+
+        foreach (var point in Points)
+        {
+            point.Write(writer);
+        }
     }
 }

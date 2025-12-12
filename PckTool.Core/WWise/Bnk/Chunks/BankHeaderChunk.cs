@@ -1,8 +1,16 @@
-﻿namespace PckTool.Core.WWise.Bnk.Chunks;
+﻿using PckTool.Core.WWise.Util;
+
+namespace PckTool.Core.WWise.Bnk.Chunks;
 
 public class BankHeaderChunk : BaseChunk
 {
     private const uint ValidVersion = 0x71;
+    private const int StandardSize = 20; // 5 x uint32
+
+    /// <summary>
+    ///     Extra padding bytes read from the original chunk (if any).
+    /// </summary>
+    private byte[]? _padding;
 
     public override bool IsValid =>
         BankGeneratorVersion == ValidVersion
@@ -10,6 +18,8 @@ public class BankHeaderChunk : BaseChunk
         && LanguageId is not null
         && FeedbackInBank is not null
         && ProjectId is not null;
+
+    public override uint Magic => Hash.AkmmioFourcc('B', 'K', 'H', 'D');
 
     public uint? BankGeneratorVersion { get; set; }
     public uint? SoundBankId { get; set; }
@@ -26,10 +36,28 @@ public class BankHeaderChunk : BaseChunk
         ProjectId = reader.ReadUInt32();
 
         // Padding
-        var paddingSize = size - (reader.BaseStream.Position - startPosition);
+        var paddingSize = (int) (size - (reader.BaseStream.Position - startPosition));
 
-        reader.BaseStream.Seek(paddingSize, SeekOrigin.Current);
+        if (paddingSize > 0)
+        {
+            _padding = reader.ReadBytes(paddingSize);
+        }
 
         return IsValid;
+    }
+
+    protected override void WriteInternal(SoundBank soundBank, BinaryWriter writer)
+    {
+        writer.Write(BankGeneratorVersion ?? ValidVersion);
+        writer.Write(SoundBankId ?? 0u);
+        writer.Write(LanguageId ?? 0u);
+        writer.Write(FeedbackInBank ?? 0u);
+        writer.Write(ProjectId ?? 0u);
+
+        // Write padding if we had any
+        if (_padding is not null)
+        {
+            writer.Write(_padding);
+        }
     }
 }

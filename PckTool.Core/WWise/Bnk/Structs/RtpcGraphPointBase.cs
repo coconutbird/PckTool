@@ -1,5 +1,6 @@
 using System.Numerics;
 
+using PckTool.Core.Extensions;
 using PckTool.Core.WWise.Bnk.Enums;
 
 namespace PckTool.Core.WWise.Bnk.Structs;
@@ -12,29 +13,17 @@ public class RtpcGraphPointBase<TValueType> where TValueType : struct, INumber<T
 
     public bool Read(BinaryReader reader)
     {
-        From = ReadValue(reader);
-        To = ReadValue(reader);
+        From = (TValueType) reader.Read(typeof(TValueType));
+        To = (TValueType) reader.Read(typeof(TValueType));
         InterpolationType = (CurveInterpolation) reader.ReadUInt32();
 
         return true;
     }
 
-    private static TValueType ReadValue(BinaryReader reader)
+    public void Write(BinaryWriter writer)
     {
-        return typeof(TValueType) switch
-        {
-            var t when t == typeof(float) => (TValueType) (object) reader.ReadSingle(),
-            var t when t == typeof(uint) => (TValueType) (object) reader.ReadUInt32(),
-            var t when t == typeof(int) => (TValueType) (object) reader.ReadInt32(),
-            var t when t == typeof(double) => (TValueType) (object) reader.ReadDouble(),
-            var t when t == typeof(short) => (TValueType) (object) reader.ReadInt16(),
-            var t when t == typeof(ushort) => (TValueType) (object) reader.ReadUInt16(),
-            var t when t == typeof(byte) => (TValueType) (object) reader.ReadByte(),
-            var t when t == typeof(sbyte) => (TValueType) (object) reader.ReadSByte(),
-            var t when t == typeof(long) => (TValueType) (object) reader.ReadInt64(),
-            var t when t == typeof(ulong) => (TValueType) (object) reader.ReadUInt64(),
-            _ => throw new NotSupportedException(
-                $"Type {typeof(TValueType).Name} is not supported for binary deserialization")
-        };
+        writer.Write(typeof(TValueType), From);
+        writer.Write(typeof(TValueType), To);
+        writer.Write((uint) InterpolationType);
     }
 }
