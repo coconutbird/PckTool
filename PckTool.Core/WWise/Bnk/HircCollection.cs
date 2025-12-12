@@ -14,8 +14,6 @@ public class HircCollection : IEnumerable<HircItem>, INotifyCollectionChanged
     private readonly Dictionary<uint, HircItem> _items = new();
     private readonly List<HircItem> _orderedItems = new(); // Preserve insertion order for serialization
 
-    public event NotifyCollectionChangedEventHandler? CollectionChanged;
-
     /// <summary>
     ///     Gets the number of items in the collection.
     /// </summary>
@@ -25,6 +23,18 @@ public class HircCollection : IEnumerable<HircItem>, INotifyCollectionChanged
     ///     Gets an item by its ID.
     /// </summary>
     public HircItem? this[uint id] => _items.GetValueOrDefault(id);
+
+    public IEnumerator<HircItem> GetEnumerator()
+    {
+        return _orderedItems.GetEnumerator();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
+    }
+
+    public event NotifyCollectionChangedEventHandler? CollectionChanged;
 
     /// <summary>
     ///     Gets an item by ID and casts to the specified type.
@@ -48,8 +58,7 @@ public class HircCollection : IEnumerable<HircItem>, INotifyCollectionChanged
         _items[item.Id] = item;
         _orderedItems.Add(item);
 
-        OnCollectionChanged(new NotifyCollectionChangedEventArgs(
-            NotifyCollectionChangedAction.Add, item));
+        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item));
     }
 
     /// <summary>
@@ -63,8 +72,8 @@ public class HircCollection : IEnumerable<HircItem>, INotifyCollectionChanged
             _orderedItems[index] = item;
             _items[item.Id] = item;
 
-            OnCollectionChanged(new NotifyCollectionChangedEventArgs(
-                NotifyCollectionChangedAction.Replace, item, existing));
+            OnCollectionChanged(
+                new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, item, existing));
         }
         else
         {
@@ -86,8 +95,7 @@ public class HircCollection : IEnumerable<HircItem>, INotifyCollectionChanged
         _items.Remove(id);
         _orderedItems.Remove(item);
 
-        OnCollectionChanged(new NotifyCollectionChangedEventArgs(
-            NotifyCollectionChangedAction.Remove, item));
+        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
 
         return true;
     }
@@ -100,22 +108,15 @@ public class HircCollection : IEnumerable<HircItem>, INotifyCollectionChanged
         _items.Clear();
         _orderedItems.Clear();
 
-        OnCollectionChanged(new NotifyCollectionChangedEventArgs(
-            NotifyCollectionChangedAction.Reset));
+        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
     }
 
     /// <summary>
     ///     Checks if an item with the specified ID exists.
     /// </summary>
-    public bool Contains(uint id) => _items.ContainsKey(id);
-
-    public IEnumerator<HircItem> GetEnumerator() => _orderedItems.GetEnumerator();
-
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-    private void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
+    public bool Contains(uint id)
     {
-        CollectionChanged?.Invoke(this, e);
+        return _items.ContainsKey(id);
     }
 
     /// <summary>
@@ -130,5 +131,9 @@ public class HircCollection : IEnumerable<HircItem>, INotifyCollectionChanged
             _orderedItems.Add(item);
         }
     }
-}
 
+    private void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
+    {
+        CollectionChanged?.Invoke(this, e);
+    }
+}

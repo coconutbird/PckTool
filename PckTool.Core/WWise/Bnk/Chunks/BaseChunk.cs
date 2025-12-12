@@ -1,6 +1,4 @@
-﻿using PckTool.Core.WWise.Pck;
-
-namespace PckTool.Core.WWise.Bnk.Chunks;
+﻿namespace PckTool.Core.WWise.Bnk.Chunks;
 
 /// <summary>
 ///     A base class for all chunks.

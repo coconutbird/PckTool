@@ -12,8 +12,6 @@ public class MediaCollection : IEnumerable<KeyValuePair<uint, byte[]>>, INotifyC
     private readonly Dictionary<uint, byte[]> _media = new();
     private readonly List<uint> _orderedIds = new(); // Preserve insertion order for serialization
 
-    public event NotifyCollectionChangedEventHandler? CollectionChanged;
-
     /// <summary>
     ///     Gets the number of media entries.
     /// </summary>
@@ -38,6 +36,21 @@ public class MediaCollection : IEnumerable<KeyValuePair<uint, byte[]>>, INotifyC
         }
     }
 
+    public IEnumerator<KeyValuePair<uint, byte[]>> GetEnumerator()
+    {
+        foreach (var id in _orderedIds)
+        {
+            yield return new KeyValuePair<uint, byte[]>(id, _media[id]);
+        }
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
+    }
+
+    public event NotifyCollectionChangedEventHandler? CollectionChanged;
+
     /// <summary>
     ///     Adds media data with the specified source ID.
     /// </summary>
@@ -52,8 +65,10 @@ public class MediaCollection : IEnumerable<KeyValuePair<uint, byte[]>>, INotifyC
         _media[sourceId] = data;
         _orderedIds.Add(sourceId);
 
-        OnCollectionChanged(new NotifyCollectionChangedEventArgs(
-            NotifyCollectionChangedAction.Add, new KeyValuePair<uint, byte[]>(sourceId, data)));
+        OnCollectionChanged(
+            new NotifyCollectionChangedEventArgs(
+                NotifyCollectionChangedAction.Add,
+                new KeyValuePair<uint, byte[]>(sourceId, data)));
     }
 
     /// <summary>
@@ -66,10 +81,11 @@ public class MediaCollection : IEnumerable<KeyValuePair<uint, byte[]>>, INotifyC
             var oldData = _media[sourceId];
             _media[sourceId] = data;
 
-            OnCollectionChanged(new NotifyCollectionChangedEventArgs(
-                NotifyCollectionChangedAction.Replace,
-                new KeyValuePair<uint, byte[]>(sourceId, data),
-                new KeyValuePair<uint, byte[]>(sourceId, oldData)));
+            OnCollectionChanged(
+                new NotifyCollectionChangedEventArgs(
+                    NotifyCollectionChangedAction.Replace,
+                    new KeyValuePair<uint, byte[]>(sourceId, data),
+                    new KeyValuePair<uint, byte[]>(sourceId, oldData)));
         }
         else
         {
@@ -91,8 +107,10 @@ public class MediaCollection : IEnumerable<KeyValuePair<uint, byte[]>>, INotifyC
         _media.Remove(sourceId);
         _orderedIds.Remove(sourceId);
 
-        OnCollectionChanged(new NotifyCollectionChangedEventArgs(
-            NotifyCollectionChangedAction.Remove, new KeyValuePair<uint, byte[]>(sourceId, data)));
+        OnCollectionChanged(
+            new NotifyCollectionChangedEventArgs(
+                NotifyCollectionChangedAction.Remove,
+                new KeyValuePair<uint, byte[]>(sourceId, data)));
 
         return true;
     }
@@ -105,33 +123,23 @@ public class MediaCollection : IEnumerable<KeyValuePair<uint, byte[]>>, INotifyC
         _media.Clear();
         _orderedIds.Clear();
 
-        OnCollectionChanged(new NotifyCollectionChangedEventArgs(
-            NotifyCollectionChangedAction.Reset));
+        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
     }
 
     /// <summary>
     ///     Checks if media with the specified source ID exists.
     /// </summary>
-    public bool Contains(uint sourceId) => _media.ContainsKey(sourceId);
+    public bool Contains(uint sourceId)
+    {
+        return _media.ContainsKey(sourceId);
+    }
 
     /// <summary>
     ///     Tries to get media data by source ID.
     /// </summary>
-    public bool TryGet(uint sourceId, out byte[]? data) => _media.TryGetValue(sourceId, out data);
-
-    public IEnumerator<KeyValuePair<uint, byte[]>> GetEnumerator()
+    public bool TryGet(uint sourceId, out byte[]? data)
     {
-        foreach (var id in _orderedIds)
-        {
-            yield return new KeyValuePair<uint, byte[]>(id, _media[id]);
-        }
-    }
-
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-    private void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
-    {
-        CollectionChanged?.Invoke(this, e);
+        return _media.TryGetValue(sourceId, out data);
     }
 
     /// <summary>
@@ -146,5 +154,9 @@ public class MediaCollection : IEnumerable<KeyValuePair<uint, byte[]>>, INotifyC
             _orderedIds.Add(id);
         }
     }
-}
 
+    private void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
+    {
+        CollectionChanged?.Invoke(this, e);
+    }
+}

@@ -13,7 +13,7 @@ namespace PckTool.Core.WWise.Bnk;
 /// </summary>
 public class SoundBank
 {
-    #region Properties
+#region Properties
 
     /// <summary>
     ///     The unique ID of this sound bank.
@@ -45,9 +45,9 @@ public class SoundBank
     /// </summary>
     public bool IsValid { get; private set; }
 
-    #endregion
+#endregion
 
-    #region Collections
+#region Collections
 
     /// <summary>
     ///     All HIRC items in this sound bank.
@@ -59,9 +59,9 @@ public class SoundBank
     /// </summary>
     public MediaCollection Media { get; } = new();
 
-    #endregion
+#endregion
 
-    #region Typed Accessors
+#region Typed Accessors
 
     /// <summary>
     ///     All Event items in this sound bank.
@@ -103,35 +103,42 @@ public class SoundBank
     /// </summary>
     public IEnumerable<MusicRanSeqItem> MusicRanSeqs => Items.OfType<MusicRanSeqItem>();
 
-    #endregion
+#endregion
 
-    #region Lookup Methods
+#region Lookup Methods
 
     /// <summary>
     ///     Gets a HIRC item by ID.
     /// </summary>
-    public HircItem? GetItem(uint id) => Items[id];
+    public HircItem? GetItem(uint id)
+    {
+        return Items[id];
+    }
 
     /// <summary>
     ///     Gets a HIRC item by ID and casts to the specified type.
     /// </summary>
-    public T? GetItem<T>(uint id) where T : HircItem => Items.Get<T>(id);
+    public T? GetItem<T>(uint id) where T : HircItem
+    {
+        return Items.Get<T>(id);
+    }
 
     /// <summary>
     ///     Gets embedded media by source ID.
     /// </summary>
-    public byte[]? GetMedia(uint sourceId) => Media[sourceId];
+    public byte[]? GetMedia(uint sourceId)
+    {
+        return Media[sourceId];
+    }
 
-    #endregion
+#endregion
 
-    #region Constructors
+#region Constructors
 
     /// <summary>
     ///     Creates a new empty sound bank.
     /// </summary>
-    public SoundBank()
-    {
-    }
+    public SoundBank() { }
 
     /// <summary>
     ///     Creates a new sound bank with the specified ID.
@@ -143,9 +150,9 @@ public class SoundBank
         IsValid = true;
     }
 
-    #endregion
+#endregion
 
-    #region Parse Methods
+#region Parse Methods
 
     /// <summary>
     ///     Parses a sound bank from a byte array.
@@ -153,6 +160,7 @@ public class SoundBank
     public static SoundBank? Parse(byte[] data)
     {
         using var stream = new MemoryStream(data);
+
         return Parse(stream);
     }
 
@@ -161,7 +169,7 @@ public class SoundBank
     /// </summary>
     public static SoundBank? Parse(Stream stream)
     {
-        using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
+        using var reader = new BinaryReader(stream, Encoding.UTF8, true);
         var bank = new SoundBank();
 
         if (bank.ReadInternal(reader))
@@ -177,12 +185,14 @@ public class SoundBank
     /// </summary>
     public static SoundBank? Load(string path)
     {
-        return Parse(File.ReadAllBytes(path));
+        using var stream = File.OpenRead(path);
+
+        return Parse(stream);
     }
 
-    #endregion
+#endregion
 
-    #region Write Methods
+#region Write Methods
 
     /// <summary>
     ///     Serializes the sound bank to a byte array.
@@ -208,47 +218,24 @@ public class SoundBank
         throw new NotImplementedException("SoundBank serialization is not yet implemented.");
     }
 
-    #endregion
+#endregion
 
-    #region Legacy Compatibility
+#region Legacy Compatibility
 
     // These properties maintain backwards compatibility with existing code
     // that accesses chunks directly. They will be removed in a future version.
 
-    [Obsolete("Use Items collection instead. This property will be removed in a future version.")]
-    public HircChunk? HircChunk { get; private set; }
+    // Internal chunk storage (used during parsing)
+    internal HircChunk? HircChunk { get; private set; }
+    internal DataChunk? DataChunk { get; private set; }
+    internal BankHeaderChunk? BankHeaderChunk { get; private set; }
+    internal MediaIndexChunk? MediaIndexChunk { get; private set; }
+    internal CustomPlatformChunk? PlatformChunk { get; private set; }
+    internal EnvSettingsChunk? EnvSettingsChunk { get; private set; }
 
-    [Obsolete("Use Media collection instead. This property will be removed in a future version.")]
-    public DataChunk? DataChunk { get; private set; }
+#endregion
 
-    [Obsolete("Access properties directly on SoundBank. This property will be removed in a future version.")]
-    public BankHeaderChunk? BankHeaderChunk { get; private set; }
-
-    [Obsolete("This property will be removed in a future version.")]
-    public MediaIndexChunk? MediaIndexChunk { get; private set; }
-
-    [Obsolete("This property will be removed in a future version.")]
-    public CustomPlatformChunk? PlatformChunk { get; private set; }
-
-    [Obsolete("This property will be removed in a future version.")]
-    public EnvSettingsChunk? EnvSettingsChunk { get; private set; }
-
-    [Obsolete("Use SoundBank.Parse() instead.")]
-    public bool Read(BinaryReader reader) => ReadInternal(reader);
-
-    // Legacy compatibility properties
-    [Obsolete("Use Id property instead.")]
-    public uint? SoundbankId => IsValid ? Id : null;
-
-    [Obsolete("Use Media.Count > 0 instead.")]
-    public bool IsMediaLoaded => Media.Count > 0;
-
-    [Obsolete("Use Items.Count > 0 instead.")]
-    public bool IsHircLoaded => Items.Count > 0;
-
-    #endregion
-
-    #region Internal Parsing
+#region Internal Parsing
 
     private bool ReadInternal(BinaryReader reader)
     {
@@ -329,8 +316,9 @@ public class SoundBank
             // Populate Media collection from DataChunk
             if (dataChunk.Data is not null)
             {
-                Media.AddRange(dataChunk.Data
-                    .Select(e => new KeyValuePair<uint, byte[]>(e.Id, e.Data)));
+                Media.AddRange(
+                    dataChunk.Data
+                             .Select(e => new KeyValuePair<uint, byte[]>(e.Id, e.Data)));
             }
         }
         else if (chunk.Tag == BnkChunkIds.BankHierarchyChunkId)
@@ -497,7 +485,15 @@ public class SoundBank
         public required uint Tag { get; init; }
         public required uint Size { get; init; }
 
-        public string MagicString => Encoding.ASCII.GetString(BitConverter.GetBytes(Tag));
+        public string MagicString =>
+            new(
+                new[]
+                {
+                    (char) (Tag & 0xFF),
+                    (char) ((Tag >> 8) & 0xFF),
+                    (char) ((Tag >> 16) & 0xFF),
+                    (char) ((Tag >> 24) & 0xFF)
+                });
 
         public static SubChunk Read(BinaryReader reader)
         {
@@ -508,5 +504,5 @@ public class SoundBank
         }
     }
 
-    #endregion
+#endregion
 }

@@ -1,7 +1,5 @@
 ﻿using System.Text;
 
-using PckTool.Core.WWise.Pck;
-
 namespace PckTool.Core.WWise.Bnk.Chunks;
 
 public class CustomPlatformChunk : BaseChunk

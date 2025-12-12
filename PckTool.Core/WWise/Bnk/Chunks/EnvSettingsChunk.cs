@@ -1,5 +1,4 @@
 ﻿using PckTool.Core.WWise.Bnk.Bank;
-using PckTool.Core.WWise.Pck;
 
 namespace PckTool.Core.WWise.Bnk.Chunks;
 
