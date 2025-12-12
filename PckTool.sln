@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PckTool", "PckTool\PckTool.csproj", "{3205C198-C4C7-483C-83C5-A9E5FDF83FC8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PckTool.Core", "PckTool.Core\PckTool.Core.csproj", "{C658F6FD-114C-4270-8436-DE5082750798}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,9 @@ Global
 		{3205C198-C4C7-483C-83C5-A9E5FDF83FC8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3205C198-C4C7-483C-83C5-A9E5FDF83FC8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3205C198-C4C7-483C-83C5-A9E5FDF83FC8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C658F6FD-114C-4270-8436-DE5082750798}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C658F6FD-114C-4270-8436-DE5082750798}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C658F6FD-114C-4270-8436-DE5082750798}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C658F6FD-114C-4270-8436-DE5082750798}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -12,4 +12,8 @@
         <PackageReference Include="System.CommandLine" Version="2.0.1" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\PckTool.Core\PckTool.Core.csproj" />
+    </ItemGroup>
+
 </Project>

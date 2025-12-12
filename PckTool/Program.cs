@@ -1,32 +1,11 @@
 ﻿using System.CommandLine;
 using System.Globalization;
-using System.Text;
 
 using Microsoft.Win32;
 
-using PckTool.WWise;
+using PckTool.Core.WWise;
 
 namespace PckTool;
-
-public static class BinaryReaderExtensions
-{
-    public static string ReadWString(this BinaryReader reader)
-    {
-        var builder = new StringBuilder();
-
-        while (true)
-        {
-            var buffer = reader.ReadUInt16();
-
-            if (buffer == 0)
-            {
-                return builder.ToString();
-            }
-
-            builder.Append((char) buffer);
-        }
-    }
-}
 
 public static class Program
 {
