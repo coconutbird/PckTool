@@ -1,0 +1,28 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
+        x:Class="PckTool.UI.MainWindow"
+        Title="PckTool"
+        Width="900" Height="600">
+
+    <DockPanel Margin="10">
+        <!-- Top toolbar -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10">
+            <Button x:Name="OpenPckButton" Content="Open PCK..." Click="OnOpenPckClick"/>
+            <TextBlock x:Name="FilePathText" VerticalAlignment="Center" Foreground="Gray"/>
+        </StackPanel>
+
+        <!-- Status bar -->
+        <TextBlock DockPanel.Dock="Bottom" x:Name="StatusText" Text="No file loaded" Margin="0,10,0,0"/>
+
+        <!-- Main content - TreeView for package contents -->
+        <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4">
+            <TreeView x:Name="PackageTree" Margin="5">
+                <!-- Items populated in code-behind -->
+            </TreeView>
+        </Border>
+    </DockPanel>
+
+</Window>

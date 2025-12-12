@@ -3,7 +3,9 @@ using System.Globalization;
 
 using Microsoft.Win32;
 
-using PckTool.Core.WWise;
+using PckTool.Core.HaloWars;
+using PckTool.Core.WWise.Bnk;
+using PckTool.Core.WWise.Pck;
 
 namespace PckTool;
 
@@ -146,9 +148,9 @@ public static class Program
 
         var soundsPackagePath = GetSoundsPackagePath(gameDir);
 
-        var package = new FilePackage(soundsPackagePath);
+        var package = PckFile.Load(soundsPackagePath);
 
-        if (!package.Load())
+        if (package is null)
         {
             Log.Error("Failed to find sounds file");
 
@@ -180,10 +182,10 @@ public static class Program
 
         Log.Info("Loading soundbanks...");
 
-        foreach (var fileEntry in package.SoundBanksLut.Entries)
+        foreach (var fileEntry in package.SoundBanks)
         {
             var languageId = fileEntry.LanguageId;
-            var language = package.LanguageMap[languageId];
+            var language = package.Languages[languageId];
 
             // Apply language filter
             if (!string.IsNullOrWhiteSpace(languageFilter)
@@ -193,7 +195,7 @@ public static class Program
                 {
                     Log.Info(
                         "Skipping soundbank {0:X8} (language {1} doesn't match filter)",
-                        fileEntry.FileId,
+                        fileEntry.Id,
                         language);
                 }
 
@@ -201,11 +203,11 @@ public static class Program
             }
 
             // Apply sound bank filter
-            if (soundBankIdFilter.HasValue && fileEntry.FileId != soundBankIdFilter.Value)
+            if (soundBankIdFilter.HasValue && fileEntry.Id != soundBankIdFilter.Value)
             {
                 if (verbose)
                 {
-                    Log.Info("Skipping soundbank {0:X8} (doesn't match filter)", fileEntry.FileId);
+                    Log.Info("Skipping soundbank {0:X8} (doesn't match filter)", fileEntry.Id);
                 }
 
                 continue;
@@ -215,36 +217,31 @@ public static class Program
             {
                 Log.Info(
                     "Soundbank ID: {0:X8} Language: {1} Size: {2} bytes",
-                    fileEntry.FileId,
+                    fileEntry.Id,
                     language,
-                    fileEntry.FileSize);
+                    fileEntry.Size);
             }
 
-            var soundbank = new SoundBank();
+            var soundbank = SoundBank.Parse(fileEntry.GetData());
 
-            if (!soundbank.Read(new BinaryReader(new MemoryStream(fileEntry.Data))))
+            if (soundbank is null)
             {
                 Log.Error("  Failed to parse soundbank: " + failed++);
-
-                // well we failed to parse the whole thing, but we can still extract the wems
-                if (!soundbank.IsMediaLoaded)
-                {
-                    continue;
-                }
-            }
-
-            var bankId = soundbank.SoundbankId;
-
-            if (bankId is null)
-            {
-                Log.Warn("  Soundbank has no ID, skipping");
-
                 continue;
             }
 
+            // Check if we have media even if parsing partially failed
+            if (soundbank.Media.Count == 0 && !soundbank.IsValid)
+            {
+                Log.Warn("  Soundbank has no media and is not valid, skipping");
+                continue;
+            }
+
+            var bankId = soundbank.Id;
+
             if (!soundbank.IsValid)
             {
-                Log.Warn("  Soundbank is not valid: {0}", bankId);
+                Log.Warn("  Soundbank is not valid: {0:X8}", bankId);
             }
 
             // Get or create the language group
@@ -254,7 +251,7 @@ public static class Program
                 soundbanksByLanguage[languageId] = languageBanks;
             }
 
-            languageBanks[bankId.Value] = soundbank;
+            languageBanks[bankId] = soundbank;
         }
 
         // Phase 2: Load sound table and resolve all file IDs with cross-bank support
@@ -286,7 +283,7 @@ public static class Program
         // Resolve for each language group, with fallback to global lookup for cross-language refs
         foreach (var (languageId, languageBanks) in soundbanksByLanguage)
         {
-            var language = package.LanguageMap[languageId];
+            var language = package.Languages[languageId];
             Log.Info("  Resolving for language: {0} ({1} banks)", language, languageBanks.Count);
 
             // Create a lookup function that:
@@ -316,7 +313,7 @@ public static class Program
 
         foreach (var (languageId, languageBanks) in soundbanksByLanguage)
         {
-            var language = package.LanguageMap[languageId];
+            var language = package.Languages[languageId];
 
             foreach (var (soundbankId, soundbank) in languageBanks)
             {
@@ -331,17 +328,10 @@ public static class Program
                 // Track how many times each cue name is used for unique filenames
                 var usedFiles = new Dictionary<string, int>();
 
-                foreach (var wem in soundbank.DataChunk?.Data ?? [])
+                foreach (var (wemId, wemData) in soundbank.Media)
                 {
-                    if (!wem.IsValid)
-                    {
-                        Log.Warn("  Invalid WEM data!");
-
-                        continue;
-                    }
-
-                    var cueName = soundTable.GetCueNameByFileId(wem.Id);
-                    var wemFileName = $"{wem.Id}";
+                    var cueName = soundTable.GetCueNameByFileId(wemId);
+                    var wemFileName = $"{wemId}";
 
                     if (cueName is not null)
                     {
@@ -361,14 +351,14 @@ public static class Program
 
                     EnsureDirectoryCreated(wemFile);
 
-                    File.WriteAllBytes(wemFile, wem.Data);
+                    File.WriteAllBytes(wemFile, wemData);
                 }
 
                 // Find the original file entry to write the .bnk file
                 var fileEntry =
-                    package.SoundBanksLut.Entries.First(e => e.FileId == soundbankId && e.LanguageId == languageId);
+                    package.SoundBanks.First(e => e.Id == soundbankId && e.LanguageId == languageId);
 
-                File.WriteAllBytes(bnkFile, fileEntry.Data);
+                File.WriteAllBytes(bnkFile, fileEntry.GetData());
             }
         }
 
@@ -439,9 +429,9 @@ public static class Program
 
         var soundsPackagePath = GetSoundsPackagePath(gameDir);
 
-        var package = new FilePackage(soundsPackagePath);
+        var package = PckFile.Load(soundsPackagePath);
 
-        if (!package.Load())
+        if (package is null)
         {
             Log.Error("Failed to find sounds file");
 
@@ -452,9 +442,8 @@ public static class Program
         Log.Info("------------------------");
 
         // Group by language for cleaner output
-        var banksByLanguage = package.SoundBanksLut
-                                     .Entries
-                                     .GroupBy(e => package.LanguageMap[e.LanguageId])
+        var banksByLanguage = package.SoundBanks
+                                     .GroupBy(e => package.Languages[e.LanguageId])
                                      .OrderBy(g => g.Key);
 
         foreach (var languageGroup in banksByLanguage)
@@ -462,14 +451,14 @@ public static class Program
             Log.Info("");
             Log.Info("Language: {0}", languageGroup.Key);
 
-            foreach (var entry in languageGroup.OrderBy(e => e.FileId))
+            foreach (var entry in languageGroup.OrderBy(e => e.Id))
             {
-                Log.Info("  {0:X8} - {1} bytes", entry.FileId, entry.FileSize);
+                Log.Info("  {0:X8} - {1} bytes", entry.Id, entry.Size);
             }
         }
 
         Log.Info("");
-        Log.Info("Total: {0} sound banks", package.SoundBanksLut.Entries.Count);
+        Log.Info("Total: {0} sound banks", package.SoundBanks.Count());
     }
 
     private static void RunReplace(
@@ -508,9 +497,9 @@ public static class Program
 
         var soundsPackagePath = GetSoundsPackagePath(gameDir);
 
-        var package = new FilePackage(soundsPackagePath);
+        var package = PckFile.Load(soundsPackagePath);
 
-        if (!package.Load())
+        if (package is null)
         {
             Log.Error("Failed to find sounds file");
 
@@ -518,7 +507,7 @@ public static class Program
         }
 
         // Find the sound bank entry to replace
-        var entry = package.SoundBanksLut.Entries.FirstOrDefault(e => e.FileId == bankId);
+        var entry = package.SoundBanks[bankId];
 
         if (entry is null)
         {
@@ -530,15 +519,15 @@ public static class Program
         Log.Info(
             "Found sound bank {0:X8} (Language: {1}, Size: {2} bytes)",
             bankId,
-            package.LanguageMap[entry.LanguageId],
-            entry.FileSize);
+            package.Languages[entry.LanguageId],
+            entry.Size);
 
         // Read the replacement data
         var replacementData = File.ReadAllBytes(inputFile);
         Log.Info("Replacement file size: {0} bytes", replacementData.Length);
 
         // Replace the data
-        entry.Data = replacementData;
+        entry.ReplaceWith(replacementData);
 
         // Determine output path
         var outputFile = outputPath;
