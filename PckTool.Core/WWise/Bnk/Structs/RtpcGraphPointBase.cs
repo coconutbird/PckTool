@@ -13,8 +13,8 @@ public class RtpcGraphPointBase<TValueType> where TValueType : struct, INumber<T
 
     public bool Read(BinaryReader reader)
     {
-        From = (TValueType) reader.Read(typeof(TValueType));
-        To = (TValueType) reader.Read(typeof(TValueType));
+        From = (TValueType) Convert.ChangeType(reader.Read(typeof(TValueType)), typeof(TValueType));
+        To = (TValueType) Convert.ChangeType(reader.Read(typeof(TValueType)), typeof(TValueType));
         InterpolationType = (CurveInterpolation) reader.ReadUInt32();
 
         return true;

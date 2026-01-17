@@ -3,9 +3,13 @@ using System.Globalization;
 
 using Microsoft.Win32;
 
+using PckTool.Core;
 using PckTool.Core.HaloWars;
+using PckTool.Core.Package;
 using PckTool.Core.WWise.Bnk;
 using PckTool.Core.WWise.Pck;
+
+using Ww2Ogg.Core;
 
 namespace PckTool;
 
@@ -111,6 +115,98 @@ public static class Program
         });
 
         rootCommand.Subcommands.Add(infoCommand);
+
+        // Browse command - browse banks in a package using PackageBrowser
+        var browseCommand = new Command("browse", "Browse sound banks in the package file.");
+
+        var browseBankOption = new Option<string?>("--bank", "-b")
+        {
+            Description = "Specific bank ID (hex) to show details for."
+        };
+
+        browseCommand.Options.Add(languageOption);
+        browseCommand.Options.Add(browseBankOption);
+
+        browseCommand.SetAction(parseResult =>
+        {
+            var gameDir = parseResult.GetValue(gameDirOption);
+            var verbose = parseResult.GetValue(verboseOption);
+            var language = parseResult.GetValue(languageOption);
+            var bankId = parseResult.GetValue(browseBankOption);
+            RunBrowse(gameDir, verbose, language, bankId);
+        });
+
+        rootCommand.Subcommands.Add(browseCommand);
+
+        // Sounds command - list sounds in a specific bank
+        var soundsCommand = new Command("sounds", "List all sounds in a specific bank.");
+
+        var soundsBankOption = new Option<string>("--bank", "-b")
+        {
+            Description = "Bank ID (hex) to list sounds from.", Required = true
+        };
+
+        soundsCommand.Options.Add(soundsBankOption);
+
+        soundsCommand.SetAction(parseResult =>
+        {
+            var gameDir = parseResult.GetValue(gameDirOption);
+            var verbose = parseResult.GetValue(verboseOption);
+            var bankId = parseResult.GetValue(soundsBankOption)!;
+            RunSounds(gameDir, verbose, bankId);
+        });
+
+        rootCommand.Subcommands.Add(soundsCommand);
+
+        // Project command - manage project files
+        var projectCommand = new Command("project", "Manage project files.");
+
+        // Project create subcommand
+        var projectCreateCommand = new Command("create", "Create a new project file.");
+
+        var projectNameOption = new Option<string>("--name", "-n")
+        {
+            Description = "Project name.", DefaultValueFactory = _ => "Untitled Project"
+        };
+
+        var projectFileOption = new Option<string>("--file", "-f")
+        {
+            Description = "Path to save the project file.", Required = true
+        };
+
+        projectCreateCommand.Options.Add(projectNameOption);
+        projectCreateCommand.Options.Add(projectFileOption);
+        projectCreateCommand.Options.Add(gameDirOption);
+
+        projectCreateCommand.SetAction(parseResult =>
+        {
+            var name = parseResult.GetValue(projectNameOption) ?? "Untitled Project";
+            var file = parseResult.GetValue(projectFileOption)!;
+            var gameDir = parseResult.GetValue(gameDirOption);
+            RunProjectCreate(name, file, gameDir);
+        });
+
+        projectCommand.Subcommands.Add(projectCreateCommand);
+
+        // Project info subcommand
+        var projectInfoCommand = new Command("info", "Show project information.");
+
+        var projectPathOption = new Option<string>("--project", "-p")
+        {
+            Description = "Path to the project file.", Required = true
+        };
+
+        projectInfoCommand.Options.Add(projectPathOption);
+
+        projectInfoCommand.SetAction(parseResult =>
+        {
+            var projectPath = parseResult.GetValue(projectPathOption)!;
+            RunProjectInfo(projectPath);
+        });
+
+        projectCommand.Subcommands.Add(projectInfoCommand);
+
+        rootCommand.Subcommands.Add(projectCommand);
 
         // Default behavior (no command) - show help
         rootCommand.SetAction(_ =>
@@ -227,6 +323,7 @@ public static class Program
             if (soundbank is null)
             {
                 Log.Error("  Failed to parse soundbank: " + failed++);
+
                 continue;
             }
 
@@ -234,6 +331,7 @@ public static class Program
             if (soundbank.Media.Count == 0 && !soundbank.IsValid)
             {
                 Log.Warn("  Soundbank has no media and is not valid, skipping");
+
                 continue;
             }
 
@@ -355,8 +453,7 @@ public static class Program
                 }
 
                 // Find the original file entry to write the .bnk file
-                var fileEntry =
-                    package.SoundBanks.First(e => e.Id == soundbankId && e.LanguageId == languageId);
+                var fileEntry = package.SoundBanks.First(e => e.Id == soundbankId && e.LanguageId == languageId);
 
                 File.WriteAllBytes(bnkFile, fileEntry.GetData());
             }
@@ -597,5 +694,315 @@ public static class Program
 
         Log.Info("");
         Log.Info("Default Output Directory: dumps");
+    }
+
+    private static void RunBrowse(string? gameDirArg, bool verbose, string? languageFilter, string? bankIdFilter)
+    {
+        var gameDir = gameDirArg ?? FindHaloWarsGameDirectory();
+
+        if (gameDir is null)
+        {
+            Log.Error("Failed to find Halo Wars game directory");
+
+            return;
+        }
+
+        Log.Info("Found Halo Wars game directory: " + gameDir);
+
+        using var browser = new PackageBrowser();
+
+        var soundsPackagePath = GetSoundsPackagePath(gameDir);
+
+        if (!browser.LoadPackage(soundsPackagePath))
+        {
+            Log.Error("Failed to load sounds package");
+
+            return;
+        }
+
+        // Try to load sound table for cue names
+        var soundTablePath = FindSoundTableXml(gameDir);
+
+        if (soundTablePath is not null)
+        {
+            if (browser.LoadSoundTable(soundTablePath))
+            {
+                Log.Info("Sound table loaded");
+            }
+        }
+
+        // Parse bank ID filter if provided
+        uint? bankId = null;
+
+        if (!string.IsNullOrWhiteSpace(bankIdFilter))
+        {
+            if (uint.TryParse(bankIdFilter, NumberStyles.HexNumber, null, out var parsedId))
+            {
+                bankId = parsedId;
+            }
+            else
+            {
+                Log.Error("Invalid bank ID format. Please use hexadecimal (e.g., 1A2B3C4D)");
+
+                return;
+            }
+        }
+
+        // If a specific bank is requested, show details
+        if (bankId.HasValue)
+        {
+            var details = browser.GetBankDetails(bankId.Value);
+
+            if (details is null)
+            {
+                Log.Error("Bank {0:X8} not found", bankId.Value);
+
+                return;
+            }
+
+            Log.Info("");
+            Log.Info("=== Bank Details: {0} ===", details.IdHex);
+            Log.Info("Language:     {0}", details.Language);
+            Log.Info("Size:         {0}", details.SizeFormatted);
+            Log.Info("Version:      0x{0:X}", details.Version);
+            Log.Info("Valid:        {0}", details.IsValid);
+            Log.Info("Sounds:       {0}", details.SoundCount);
+            Log.Info("Events:       {0}", details.EventCount);
+            Log.Info("Actions:      {0}", details.ActionCount);
+            Log.Info("Media Files:  {0}", details.MediaCount);
+
+            if (details.Sounds.Count > 0)
+            {
+                Log.Info("");
+                Log.Info("Sounds:");
+
+                foreach (var sound in details.Sounds)
+                {
+                    var embedded = sound.HasEmbeddedMedia ? "[embedded]" : "[streaming]";
+                    Log.Info("  {0} - {1} {2}", sound.SourceIdHex, sound.DisplayName, embedded);
+                }
+            }
+
+            return;
+        }
+
+        // Otherwise, list all banks
+        Log.Info("");
+        Log.Info("Sound Banks:");
+        Log.Info("------------");
+
+        // Parse language filter
+        uint? languageId = null;
+
+        if (!string.IsNullOrWhiteSpace(languageFilter))
+        {
+            foreach (var (id, name) in browser.Languages)
+            {
+                if (name.Equals(languageFilter, StringComparison.OrdinalIgnoreCase))
+                {
+                    languageId = id;
+
+                    break;
+                }
+            }
+
+            if (!languageId.HasValue)
+            {
+                Log.Warn("Language '{0}' not found, showing all languages", languageFilter);
+            }
+        }
+
+        var banks = browser.GetBanks(languageId).ToList();
+        var banksByLanguage = banks.GroupBy(b => b.Language).OrderBy(g => g.Key);
+
+        foreach (var group in banksByLanguage)
+        {
+            Log.Info("");
+            Log.Info("Language: {0}", group.Key);
+
+            foreach (var bank in group.OrderBy(b => b.Id))
+            {
+                Log.Info("  {0} - {1} ({2} sounds)", bank.IdHex, bank.SizeFormatted, bank.SoundCount);
+            }
+        }
+
+        Log.Info("");
+        Log.Info("Total: {0} banks", banks.Count);
+    }
+
+    private static void RunSounds(string? gameDirArg, bool verbose, string bankIdArg)
+    {
+        var gameDir = gameDirArg ?? FindHaloWarsGameDirectory();
+
+        if (gameDir is null)
+        {
+            Log.Error("Failed to find Halo Wars game directory");
+
+            return;
+        }
+
+        // Parse bank ID
+        if (!uint.TryParse(bankIdArg, NumberStyles.HexNumber, null, out var bankId))
+        {
+            Log.Error("Invalid bank ID format. Please use hexadecimal (e.g., 1A2B3C4D)");
+
+            return;
+        }
+
+        using var browser = new PackageBrowser();
+
+        var soundsPackagePath = GetSoundsPackagePath(gameDir);
+
+        if (!browser.LoadPackage(soundsPackagePath))
+        {
+            Log.Error("Failed to load sounds package");
+
+            return;
+        }
+
+        // Try to load sound table for cue names
+        var soundTablePath = FindSoundTableXml(gameDir);
+
+        if (soundTablePath is not null)
+        {
+            browser.LoadSoundTable(soundTablePath);
+        }
+
+        var sounds = browser.GetSounds(bankId).ToList();
+
+        if (sounds.Count == 0)
+        {
+            Log.Warn("No sounds found in bank {0:X8}", bankId);
+
+            return;
+        }
+
+        Log.Info("");
+        Log.Info("Sounds in bank {0:X8}:", bankId);
+        Log.Info("------------------------");
+
+        foreach (var sound in sounds.OrderBy(s => s.SourceId))
+        {
+            var embedded = sound.HasEmbeddedMedia ? "[embedded]" : "[streaming]";
+            var name = sound.Name is not null ? $" ({sound.Name})" : "";
+            Log.Info("  {0}{1} - {2} {3}", sound.SourceIdHex, name, sound.StreamType, embedded);
+        }
+
+        Log.Info("");
+        Log.Info("Total: {0} sounds", sounds.Count);
+    }
+
+    private static void RunProjectCreate(string name, string filePath, string? gameDirArg)
+    {
+        var project = ProjectFile.Create(name);
+
+        // Try to find game directory
+        var gameDir = gameDirArg ?? FindHaloWarsGameDirectory();
+
+        if (gameDir is not null)
+        {
+            project.GameDirectory = gameDir;
+            project.PackagePath = GetSoundsPackagePath(gameDir);
+
+            var soundTablePath = FindSoundTableXml(gameDir);
+
+            if (soundTablePath is not null)
+            {
+                project.SoundTablePath = soundTablePath;
+            }
+        }
+
+        if (project.Save(filePath))
+        {
+            Log.Info("Project created: {0}", filePath);
+            Log.Info("  Name: {0}", project.Name);
+
+            if (project.GameDirectory is not null)
+            {
+                Log.Info("  Game Directory: {0}", project.GameDirectory);
+            }
+
+            if (project.PackagePath is not null)
+            {
+                Log.Info("  Package Path: {0}", project.PackagePath);
+            }
+
+            if (project.SoundTablePath is not null)
+            {
+                Log.Info("  Sound Table: {0}", project.SoundTablePath);
+            }
+        }
+        else
+        {
+            Log.Error("Failed to create project file");
+        }
+    }
+
+    private static void RunProjectInfo(string projectPath)
+    {
+        var project = ProjectFile.Load(projectPath);
+
+        if (project is null)
+        {
+            Log.Error("Failed to load project: {0}", projectPath);
+
+            return;
+        }
+
+        Log.Info("=== Project: {0} ===", project.Name);
+        Log.Info("");
+        Log.Info("File:           {0}", projectPath);
+        Log.Info("Created:        {0}", project.CreatedAt.ToLocalTime());
+        Log.Info("Modified:       {0}", project.ModifiedAt.ToLocalTime());
+        Log.Info("");
+
+        if (project.GameDirectory is not null)
+        {
+            Log.Info("Game Directory: {0}", project.GameDirectory);
+        }
+
+        if (project.PackagePath is not null)
+        {
+            Log.Info("Package Path:   {0}", project.PackagePath);
+        }
+
+        if (project.SoundTablePath is not null)
+        {
+            Log.Info("Sound Table:    {0}", project.SoundTablePath);
+        }
+
+        if (project.OutputDirectory is not null)
+        {
+            Log.Info("Output Dir:     {0}", project.OutputDirectory);
+        }
+
+        if (project.EditingBanks.Count > 0)
+        {
+            Log.Info("");
+            Log.Info("Editing Banks ({0}):", project.EditingBanks.Count);
+
+            foreach (var bankId in project.EditingBanks)
+            {
+                Log.Info("  {0:X8}", bankId);
+            }
+        }
+
+        if (project.EditingSounds.Count > 0)
+        {
+            Log.Info("");
+            Log.Info("Editing Sounds ({0}):", project.EditingSounds.Count);
+
+            foreach (var soundId in project.EditingSounds)
+            {
+                Log.Info("  {0:X8}", soundId);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(project.Notes))
+        {
+            Log.Info("");
+            Log.Info("Notes:");
+            Log.Info("  {0}", project.Notes);
+        }
     }
 }

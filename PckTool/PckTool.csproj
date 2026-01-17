@@ -10,6 +10,7 @@
     <ItemGroup>
         <PackageReference Include="NLog" Version="6.0.7" />
         <PackageReference Include="System.CommandLine" Version="2.0.1" />
+        <PackageReference Include="Ww2Ogg.Core" Version="1.0.0" />
     </ItemGroup>
 
     <ItemGroup>

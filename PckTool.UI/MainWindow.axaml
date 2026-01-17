@@ -10,6 +10,10 @@
     <DockPanel Margin="10">
         <!-- Top toolbar -->
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10">
+            <Button x:Name="NewProjectButton" Content="New Project" Click="OnNewProjectClick"/>
+            <Button x:Name="OpenProjectButton" Content="Open Project..." Click="OnOpenProjectClick"/>
+            <Button x:Name="SaveProjectButton" Content="Save Project" Click="OnSaveProjectClick" IsEnabled="False"/>
+            <Separator Width="1" Background="Gray" Margin="5,0"/>
             <Button x:Name="OpenPckButton" Content="Open PCK..." Click="OnOpenPckClick"/>
             <Button x:Name="LoadSoundTableButton" Content="Load Sound Table..." Click="OnLoadSoundTableClick"/>
             <TextBlock x:Name="FilePathText" VerticalAlignment="Center" Foreground="Gray"/>

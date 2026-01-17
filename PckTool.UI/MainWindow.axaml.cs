@@ -7,6 +7,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 
 using PckTool.Core.HaloWars;
+using PckTool.Core.Package;
 using PckTool.Core.WWise.Bnk;
 using PckTool.Core.WWise.Bnk.Structs;
 using PckTool.Core.WWise.Pck;
@@ -15,6 +16,7 @@ namespace PckTool.UI;
 
 public partial class MainWindow : Window
 {
+    private ProjectFile? _currentProject;
     private PckFile? _currentPackage;
     private SoundTable? _soundTable;
     private bool _isUpdatingFilters;
@@ -22,6 +24,126 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+    }
+
+    private void OnNewProjectClick(object? sender, RoutedEventArgs e)
+    {
+        _currentProject = ProjectFile.Create("New Project");
+        UpdateProjectUI();
+        StatusText.Text = "New project created (unsaved)";
+    }
+
+    private async void OnOpenProjectClick(object? sender, RoutedEventArgs e)
+    {
+        var topLevel = GetTopLevel(this);
+        if (topLevel is null) return;
+
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Open Project",
+            AllowMultiple = false,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("PckTool Project") { Patterns = ["*.pckproj"] },
+                new FilePickerFileType("JSON Files") { Patterns = ["*.json"] },
+                new FilePickerFileType("All Files") { Patterns = ["*.*"] }
+            ]
+        });
+
+        if (files.Count == 0) return;
+
+        var file = files[0];
+        var path = file.Path.LocalPath;
+
+        _currentProject = ProjectFile.Load(path);
+
+        if (_currentProject is null)
+        {
+            StatusText.Text = "Failed to load project";
+            return;
+        }
+
+        UpdateProjectUI();
+
+        // Auto-load package if specified
+        if (!string.IsNullOrWhiteSpace(_currentProject.PackagePath) &&
+            System.IO.File.Exists(_currentProject.PackagePath))
+        {
+            LoadPackage(_currentProject.PackagePath);
+        }
+
+        // Auto-load sound table if specified
+        if (!string.IsNullOrWhiteSpace(_currentProject.SoundTablePath) &&
+            System.IO.File.Exists(_currentProject.SoundTablePath))
+        {
+            try
+            {
+                _soundTable = new SoundTable();
+                if (_soundTable.Load(_currentProject.SoundTablePath))
+                {
+                    if (_currentPackage is not null)
+                    {
+                        ResolveSoundTableFileIds();
+                        PopulateTree();
+                    }
+                }
+            }
+            catch
+            {
+                _soundTable = null;
+            }
+        }
+
+        StatusText.Text = $"Project loaded: {_currentProject.Name}";
+    }
+
+    private async void OnSaveProjectClick(object? sender, RoutedEventArgs e)
+    {
+        if (_currentProject is null) return;
+
+        // If no file path, prompt for save location
+        if (string.IsNullOrWhiteSpace(_currentProject.FilePath))
+        {
+            var topLevel = GetTopLevel(this);
+            if (topLevel is null) return;
+
+            var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "Save Project",
+                DefaultExtension = "pckproj",
+                SuggestedFileName = $"{_currentProject.Name}.pckproj",
+                FileTypeChoices =
+                [
+                    new FilePickerFileType("PckTool Project") { Patterns = ["*.pckproj"] }
+                ]
+            });
+
+            if (file is null) return;
+
+            _currentProject.Save(file.Path.LocalPath);
+        }
+        else
+        {
+            _currentProject.Save();
+        }
+
+        UpdateProjectUI();
+        StatusText.Text = $"Project saved: {_currentProject.FilePath}";
+    }
+
+    private void UpdateProjectUI()
+    {
+        SaveProjectButton.IsEnabled = _currentProject is not null;
+
+        if (_currentProject is not null)
+        {
+            var dirty = _currentProject.IsDirty ? "*" : "";
+            Title = $"PckTool - {_currentProject.Name}{dirty}";
+        }
+        else
+        {
+            Title = "PckTool";
+        }
     }
 
     private async void OnOpenPckClick(object? sender, RoutedEventArgs e)
@@ -74,6 +196,14 @@ public partial class MainWindow : Window
             _soundTable = new SoundTable();
             if (_soundTable.Load(path))
             {
+                // Update project if active
+                if (_currentProject is not null)
+                {
+                    _currentProject.SoundTablePath = path;
+                    _currentProject.MarkDirty();
+                    UpdateProjectUI();
+                }
+
                 StatusText.Text = $"Sound table loaded: {System.IO.Path.GetFileName(path)}";
 
                 // Re-resolve file IDs if we have a package loaded
@@ -132,6 +262,14 @@ public partial class MainWindow : Window
                 StatusText.Text = "Failed to load PCK file";
                 FilterPanel.IsVisible = false;
                 return;
+            }
+
+            // Update project if active
+            if (_currentProject is not null)
+            {
+                _currentProject.PackagePath = path;
+                _currentProject.MarkDirty();
+                UpdateProjectUI();
             }
 
             FilePathText.Text = path;
