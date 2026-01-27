@@ -82,4 +82,11 @@ public class MediaInformation
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(SourceId);
+        writer.Write(InMemoryMediaSize);
+        writer.Write(SourceBits);
+    }
 }

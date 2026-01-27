@@ -46,4 +46,23 @@ public class AttenuationInitialValues
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write((byte) (IsConeEnabled ? 1 : 0));
+
+        for (var i = 0; i < 7; i++)
+        {
+            writer.Write(CurveToUse[i]);
+        }
+
+        writer.Write((byte) Curves.Count);
+
+        foreach (var curve in Curves)
+        {
+            curve.Write(writer);
+        }
+
+        InitialRtpc.Write(writer);
+    }
 }

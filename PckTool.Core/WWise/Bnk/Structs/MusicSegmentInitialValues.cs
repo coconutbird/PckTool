@@ -55,6 +55,19 @@ public class MusicSegmentInitialValues
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        MusicNodeParams.Write(writer);
+        writer.Write(Duration);
+
+        writer.Write((uint) Markers.Count);
+
+        foreach (var marker in Markers)
+        {
+            marker.Write(writer);
+        }
+    }
 }
 
 /// <summary>
@@ -97,5 +110,22 @@ public class MusicMarker
         }
 
         return true;
+    }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(Id);
+        writer.Write(Position);
+
+        if (Name != null)
+        {
+            var nameBytes = Encoding.UTF8.GetBytes(Name + '\0');
+            writer.Write((uint) nameBytes.Length);
+            writer.Write(nameBytes);
+        }
+        else
+        {
+            writer.Write((uint) 0);
+        }
     }
 }

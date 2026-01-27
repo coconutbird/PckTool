@@ -54,4 +54,14 @@ public class BusInitialParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        PropBundle.Write(writer);
+        writer.Write(BitVector1);
+        writer.Write(BitVector2);
+        writer.Write(MaxNumInstance);
+        writer.Write(ChannelConfig);
+        writer.Write(BitVector3);
+    }
 }

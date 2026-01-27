@@ -15,4 +15,10 @@ public class PlaylistItem
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(PlayId);
+        writer.Write(Weight);
+    }
 }

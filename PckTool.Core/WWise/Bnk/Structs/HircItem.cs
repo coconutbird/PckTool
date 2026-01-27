@@ -143,6 +143,11 @@ public sealed class AttenuationItem : HircItem
 
         return new AttenuationItem { Id = id, Values = values };
     }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
+    }
 }
 
 /// <summary>
@@ -160,6 +165,11 @@ public sealed class SoundItem : HircItem
         if (!values.Read(reader)) return null;
 
         return new SoundItem { Id = id, Values = values };
+    }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
     }
 }
 
@@ -179,6 +189,11 @@ public sealed class RanSeqCntrItem : HircItem
 
         return new RanSeqCntrItem { Id = id, Values = values };
     }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
+    }
 }
 
 /// <summary>
@@ -197,6 +212,11 @@ public sealed class ActorMixerItem : HircItem
 
         return new ActorMixerItem { Id = id, Values = values };
     }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
+    }
 }
 
 /// <summary>
@@ -214,6 +234,11 @@ public sealed class BusItem : HircItem
         if (!values.Read(reader)) return null;
 
         return new BusItem { Id = id, Values = values };
+    }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
     }
 }
 
@@ -244,6 +269,12 @@ public sealed class ActionItem : HircItem
 
         return new ActionItem { Id = id, ActionType = actionType, Values = values };
     }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        writer.Write((ushort) ActionType);
+        Values.Write(writer, ActionType);
+    }
 }
 
 /// <summary>
@@ -261,6 +292,11 @@ public sealed class EventItem : HircItem
         if (!values.Read(reader)) return null;
 
         return new EventItem { Id = id, Values = values };
+    }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
     }
 }
 
@@ -286,55 +322,81 @@ public sealed class FxItem : HircItem
 
         return new FxItem(type) { Id = id, Values = values };
     }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
+    }
 }
 
-#region Stub Implementations
+#region Implemented HIRC Items (formerly stubs)
 
 /// <summary>
-///     Represents a CAkState HIRC item (stub - raw bytes preserved).
+///     Represents a CAkState HIRC item.
 /// </summary>
 public sealed class StateItem : HircItem
 {
     public override HircType Type => HircType.State;
-    public required byte[] RawData { get; init; }
+    public required StateInitialValues Values { get; init; }
 
-    internal static StateItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    internal static StateItem? ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
-        var rawData = reader.ReadBytes(remainingSize);
+        var values = new StateInitialValues();
 
-        return new StateItem { Id = id, RawData = rawData };
+        if (!values.Read(reader)) return null;
+
+        return new StateItem { Id = id, Values = values };
+    }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
     }
 }
 
 /// <summary>
-///     Represents a CAkSwitchCntr HIRC item (stub - raw bytes preserved).
+///     Represents a CAkSwitchCntr HIRC item.
 /// </summary>
 public sealed class SwitchCntrItem : HircItem
 {
     public override HircType Type => HircType.SwitchCntr;
-    public required byte[] RawData { get; init; }
+    public required SwitchCntrInitialValues Values { get; init; }
 
-    internal static SwitchCntrItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    internal static SwitchCntrItem? ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
-        var rawData = reader.ReadBytes(remainingSize);
+        var values = new SwitchCntrInitialValues();
 
-        return new SwitchCntrItem { Id = id, RawData = rawData };
+        if (!values.Read(reader)) return null;
+
+        return new SwitchCntrItem { Id = id, Values = values };
+    }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
     }
 }
 
 /// <summary>
-///     Represents a CAkLayerCntr HIRC item (stub - raw bytes preserved).
+///     Represents a CAkLayerCntr HIRC item.
 /// </summary>
 public sealed class LayerCntrItem : HircItem
 {
     public override HircType Type => HircType.LayerCntr;
-    public required byte[] RawData { get; init; }
+    public required LayerCntrInitialValues Values { get; init; }
 
-    internal static LayerCntrItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    internal static LayerCntrItem? ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
-        var rawData = reader.ReadBytes(remainingSize);
+        var values = new LayerCntrInitialValues();
 
-        return new LayerCntrItem { Id = id, RawData = rawData };
+        if (!values.Read(reader)) return null;
+
+        return new LayerCntrItem { Id = id, Values = values };
+    }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
     }
 }
 
@@ -354,6 +416,11 @@ public sealed class MusicSegmentItem : HircItem
 
         return new MusicSegmentItem { Id = id, Values = values };
     }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
+    }
 }
 
 /// <summary>
@@ -371,6 +438,11 @@ public sealed class MusicTrackItem : HircItem
         if (!values.Read(reader)) return null;
 
         return new MusicTrackItem { Id = id, Values = values };
+    }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
     }
 }
 
@@ -390,6 +462,11 @@ public sealed class MusicSwitchItem : HircItem
 
         return new MusicSwitchItem { Id = id, Values = values };
     }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
+    }
 }
 
 /// <summary>
@@ -408,117 +485,173 @@ public sealed class MusicRanSeqItem : HircItem
 
         return new MusicRanSeqItem { Id = id, Values = values };
     }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
+    }
 }
 
 /// <summary>
-///     Represents a CAkDialogueEvent HIRC item (stub - raw bytes preserved).
+///     Represents a CAkDialogueEvent HIRC item.
 /// </summary>
 public sealed class DialogueEventItem : HircItem
 {
     public override HircType Type => HircType.DialogueEvent;
-    public required byte[] RawData { get; init; }
+    public required DialogueEventInitialValues Values { get; init; }
 
-    internal static DialogueEventItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    internal static DialogueEventItem? ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
-        var rawData = reader.ReadBytes(remainingSize);
+        var values = new DialogueEventInitialValues();
 
-        return new DialogueEventItem { Id = id, RawData = rawData };
+        if (!values.Read(reader)) return null;
+
+        return new DialogueEventItem { Id = id, Values = values };
+    }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
     }
 }
 
 /// <summary>
-///     Represents a CAkFeedbackBus HIRC item (stub - raw bytes preserved).
+///     Represents a CAkFeedbackBus HIRC item.
+///     Note: FeedbackBus is deprecated in newer Wwise versions (v125+).
 /// </summary>
 public sealed class FeedbackBusItem : HircItem
 {
     public override HircType Type => HircType.FeedbackBus;
-    public required byte[] RawData { get; init; }
+    public required BusInitialValues Values { get; init; }
 
-    internal static FeedbackBusItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    internal static FeedbackBusItem? ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
-        var rawData = reader.ReadBytes(remainingSize);
+        var values = new BusInitialValues();
 
-        return new FeedbackBusItem { Id = id, RawData = rawData };
+        if (!values.Read(reader)) return null;
+
+        return new FeedbackBusItem { Id = id, Values = values };
+    }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
     }
 }
 
 /// <summary>
-///     Represents a CAkFeedbackNode HIRC item (stub - raw bytes preserved).
+///     Represents a CAkFeedbackNode HIRC item.
+///     Note: FeedbackNode is deprecated in newer Wwise versions (v125+).
 /// </summary>
 public sealed class FeedbackNodeItem : HircItem
 {
     public override HircType Type => HircType.FeedbackNode;
-    public required byte[] RawData { get; init; }
+    public required FeedbackNodeInitialValues Values { get; init; }
 
-    internal static FeedbackNodeItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    internal static FeedbackNodeItem? ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
-        var rawData = reader.ReadBytes(remainingSize);
+        var values = new FeedbackNodeInitialValues();
 
-        return new FeedbackNodeItem { Id = id, RawData = rawData };
+        if (!values.Read(reader)) return null;
+
+        return new FeedbackNodeItem { Id = id, Values = values };
+    }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
     }
 }
 
 /// <summary>
-///     Represents a CAkAuxBus HIRC item (stub - raw bytes preserved).
+///     Represents a CAkAuxBus HIRC item.
 /// </summary>
 public sealed class AuxBusItem : HircItem
 {
     public override HircType Type => HircType.AuxBus;
-    public required byte[] RawData { get; init; }
+    public required BusInitialValues Values { get; init; }
 
-    internal static AuxBusItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    internal static AuxBusItem? ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
-        var rawData = reader.ReadBytes(remainingSize);
+        var values = new BusInitialValues();
 
-        return new AuxBusItem { Id = id, RawData = rawData };
+        if (!values.Read(reader)) return null;
+
+        return new AuxBusItem { Id = id, Values = values };
+    }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
     }
 }
 
 /// <summary>
-///     Represents a CAkLFOModulator HIRC item (stub - raw bytes preserved).
+///     Represents a CAkLFOModulator HIRC item.
 /// </summary>
 public sealed class LfoModulatorItem : HircItem
 {
     public override HircType Type => HircType.LfoModulator;
-    public required byte[] RawData { get; init; }
+    public required ModulatorInitialValues Values { get; init; }
 
-    internal static LfoModulatorItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    internal static LfoModulatorItem? ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
-        var rawData = reader.ReadBytes(remainingSize);
+        var values = new ModulatorInitialValues();
 
-        return new LfoModulatorItem { Id = id, RawData = rawData };
+        if (!values.Read(reader)) return null;
+
+        return new LfoModulatorItem { Id = id, Values = values };
+    }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
     }
 }
 
 /// <summary>
-///     Represents a CAkEnvelopeModulator HIRC item (stub - raw bytes preserved).
+///     Represents a CAkEnvelopeModulator HIRC item.
 /// </summary>
 public sealed class EnvelopeModulatorItem : HircItem
 {
     public override HircType Type => HircType.EnvelopeModulator;
-    public required byte[] RawData { get; init; }
+    public required ModulatorInitialValues Values { get; init; }
 
-    internal static EnvelopeModulatorItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    internal static EnvelopeModulatorItem? ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
-        var rawData = reader.ReadBytes(remainingSize);
+        var values = new ModulatorInitialValues();
 
-        return new EnvelopeModulatorItem { Id = id, RawData = rawData };
+        if (!values.Read(reader)) return null;
+
+        return new EnvelopeModulatorItem { Id = id, Values = values };
+    }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
     }
 }
 
 /// <summary>
-///     Represents a CAkAudioDevice HIRC item (stub - raw bytes preserved).
+///     Represents a CAkAudioDevice HIRC item.
 /// </summary>
 public sealed class AudioDeviceItem : HircItem
 {
     public override HircType Type => HircType.AudioDevice;
-    public required byte[] RawData { get; init; }
+    public required FxBaseInitialValues Values { get; init; }
 
-    internal static AudioDeviceItem ReadItem(BinaryReader reader, uint id, int remainingSize)
+    internal static AudioDeviceItem? ReadItem(BinaryReader reader, uint id, int remainingSize)
     {
-        var rawData = reader.ReadBytes(remainingSize);
+        var values = new FxBaseInitialValues();
 
-        return new AudioDeviceItem { Id = id, RawData = rawData };
+        if (!values.Read(reader)) return null;
+
+        return new AudioDeviceItem { Id = id, Values = values };
+    }
+
+    protected override void WriteInternal(BinaryWriter writer)
+    {
+        Values.Write(writer);
     }
 }
 

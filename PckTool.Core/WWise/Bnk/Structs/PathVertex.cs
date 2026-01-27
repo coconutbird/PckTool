@@ -16,4 +16,12 @@ public class PathVertex
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(X);
+        writer.Write(Y);
+        writer.Write(Z);
+        writer.Write(Duration);
+    }
 }

@@ -22,4 +22,14 @@ public class InitialRtpc
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write((ushort) RtpcManagers.Count);
+
+        foreach (var rtpcManager in RtpcManagers)
+        {
+            rtpcManager.Write(writer);
+        }
+    }
 }

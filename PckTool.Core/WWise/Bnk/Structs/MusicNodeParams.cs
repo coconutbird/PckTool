@@ -93,6 +93,22 @@ public class MusicNodeParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(Flags);
+        NodeBaseParams.Write(writer);
+        Children.Write(writer);
+        MeterInfo.Write(writer);
+        writer.Write(MeterInfoFlag);
+
+        writer.Write((uint) Stingers.Count);
+
+        foreach (var stinger in Stingers)
+        {
+            stinger.Write(writer);
+        }
+    }
 }
 
 /// <summary>
@@ -105,6 +121,15 @@ public class MeterInfo
     public float Tempo { get; set; }
     public byte TimeSigNumBeatsBar { get; set; }
     public byte TimeSigBeatValue { get; set; }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(GridPeriod);
+        writer.Write(GridOffset);
+        writer.Write(Tempo);
+        writer.Write(TimeSigNumBeatsBar);
+        writer.Write(TimeSigBeatValue);
+    }
 }
 
 /// <summary>
@@ -130,5 +155,15 @@ public class Stinger
         NumSegmentLookAhead = reader.ReadUInt32();
 
         return true;
+    }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(TriggerId);
+        writer.Write(SegmentId);
+        writer.Write(SyncPlayAt);
+        writer.Write(CueFilterHash);
+        writer.Write(DontRepeatTime);
+        writer.Write(NumSegmentLookAhead);
     }
 }

@@ -23,4 +23,10 @@ public class StateActionParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(StateGroupId);
+        writer.Write(TargetStateId);
+    }
 }

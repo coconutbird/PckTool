@@ -76,6 +76,26 @@ public class ActiveActionParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer, ActionType actionType)
+    {
+        writer.Write(BitVector);
+
+        if (ActionTypeHelpers.IsStopActionType(actionType))
+        {
+            // v113 doesn't have specific params for Stop
+        }
+        else if (ActionTypeHelpers.IsPauseActionType(actionType))
+        {
+            PauseActionSpecificParams?.Write(writer);
+        }
+        else if (ActionTypeHelpers.IsResumeActionType(actionType))
+        {
+            ResumeActionSpecificParams?.Write(writer);
+        }
+
+        ExceptParams.Write(writer);
+    }
 }
 
 /// <summary>
@@ -139,5 +159,10 @@ public class PauseActionSpecificParams
         BitVector = reader.ReadByte();
 
         return true;
+    }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(BitVector);
     }
 }

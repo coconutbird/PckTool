@@ -48,6 +48,14 @@ public class TrackTransParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        SrcFadeParams.Write(writer);
+        writer.Write(SyncType);
+        writer.Write(CueFilterHash);
+        DestFadeParams.Write(writer);
+    }
 }
 
 /// <summary>
@@ -69,4 +77,11 @@ public class MusicFade
     ///     Fade offset in milliseconds.
     /// </summary>
     public int FadeOffset { get; set; }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(TransitionTime);
+        writer.Write(FadeCurve);
+        writer.Write(FadeOffset);
+    }
 }

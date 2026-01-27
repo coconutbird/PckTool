@@ -25,4 +25,10 @@ public class PlayActionParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(BitVector);
+        writer.Write(FileId);
+    }
 }

@@ -50,4 +50,22 @@ public class BusInitialFxParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(NumFx);
+
+        if (NumFx > 0)
+        {
+            writer.Write(BitsFxBypass);
+
+            foreach (var chunk in FxChunks)
+            {
+                chunk.Write(writer);
+            }
+        }
+
+        writer.Write(FxId0);
+        writer.Write(IsShareSet0);
+    }
 }

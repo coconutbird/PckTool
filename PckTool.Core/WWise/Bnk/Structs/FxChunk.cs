@@ -21,4 +21,12 @@ public class FxChunk
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(FxIndex);
+        writer.Write(FxId);
+        writer.Write((byte) (IsShareSet ? 1 : 0));
+        writer.Write((byte) (IsRendered ? 1 : 0));
+    }
 }

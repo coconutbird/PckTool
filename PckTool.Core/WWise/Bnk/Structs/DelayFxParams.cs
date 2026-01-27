@@ -27,4 +27,14 @@ public class DelayFxParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(NonRtpcDelayTime);
+        writer.Write(RtpcFeedback);
+        writer.Write(RtpcWetDryMix);
+        writer.Write(RtpcOutputLevel);
+        writer.Write(RtpcFeedbackEnabled);
+        writer.Write(NonRtpcProcessLFE);
+    }
 }

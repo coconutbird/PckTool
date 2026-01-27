@@ -14,4 +14,11 @@ public class Ak3DAutomationParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(XRange);
+        writer.Write(YRange);
+        writer.Write(ZRange);
+    }
 }

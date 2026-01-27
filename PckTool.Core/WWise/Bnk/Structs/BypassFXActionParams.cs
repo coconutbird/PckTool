@@ -44,4 +44,11 @@ public class BypassFXActionParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(IsBypass);
+        writer.Write(TargetMask);
+        ExceptParams.Write(writer);
+    }
 }

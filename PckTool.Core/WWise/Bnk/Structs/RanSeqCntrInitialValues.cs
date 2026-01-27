@@ -150,4 +150,22 @@ public class RanSeqCntrInitialValues
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        NodeBaseParams.Write(writer);
+        writer.Write(LoopCount);
+        writer.Write(LoopModMin);
+        writer.Write(LoopModMax);
+        writer.Write(TransitionTime);
+        writer.Write(TransitionTimeModMin);
+        writer.Write(TransitionTimeModMax);
+        writer.Write(AvoidRepeatCount);
+        writer.Write(TransitionMode);
+        writer.Write(RandomMode);
+        writer.Write(Mode);
+        writer.Write(BitVector);
+        Children.Write(writer);
+        Playlist.Write(writer);
+    }
 }

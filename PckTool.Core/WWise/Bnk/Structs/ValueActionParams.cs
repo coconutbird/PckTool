@@ -62,4 +62,16 @@ public class ValueActionParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer, ActionType actionType)
+    {
+        writer.Write(BitVector);
+
+        if (!ActionTypeHelpers.IsMuteActionType(actionType))
+        {
+            PropActionSpecificParams?.Write(writer);
+        }
+
+        ExceptParams.Write(writer);
+    }
 }

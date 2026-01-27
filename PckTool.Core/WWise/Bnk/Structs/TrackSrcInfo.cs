@@ -50,4 +50,14 @@ public class TrackSrcInfo
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(TrackId);
+        writer.Write(SourceId);
+        writer.Write(PlayAt);
+        writer.Write(BeginTrimOffset);
+        writer.Write(EndTrimOffset);
+        writer.Write(SrcDuration);
+    }
 }

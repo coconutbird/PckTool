@@ -175,4 +175,63 @@ public class ActionInitialValues
 
         return true;
     }
+
+    public void Write(BinaryWriter writer, ActionType actionType)
+    {
+        writer.Write(Ext);
+        writer.Write(Ext4);
+        PropBundle1.Write(writer);
+        PropBundle2.Write(writer);
+
+        var actionCategory = ActionTypeHelpers.GetActionCategory(actionType);
+
+        switch (actionCategory)
+        {
+            case ActionCategory.Play:
+                PlayActionParams?.Write(writer);
+
+                break;
+
+            case ActionCategory.Active:
+                ActiveActionParams?.Write(writer, actionType);
+
+                break;
+
+            case ActionCategory.State:
+                StateActionParams?.Write(writer);
+
+                break;
+
+            case ActionCategory.Switch:
+                SwitchActionParams?.Write(writer);
+
+                break;
+
+            case ActionCategory.GameParam:
+                GameParamActionParams?.Write(writer);
+
+                break;
+
+            case ActionCategory.Value:
+                ValueActionParams?.Write(writer, actionType);
+
+                break;
+
+            case ActionCategory.BypassFX:
+                BypassFXActionParams?.Write(writer);
+
+                break;
+
+            case ActionCategory.None:
+            case ActionCategory.Event:
+                // No additional params
+                break;
+
+            case ActionCategory.Unknown:
+            default:
+                throw new ArgumentOutOfRangeException(
+                    nameof(actionCategory),
+                    $"Unsupported action category: {actionCategory} for action type: {actionType}");
+        }
+    }
 }

@@ -41,4 +41,18 @@ public class TrackSwitchParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(GroupType);
+        writer.Write(GroupId);
+        writer.Write(DefaultSwitch);
+
+        writer.Write((uint) SwitchAssociations.Count);
+
+        foreach (var switchAssoc in SwitchAssociations)
+        {
+            writer.Write(switchAssoc);
+        }
+    }
 }

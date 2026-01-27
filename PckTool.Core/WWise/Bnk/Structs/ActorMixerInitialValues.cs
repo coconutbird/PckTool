@@ -26,4 +26,10 @@ public class ActorMixerInitialValues
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        NodeBaseParams.Write(writer);
+        Children.Write(writer);
+    }
 }

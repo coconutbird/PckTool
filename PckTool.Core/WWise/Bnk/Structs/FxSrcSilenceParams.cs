@@ -14,4 +14,11 @@ public class FxSrcSilenceParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(Duration);
+        writer.Write(RandomizedLengthMinus);
+        writer.Write(RandomizedLengthPlus);
+    }
 }

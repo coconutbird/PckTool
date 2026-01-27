@@ -49,6 +49,13 @@ public class GameParamActionParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(BitVector);
+        SpecificParams.Write(writer);
+        ExceptParams.Write(writer);
+    }
 }
 
 /// <summary>
@@ -97,5 +104,14 @@ public class GameParameterSpecificParams
         Max = reader.ReadSingle();
 
         return true;
+    }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(BypassTransition);
+        writer.Write(ValueMeaning);
+        writer.Write(Base);
+        writer.Write(Min);
+        writer.Write(Max);
     }
 }

@@ -12,6 +12,16 @@ public class MusicTransSrcRule
     public uint SyncType { get; set; }
     public uint CueFilterHash { get; set; }
     public byte PlayPostExit { get; set; }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(TransitionTime);
+        writer.Write(FadeCurve);
+        writer.Write(FadeOffset);
+        writer.Write(SyncType);
+        writer.Write(CueFilterHash);
+        writer.Write(PlayPostExit);
+    }
 }
 
 /// <summary>
@@ -28,6 +38,18 @@ public class MusicTransDstRule
     public ushort EntryType { get; set; }
     public byte PlayPreEntry { get; set; }
     public byte DestMatchSourceCueName { get; set; }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(TransitionTime);
+        writer.Write(FadeCurve);
+        writer.Write(FadeOffset);
+        writer.Write(CueFilterHash);
+        writer.Write(JumpToId);
+        writer.Write(EntryType);
+        writer.Write(PlayPreEntry);
+        writer.Write(DestMatchSourceCueName);
+    }
 }
 
 /// <summary>
@@ -64,5 +86,14 @@ public class MusicTransitionObject
         PlayPostExit = reader.ReadByte();
 
         return true;
+    }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(SegmentId);
+        FadeInParams.Write(writer);
+        FadeOutParams.Write(writer);
+        writer.Write(PlayPreEntry);
+        writer.Write(PlayPostExit);
     }
 }

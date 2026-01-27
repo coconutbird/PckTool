@@ -179,4 +179,46 @@ public class PositioningParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(BitVector);
+
+        if (Is3DPositioningAvailable)
+        {
+            writer.Write(Bits3D!.Value);
+            writer.Write(AttenuationId!.Value);
+
+            // e3DPositionType is bits 0-1 of Bits3D
+            var e3DPositionType = Bits3D & 0x03;
+
+            if (e3DPositionType != 1)
+            {
+                writer.Write(PathMode!.Value);
+                writer.Write(TransitionTime!.Value);
+
+                writer.Write((uint) (PathVertices?.Count ?? 0));
+
+                if (PathVertices != null)
+                {
+                    foreach (var vertex in PathVertices)
+                    {
+                        vertex.Write(writer);
+                    }
+                }
+
+                writer.Write((uint) (PlaylistItems?.Count ?? 0));
+
+                if (PlaylistItems != null)
+                {
+                    foreach (var item in PlaylistItems)
+                    {
+                        item.Write(writer);
+                    }
+                }
+
+                Ak3DAutomationParams?.Write(writer);
+            }
+        }
+    }
 }

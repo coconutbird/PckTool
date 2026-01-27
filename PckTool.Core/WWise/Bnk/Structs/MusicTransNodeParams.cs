@@ -45,6 +45,18 @@ public class MusicTransNodeParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        MusicNodeParams.Write(writer);
+
+        writer.Write((uint) Rules.Count);
+
+        foreach (var rule in Rules)
+        {
+            rule.Write(writer);
+        }
+    }
 }
 
 /// <summary>
@@ -118,5 +130,32 @@ public class MusicTransitionRule
         }
 
         return true;
+    }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write((uint) SrcIds.Count);
+
+        foreach (var srcId in SrcIds)
+        {
+            writer.Write(srcId);
+        }
+
+        writer.Write((uint) DstIds.Count);
+
+        foreach (var dstId in DstIds)
+        {
+            writer.Write(dstId);
+        }
+
+        SrcRule.Write(writer);
+        DstRule.Write(writer);
+
+        writer.Write(AllocTransObjectFlag);
+
+        if (AllocTransObjectFlag != 0)
+        {
+            TransObject?.Write(writer);
+        }
     }
 }

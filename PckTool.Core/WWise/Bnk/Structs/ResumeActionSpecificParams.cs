@@ -60,4 +60,9 @@ public class ResumeActionSpecificParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(BitVector);
+    }
 }

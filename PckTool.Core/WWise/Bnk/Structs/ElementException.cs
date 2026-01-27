@@ -12,4 +12,10 @@ public class ElementException
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(Id);
+        writer.Write((byte) (IsBusId ? 1 : 0));
+    }
 }

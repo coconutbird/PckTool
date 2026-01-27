@@ -42,4 +42,17 @@ public class ClipAutomation
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(ClipIndex);
+        writer.Write(AutoType);
+
+        writer.Write((uint) GraphPoints.Count);
+
+        foreach (var point in GraphPoints)
+        {
+            point.Write(writer);
+        }
+    }
 }

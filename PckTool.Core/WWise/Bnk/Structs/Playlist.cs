@@ -24,4 +24,14 @@ public class Playlist
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write((ushort) Items.Count);
+
+        foreach (var item in Items)
+        {
+            item.Write(writer);
+        }
+    }
 }

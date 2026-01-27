@@ -2,8 +2,8 @@
 
 public class NodeInitialParams
 {
-    public PropBundle PropBundle1 { get; set; }
-    public PropBundle PropBundle2 { get; set; }
+    public PropBundle PropBundle1 { get; set; } = null!;
+    public PropBundle PropBundle2 { get; set; } = null!;
 
     public bool Read(BinaryReader reader)
     {
@@ -25,5 +25,11 @@ public class NodeInitialParams
         PropBundle2 = propBundle2;
 
         return true;
+    }
+
+    public void Write(BinaryWriter writer)
+    {
+        PropBundle1.Write(writer);
+        PropBundle2.Write(writer);
     }
 }

@@ -73,6 +73,29 @@ public class MusicRanSeqCntrInitialValues
             items.Add(item);
         }
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        MusicTransNodeParams.Write(writer);
+        writer.Write(NumPlaylistItems);
+
+        // Write playlist recursively starting with root items
+        WritePlaylistNodes(writer, Playlist);
+    }
+
+    private static void WritePlaylistNodes(BinaryWriter writer, List<MusicRanSeqPlaylistItem> items)
+    {
+        foreach (var item in items)
+        {
+            item.Write(writer);
+
+            // Recursively write children
+            if (item.NumChildren > 0)
+            {
+                WritePlaylistNodes(writer, item.Children);
+            }
+        }
+    }
 }
 
 /// <summary>
@@ -139,4 +162,19 @@ public class MusicRanSeqPlaylistItem
     ///     Child playlist items.
     /// </summary>
     public List<MusicRanSeqPlaylistItem> Children { get; set; } = [];
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(SegmentId);
+        writer.Write(PlaylistItemId);
+        writer.Write(NumChildren);
+        writer.Write(RsType);
+        writer.Write(Loop);
+        writer.Write(LoopMin);
+        writer.Write(LoopMax);
+        writer.Write(Weight);
+        writer.Write(AvoidRepeatCount);
+        writer.Write(IsUsingWeight);
+        writer.Write(IsShuffle);
+    }
 }

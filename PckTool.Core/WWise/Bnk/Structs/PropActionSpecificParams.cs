@@ -20,4 +20,10 @@ public class PropActionSpecificParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(ValueMeaning);
+        RandomizerModifier.Write(writer);
+    }
 }

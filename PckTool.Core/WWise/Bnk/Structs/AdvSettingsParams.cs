@@ -148,4 +148,13 @@ public class AdvSettingsParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(BitVector);
+        writer.Write(VirtualQueueBehavior);
+        writer.Write(MaxNumberOfInstances);
+        writer.Write((byte) BelowThresholdBehavior);
+        writer.Write(BitVector2);
+    }
 }

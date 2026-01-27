@@ -153,4 +153,46 @@ public class MusicTrackInitialValues
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(Overrides);
+
+        writer.Write((uint) Sources.Count);
+
+        foreach (var source in Sources)
+        {
+            source.Write(writer);
+        }
+
+        writer.Write((uint) Playlist.Count);
+
+        if (Playlist.Count > 0)
+        {
+            foreach (var srcInfo in Playlist)
+            {
+                srcInfo.Write(writer);
+            }
+
+            writer.Write(NumSubTrack);
+        }
+
+        writer.Write((uint) ClipAutomationItems.Count);
+
+        foreach (var clipAuto in ClipAutomationItems)
+        {
+            clipAuto.Write(writer);
+        }
+
+        NodeBaseParams.Write(writer);
+        writer.Write(TrackType);
+
+        if (TrackType == 0x3)
+        {
+            SwitchParams?.Write(writer);
+            TransParams?.Write(writer);
+        }
+
+        writer.Write(LookAheadTime);
+    }
 }

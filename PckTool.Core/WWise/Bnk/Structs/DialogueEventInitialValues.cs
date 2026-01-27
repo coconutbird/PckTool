@@ -1,23 +1,18 @@
 namespace PckTool.Core.WWise.Bnk.Structs;
 
 /// <summary>
-///     MusicSwitchCntr initial values for bank version 113.
-///     Corresponds to CAkMusicSwitchCntr::SetInitialValues in wwiser.
+///     DialogueEvent initial values for bank version 113.
+///     Corresponds to CAkDialogueEvent::SetInitialValues in wwiser.
 /// </summary>
-public class MusicSwitchCntrInitialValues
+public class DialogueEventInitialValues
 {
     /// <summary>
-    ///     Music transition node params.
+    ///     Probability (v73+).
     /// </summary>
-    public MusicTransNodeParams MusicTransNodeParams { get; set; } = null!;
+    public byte Probability { get; set; }
 
     /// <summary>
-    ///     Continue playback flag.
-    /// </summary>
-    public byte IsContinuePlayback { get; set; }
-
-    /// <summary>
-    ///     Tree depth.
+    ///     Tree depth (number of arguments).
     /// </summary>
     public uint TreeDepth { get; set; }
 
@@ -32,7 +27,7 @@ public class MusicSwitchCntrInitialValues
     public uint TreeDataSize { get; set; }
 
     /// <summary>
-    ///     Decision tree mode.
+    ///     Decision tree mode (v46+).
     /// </summary>
     public byte TreeMode { get; set; }
 
@@ -43,24 +38,14 @@ public class MusicSwitchCntrInitialValues
 
     public bool Read(BinaryReader reader)
     {
-        // MusicTransNodeParams
-        var musicTransNodeParams = new MusicTransNodeParams();
-
-        if (!musicTransNodeParams.Read(reader))
-        {
-            return false;
-        }
-
-        MusicTransNodeParams = musicTransNodeParams;
-
         // For v73+ (v113 is in range):
-        // bIsContinuePlayback (u8)
-        IsContinuePlayback = reader.ReadByte();
+        // uProbability (u8)
+        Probability = reader.ReadByte();
 
         // uTreeDepth (u32)
         TreeDepth = reader.ReadUInt32();
 
-        // Arguments (SetArguments)
+        // Arguments (SetArguments for DialogueEvent)
         // First read all ulGroup IDs, then all eGroupType values
         var groupIds = new uint[TreeDepth];
         var groupTypes = new byte[TreeDepth];
@@ -83,7 +68,7 @@ public class MusicSwitchCntrInitialValues
         // uTreeDataSize (u32)
         TreeDataSize = reader.ReadUInt32();
 
-        // uMode (u8)
+        // uMode (u8) for v46+
         TreeMode = reader.ReadByte();
 
         // DecisionTree
@@ -96,21 +81,24 @@ public class MusicSwitchCntrInitialValues
 
         DecisionTree = decisionTree;
 
+        // For v119+, there would be AkPropBundle here
+        // But v113 <= 118, so we skip it
+
         return true;
     }
 
     public void Write(BinaryWriter writer)
     {
-        MusicTransNodeParams.Write(writer);
-        writer.Write(IsContinuePlayback);
+        writer.Write(Probability);
         writer.Write(TreeDepth);
 
-        // Write group IDs first, then group types (two-pass pattern)
+        // Write all group IDs first
         foreach (var arg in Arguments)
         {
             writer.Write(arg.GroupId);
         }
 
+        // Then write all group types
         foreach (var arg in Arguments)
         {
             writer.Write(arg.GroupType);
@@ -120,20 +108,4 @@ public class MusicSwitchCntrInitialValues
         writer.Write(TreeMode);
         DecisionTree.Write(writer, TreeDepth);
     }
-}
-
-/// <summary>
-///     Game sync argument (AkGameSync).
-/// </summary>
-public class GameSyncArgument
-{
-    /// <summary>
-    ///     Group ID (state group or switch group).
-    /// </summary>
-    public uint GroupId { get; set; }
-
-    /// <summary>
-    ///     Group type (AkGroupType: 0=Switch, 1=State).
-    /// </summary>
-    public byte GroupType { get; set; }
 }

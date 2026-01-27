@@ -22,4 +22,14 @@ public class ExceptParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write((uint) ElementExceptions.Count);
+
+        foreach (var ex in ElementExceptions)
+        {
+            ex.Write(writer);
+        }
+    }
 }

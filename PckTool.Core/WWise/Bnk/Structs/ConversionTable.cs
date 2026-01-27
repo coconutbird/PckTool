@@ -29,4 +29,15 @@ public class ConversionTable
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(Scaling);
+        writer.Write((ushort) Points.Count);
+
+        foreach (var point in Points)
+        {
+            point.Write(writer);
+        }
+    }
 }

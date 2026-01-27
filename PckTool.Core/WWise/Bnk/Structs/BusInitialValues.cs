@@ -95,6 +95,26 @@ public class BusInitialValues
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(OverrideBusId);
+        BusInitialParams.Write(writer);
+        writer.Write(RecoveryTime);
+        writer.Write(MaxDuckVolume);
+
+        writer.Write((uint) Ducks.Count);
+
+        foreach (var duck in Ducks)
+        {
+            duck.Write(writer);
+        }
+
+        BusInitialFxParams.Write(writer);
+        writer.Write(OverrideAttachmentParams);
+        InitialRtpc.Write(writer);
+        StateChunk.Write(writer);
+    }
 }
 
 /// <summary>
@@ -120,5 +140,15 @@ public class DuckInfo
         TargetProp = reader.ReadByte(); // v66+ (v113 qualifies)
 
         return true;
+    }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(BusId);
+        writer.Write(DuckVolume);
+        writer.Write(FadeOutTime);
+        writer.Write(FadeInTime);
+        writer.Write(FadeCurve);
+        writer.Write(TargetProp);
     }
 }

@@ -23,4 +23,10 @@ public class SwitchActionParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(SwitchGroupId);
+        writer.Write(SwitchStateId);
+    }
 }

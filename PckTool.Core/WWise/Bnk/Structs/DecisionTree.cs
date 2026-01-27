@@ -49,6 +49,53 @@ public class DecisionTree
         return true;
     }
 
+    public void Write(BinaryWriter writer, uint depth)
+    {
+        // If we have raw tree data, write it directly
+        if (RawTreeData != null)
+        {
+            writer.Write(RawTreeData);
+
+            return;
+        }
+
+        // Calculate indices and write tree in BFS order
+        var allNodes = new List<DecisionTreeNode>();
+        CollectNodesInOrder(RootNodes, allNodes);
+
+        // Assign indices to each node's children
+        ushort currentIndex = 1; // Root is at index 0
+
+        foreach (var node in allNodes)
+        {
+            if (!node.IsAudioNode && node.Children.Count > 0)
+            {
+                node.ChildrenIdx = currentIndex;
+                node.ChildrenCount = (ushort) node.Children.Count;
+                currentIndex += (ushort) node.Children.Count;
+            }
+        }
+
+        // Write all nodes
+        foreach (var node in allNodes)
+        {
+            node.Write(writer);
+        }
+    }
+
+    private static void CollectNodesInOrder(List<DecisionTreeNode> nodes, List<DecisionTreeNode> allNodes)
+    {
+        allNodes.AddRange(nodes);
+
+        foreach (var node in nodes)
+        {
+            if (node.Children.Count > 0)
+            {
+                CollectNodesInOrder(node.Children, allNodes);
+            }
+        }
+    }
+
     private static void ParseTreeNodes(
         BinaryReader reader,
         uint count,
@@ -145,4 +192,23 @@ public class DecisionTreeNode
     ///     Child nodes.
     /// </summary>
     public List<DecisionTreeNode> Children { get; set; } = [];
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(Key);
+
+        if (IsAudioNode)
+        {
+            writer.Write(AudioNodeId);
+        }
+        else
+        {
+            // Pack ChildrenIdx and ChildrenCount into a single uint
+            var packed = (uint) (ChildrenIdx | (ChildrenCount << 16));
+            writer.Write(packed);
+        }
+
+        writer.Write(Weight);
+        writer.Write(Probability);
+    }
 }

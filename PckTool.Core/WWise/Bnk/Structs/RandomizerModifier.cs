@@ -14,4 +14,11 @@ public class RandomizerModifier
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(Base);
+        writer.Write(Min);
+        writer.Write(Max);
+    }
 }

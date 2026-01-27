@@ -72,4 +72,17 @@ public class AuxParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(BitVector);
+
+        if (HasAux && AuxIds != null)
+        {
+            foreach (var auxId in AuxIds)
+            {
+                writer.Write(auxId);
+            }
+        }
+    }
 }

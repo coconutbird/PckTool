@@ -39,4 +39,16 @@ public class BankSourceData
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write((uint) PluginId);
+        writer.Write((byte) StreamType);
+        MediaInformation.Write(writer);
+
+        if (PluginId == PluginId.Wwise_Silence)
+        {
+            writer.Write((uint) 0); // size = 0
+        }
+    }
 }

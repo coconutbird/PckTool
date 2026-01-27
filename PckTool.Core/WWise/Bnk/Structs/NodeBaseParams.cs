@@ -183,4 +183,19 @@ public class NodeBaseParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        NodeInitialFxParams.Write(writer);
+        writer.Write(OverrideAttachmentParams);
+        writer.Write(OverrideBusId);
+        writer.Write(DirectParentId);
+        writer.Write(ByBitVector);
+        NodeInitialParams.Write(writer);
+        PositioningParams.Write(writer);
+        AuxParams.Write(writer);
+        AdvSettingsParams.Write(writer);
+        StateChunk.Write(writer);
+        InitialRtpc.Write(writer);
+    }
 }

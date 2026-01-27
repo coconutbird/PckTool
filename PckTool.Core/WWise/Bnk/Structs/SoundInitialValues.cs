@@ -26,4 +26,10 @@ public class SoundInitialValues
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        BankSourceData.Write(writer);
+        NodeBaseParams.Write(writer);
+    }
 }

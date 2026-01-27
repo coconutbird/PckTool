@@ -34,4 +34,20 @@ public class NodeInitialFxParams
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(IsOverrideParentFx);
+        writer.Write(NumFx);
+
+        if (NumFx > 0)
+        {
+            writer.Write((byte) (FxBypass ? 0x01 : 0x00));
+
+            foreach (var chunk in FxChunks)
+            {
+                chunk.Write(writer);
+            }
+        }
+    }
 }

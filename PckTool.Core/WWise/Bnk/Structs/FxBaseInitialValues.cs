@@ -128,6 +128,57 @@ public class FxBaseInitialValues
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write((uint) FxId);
+        writer.Write(Size);
+
+        if (Size > 0)
+        {
+            switch (FxId)
+            {
+                case PluginId.Wwise_Compressor:
+                    PluginParam?.Write(writer);
+
+                    break;
+
+                case PluginId.Wwise_Silence:
+                    FxSrcSilenceParams?.Write(writer);
+
+                    break;
+
+                case PluginId.Wwise_Delay:
+                    DelayFxParams?.Write(writer);
+
+                    break;
+
+                default:
+                    if (RawPluginData != null)
+                    {
+                        writer.Write(RawPluginData);
+                    }
+
+                    break;
+            }
+        }
+
+        writer.Write((byte) MediaMap.Count);
+
+        foreach (var entry in MediaMap)
+        {
+            entry.Write(writer);
+        }
+
+        InitialRtpc.Write(writer);
+
+        writer.Write((ushort) RtpcInitList.Count);
+
+        foreach (var init in RtpcInitList)
+        {
+            init.Write(writer);
+        }
+    }
 }
 
 /// <summary>
@@ -137,6 +188,12 @@ public class MediaMapEntry
 {
     public byte Index { get; set; }
     public uint SourceId { get; set; }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(Index);
+        writer.Write(SourceId);
+    }
 }
 
 /// <summary>
@@ -146,4 +203,10 @@ public class RtpcInit
 {
     public byte ParamId { get; set; } // u8 for v<=113, var for v114+
     public float InitValue { get; set; }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(ParamId);
+        writer.Write(InitValue);
+    }
 }

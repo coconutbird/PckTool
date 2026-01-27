@@ -15,4 +15,14 @@ public class Children
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write((uint) ChildIds.Count);
+
+        foreach (var childId in ChildIds)
+        {
+            writer.Write(childId);
+        }
+    }
 }

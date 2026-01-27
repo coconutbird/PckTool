@@ -43,4 +43,20 @@ public class RtpcManager
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(RptcId);
+        writer.Write(RtpcType);
+        writer.Write(RtpcAccum);
+        writer.Write(ParamId);
+        writer.Write(RtpcCurveId);
+        writer.Write(Scaling);
+        writer.Write((ushort) GraphPoints.Count);
+
+        foreach (var graphPoint in GraphPoints)
+        {
+            graphPoint.Write(writer);
+        }
+    }
 }

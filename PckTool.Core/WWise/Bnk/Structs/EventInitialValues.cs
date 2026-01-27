@@ -15,4 +15,14 @@ public class EventInitialValues
 
         return true;
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write((uint) Actions.Count);
+
+        foreach (var action in Actions)
+        {
+            writer.Write(action);
+        }
+    }
 }
