@@ -1772,9 +1772,11 @@ public class HircItemTests
         using var pck = PckFile.Load(SoundsPckPath);
         Assert.NotNull(pck);
 
-        var totalBanks = pck.SoundBanks.Count;
+        // Note: Count returns unique IDs, but we iterate all entries (including same ID for different languages)
+        var totalBanks = pck.SoundBanks.Entries.Count;
         var parsedBanks = 0;
         var banksWithHirc = 0;
+        var failedBanks = new List<(uint Id, long Size)>();
 
         foreach (var entry in pck.SoundBanks)
         {
@@ -1786,13 +1788,75 @@ public class HircItemTests
 
                 if (bank.HircChunk?.Items?.Count > 0) banksWithHirc++;
             }
+            else
+            {
+                failedBanks.Add((entry.Id, entry.Size));
+            }
         }
 
         // Note: Many banks in .pck files don't have HIRC chunks (they may be media-only banks).
         // We verify that the banks that DO have HIRC chunks parse successfully.
         // The banks that return null may be unsupported versions or have unsupported chunk types.
+        var failedInfo = failedBanks.Count > 0
+            ? $"\nFirst 10 failed banks: {string.Join(", ", failedBanks.Take(10).Select(b => $"0x{b.Id:X8} ({b.Size} bytes)"))}"
+            : "";
+
         Assert.True(parsedBanks > 0, $"No banks could be parsed. Total: {totalBanks}");
         Assert.True(banksWithHirc > 0, $"No banks with HIRC chunks found. Parsed: {parsedBanks}/{totalBanks}");
+
+        // Verify all banks parse successfully now (the fix handles unknown chunks gracefully)
+        Assert.True(
+            parsedBanks == totalBanks,
+            $"Not all banks parsed successfully. Parsed: {parsedBanks}/{totalBanks}, With HIRC: {banksWithHirc}{failedInfo}");
+    }
+
+    [SkippableFact]
+    public void Integration_ParseRealPckFile_DiagnoseHircItemTypes()
+    {
+        Skip.IfNot(File.Exists(SoundsPckPath), $"Sounds.pck not found at {SoundsPckPath}");
+
+        using var pck = PckFile.Load(SoundsPckPath);
+        Assert.NotNull(pck);
+
+        var typeCounts = new Dictionary<HircType, int>();
+
+        foreach (var entry in pck.SoundBanks)
+        {
+            var bank = entry.Parse();
+
+            if (bank?.HircChunk?.Items == null) continue;
+
+            foreach (var item in bank.HircChunk.Items)
+            {
+                if (!typeCounts.ContainsKey(item.Type)) typeCounts[item.Type] = 0;
+
+                typeCounts[item.Type]++;
+            }
+        }
+
+        // Output the counts for diagnostic purposes
+        var output = new System.Text.StringBuilder();
+        output.AppendLine("HIRC Item Types in Sounds.pck:");
+
+        foreach (var kvp in typeCounts.OrderBy(x => (int) x.Key))
+            output.AppendLine($"  {kvp.Key} ({(int) kvp.Key}): {kvp.Value}");
+
+        output.AppendLine($"Total: {typeCounts.Values.Sum()} items across {typeCounts.Count} types");
+
+        // Check for FX items specifically
+        var hasFxShareSet = typeCounts.ContainsKey(HircType.FxShareSet);
+        var hasFxCustom = typeCounts.ContainsKey(HircType.FxCustom);
+        output.AppendLine(
+            $"FxShareSet present: {hasFxShareSet} (count: {(hasFxShareSet ? typeCounts[HircType.FxShareSet] : 0)})");
+
+        output.AppendLine(
+            $"FxCustom present: {hasFxCustom} (count: {(hasFxCustom ? typeCounts[HircType.FxCustom] : 0)})");
+
+        // This will show up in the test output
+        Assert.True(true, output.ToString());
+
+        // Write to console so it shows in test output
+        Console.WriteLine(output.ToString());
     }
 
     [SkippableFact]

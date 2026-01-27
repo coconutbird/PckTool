@@ -245,13 +245,28 @@ public class SoundBank
             {
                 if (completed)
                 {
+                    Log.Debug(
+                        "Successfully parsed soundbank 0x{0:X8} (version 0x{1:X}, {2} items, {3} media)",
+                        Id,
+                        Version,
+                        Items.Count,
+                        Media.Count);
+
                     return true;
                 }
             }
+
+            Log.Error(
+                "ProcessSubChunk returned false for soundbank 0x{0:X8} at position {1}/{2}",
+                Id,
+                reader.BaseStream.Position,
+                reader.BaseStream.Length);
         }
         catch (Exception e)
         {
-            Log.Error(e, "Failed to parse soundbank");
+            Log.Error(
+                e,
+                $"Failed to parse soundbank 0x{Id:X8} at position {reader.BaseStream.Position}/{reader.BaseStream.Length}");
         }
 
         return false;
@@ -269,8 +284,14 @@ public class SoundBank
         completed = false;
 
         var chunk = SubChunk.Read(reader);
-
         var baseOffset = reader.BaseStream.Position;
+
+        Log.Trace(
+            "Processing chunk '{0}' (0x{1:X8}), size: {2}, at offset: {3}",
+            chunk.MagicString,
+            chunk.Tag,
+            chunk.Size,
+            baseOffset - 8);
 
         if (chunk.Tag == BnkChunkIds.BankHeaderChunkId)
         {
@@ -278,6 +299,8 @@ public class SoundBank
 
             if (!bankHeaderChunk.Read(this, reader, chunk.Size))
             {
+                Log.Error("Failed to read BKHD chunk for bank at offset {0}", baseOffset);
+
                 return false;
             }
 
@@ -290,6 +313,8 @@ public class SoundBank
             ProjectId = bankHeaderChunk.ProjectId ?? 0;
             FeedbackInBank = bankHeaderChunk.FeedbackInBank ?? 0;
             IsValid = bankHeaderChunk.IsValid;
+
+            Log.Trace("  BKHD: Bank ID=0x{0:X8}, Version=0x{1:X}, Lang={2}", Id, Version, LanguageId);
         }
         else if (chunk.Tag == BnkChunkIds.BankDataIndexChunkId)
         {
@@ -297,10 +322,13 @@ public class SoundBank
 
             if (!mediaIndexChunk.Read(this, reader, chunk.Size))
             {
+                Log.Error("Failed to read DIDX chunk for bank 0x{0:X8}", Id);
+
                 return false;
             }
 
             MediaIndexChunk = mediaIndexChunk;
+            Log.Trace("  DIDX: {0} media entries", mediaIndexChunk.LoadedMedia?.Count ?? 0);
         }
         else if (chunk.Tag == BnkChunkIds.BankDataChunkId)
         {
@@ -308,6 +336,8 @@ public class SoundBank
 
             if (!dataChunk.Read(this, reader, chunk.Size))
             {
+                Log.Error("Failed to read DATA chunk for bank 0x{0:X8}", Id);
+
                 return false;
             }
 
@@ -327,10 +357,13 @@ public class SoundBank
 
             if (!hircChunk.Read(this, reader, chunk.Size))
             {
+                Log.Error("Failed to read HIRC chunk for bank 0x{0:X8}", Id);
+
                 return false;
             }
 
             HircChunk = hircChunk;
+            Log.Trace("  HIRC: {0} items", hircChunk.Items?.Count ?? 0);
 
             // Populate Items collection from HircChunk
             if (hircChunk.Items is not null)
@@ -344,22 +377,23 @@ public class SoundBank
 
             var uiType = (BnkStringType) reader.ReadUInt32();
 
-            if (uiType != BnkStringType.Bank)
+            if (uiType == BnkStringType.Bank)
             {
-                return false;
+                var numberOfStrings = reader.ReadUInt32();
+
+                for (var i = 0; i < numberOfStrings; ++i)
+                {
+                    var bankId = reader.ReadUInt32();
+                    var stringSize = reader.ReadByte();
+                    var stringBuffer = reader.ReadBytes(stringSize);
+                    var str = Encoding.ASCII.GetString(stringBuffer);
+
+                    // TODO: Store string map
+                }
             }
 
-            var numberOfStrings = reader.ReadUInt32();
-
-            for (var i = 0; i < numberOfStrings; ++i)
-            {
-                var bankId = reader.ReadUInt32();
-                var stringSize = reader.ReadByte();
-                var stringBuffer = reader.ReadBytes(stringSize);
-                var str = Encoding.ASCII.GetString(stringBuffer);
-
-                // TODO: Store string map
-            }
+            // Skip unsupported string types (there are multiple types like 1/2/3/4/5/7/8/9/11)
+            // We only care about type 1 (Bank) for now
 
             reader.BaseStream.Position = position + chunk.Size;
         }
@@ -443,8 +477,12 @@ public class SoundBank
 
             if (!envSettingsChunk.Read(this, reader, chunk.Size))
             {
+                Log.Error("Failed to read ENVS chunk for bank 0x{0:X8}", Id);
+
                 return false;
             }
+
+            Log.Trace("  ENVS: Environment settings loaded");
         }
         else if (chunk.Tag == BnkChunkIds.BankPlatChunkId)
         {
@@ -452,25 +490,46 @@ public class SoundBank
 
             if (!platform.Read(this, reader, chunk.Size))
             {
+                Log.Error("Failed to read PLAT chunk for bank 0x{0:X8}", Id);
+
                 return false;
             }
+
+            Log.Trace("  PLAT: Platform chunk loaded");
+        }
+        else if (chunk.Tag == BnkChunkIds.BankInitChunkId)
+        {
+            // INIT chunk contains plugin information (version 118+)
+            // Skip for now - we don't need to parse plugin details
+            Log.Trace("  INIT: Skipping plugin info chunk ({0} bytes)", chunk.Size);
+            reader.BaseStream.Position += chunk.Size;
         }
         else
         {
+            // Unknown chunk type - skip it instead of failing
+            // This allows parsing banks with newer/unknown chunk types
             var strTag = chunk.MagicString;
+            Log.Warn(
+                "Skipping unknown chunk type: {0} (0x{1:X8}), size: {2} in bank 0x{3:X8}",
+                strTag,
+                chunk.Tag,
+                chunk.Size,
+                Id);
 
-            return false;
+            reader.BaseStream.Position += chunk.Size;
         }
 
         var expectedPosition = baseOffset + chunk.Size;
 
         if (reader.BaseStream.Position != expectedPosition)
         {
-            Log.Warn(
-                "Sub-chunk read position mismatch for chunk {0}. Expected {1}, got {2}.",
+            Log.Error(
+                "Sub-chunk read position mismatch for chunk {0} in bank 0x{1:X8}. Expected {2}, got {3}. Delta: {4} bytes.",
                 chunk.MagicString,
+                Id,
                 expectedPosition,
-                reader.BaseStream.Position);
+                reader.BaseStream.Position,
+                reader.BaseStream.Position - expectedPosition);
 
             reader.BaseStream.Position = expectedPosition;
 

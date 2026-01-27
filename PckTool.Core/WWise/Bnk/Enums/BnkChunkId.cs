@@ -26,4 +26,5 @@ public static class BnkChunkIds
     public static uint BankFxParamsChunkId { get; } = Hash.AkmmioFourcc('F', 'X', 'P', 'R');
     public static uint BankEnvSettingChunkId { get; } = Hash.AkmmioFourcc('E', 'N', 'V', 'S');
     public static uint BankPlatChunkId { get; } = Hash.AkmmioFourcc('P', 'L', 'A', 'T');
+    public static uint BankInitChunkId { get; } = Hash.AkmmioFourcc('I', 'N', 'I', 'T');
 }
