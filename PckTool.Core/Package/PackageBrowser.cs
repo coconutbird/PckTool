@@ -218,9 +218,8 @@ public class PackageBrowser : IDisposable
         {
             Id = entry.Id,
             LanguageId = entry.LanguageId,
-            Language =
-                entry.Language
-                ?? _package.Languages.GetValueOrDefault(entry.LanguageId, $"Unknown ({entry.LanguageId})"),
+            Language = entry.Language
+                       ?? _package.Languages.GetValueOrDefault(entry.LanguageId, $"Unknown ({entry.LanguageId})"),
             Size = entry.Size,
             Version = parsed?.Version ?? 0,
             ProjectId = parsed?.ProjectId ?? 0,

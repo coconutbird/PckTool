@@ -3,13 +3,10 @@ using System.Globalization;
 
 using Microsoft.Win32;
 
-using PckTool.Core;
 using PckTool.Core.HaloWars;
 using PckTool.Core.Package;
 using PckTool.Core.WWise.Bnk;
 using PckTool.Core.WWise.Pck;
-
-using Ww2Ogg.Core;
 
 namespace PckTool;
 
