@@ -468,6 +468,97 @@ public static class Program
             }
         }
 
+        // Phase 4: Extract streaming WEM files (stored directly in PCK, not in BNKs)
+        if (package.StreamingFiles.Count > 0)
+        {
+            Log.Info("Extracting {0} streaming WEM files...", package.StreamingFiles.Count);
+
+            // Group streaming files by language
+            var streamingByLanguage = package.StreamingFiles
+                                             .GroupBy(f => f.LanguageId)
+                                             .ToDictionary(g => g.Key, g => g.ToList());
+
+            foreach (var (languageId, files) in streamingByLanguage)
+            {
+                var language = package.Languages.GetValueOrDefault(languageId, $"lang_{languageId}");
+                var streamingDir = Path.Join(outputDir, language, "_streaming");
+
+                EnsureDirectoryCreated(streamingDir + Path.DirectorySeparatorChar);
+
+                // Create metadata for this language's streaming files
+                var metadata = new StreamingMetadata { Language = language, LanguageId = languageId };
+
+                foreach (var file in files)
+                {
+                    var wemFile = Path.Join(streamingDir, $"{file.Id}.wem");
+                    var wemData = file.GetData();
+
+                    File.WriteAllBytes(wemFile, wemData);
+
+                    // Get cue references for this streaming WEM
+                    var cueRefs = soundTable.GetCueReferencesByFileId(file.Id);
+
+                    var cueMetadataList = cueRefs
+                                          .OrderBy(r => r.CueName)
+                                          .ThenBy(r => r.SourceBankId)
+                                          .Select(r => new CueMetadata
+                                          {
+                                              Name = r.CueName,
+                                              EventId = r.CueIndex,
+                                              SourceBankId = r.SourceBankId
+                                          })
+                                          .ToList();
+
+                    metadata.Files.Add(
+                        new StreamingFileMetadataEntry { Id = file.Id, Size = wemData.Length, Cues = cueMetadataList });
+                }
+
+                // Write metadata file for streaming files
+                var metadataFile = Path.Join(streamingDir, "metadata.json");
+                metadata.Save(metadataFile);
+
+                Log.Info("  Extracted {0} streaming files for {1}", files.Count, language);
+            }
+        }
+
+        // Phase 5: Extract external files (64-bit IDs, stored directly in PCK)
+        if (package.ExternalFiles.Count > 0)
+        {
+            Log.Info("Extracting {0} external files...", package.ExternalFiles.Count);
+
+            // Group external files by language
+            var externalByLanguage = package.ExternalFiles
+                                            .GroupBy(f => f.LanguageId)
+                                            .ToDictionary(g => g.Key, g => g.ToList());
+
+            foreach (var (languageId, files) in externalByLanguage)
+            {
+                var language = package.Languages.GetValueOrDefault(languageId, $"lang_{languageId}");
+                var externalDir = Path.Join(outputDir, language, "_external");
+
+                EnsureDirectoryCreated(externalDir + Path.DirectorySeparatorChar);
+
+                // Create metadata for this language's external files
+                var metadata = new ExternalMetadata { Language = language, LanguageId = languageId };
+
+                foreach (var file in files)
+                {
+                    var wemFile = Path.Join(externalDir, $"{file.Id}.wem");
+                    var wemData = file.GetData();
+
+                    File.WriteAllBytes(wemFile, wemData);
+
+                    metadata.Files.Add(new ExternalFileMetadataEntry { Id = file.Id, Size = wemData.Length });
+                }
+
+                // Write metadata file for external files
+                var metadataFile = Path.Join(externalDir, "metadata.json");
+                metadata.Save(metadataFile);
+
+                Log.Info("  Extracted {0} external files for {1}", files.Count, language);
+            }
+        }
+
         Log.Info("Done!");
     }
 
