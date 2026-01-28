@@ -1,6 +1,4 @@
-using PckTool.Core.WWise.Bnk.Hirc.Params;
-
-namespace PckTool.Core.WWise.Bnk.Hirc.Items;
+﻿namespace PckTool.Core.WWise.Bnk.Hirc.Items;
 
 public class EventInitialValues
 {

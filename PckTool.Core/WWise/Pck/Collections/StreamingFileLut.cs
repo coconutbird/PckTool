@@ -1,5 +1,4 @@
-using PckTool.Abstractions;
-
+﻿using PckTool.Abstractions;
 using PckTool.Core.WWise.Pck.Entries;
 
 namespace PckTool.Core.WWise.Pck.Collections;
