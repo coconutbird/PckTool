@@ -1954,4 +1954,170 @@ public class HircItemTests
     }
 
 #endregion
+
+#region WEM Replacement Tests
+
+    [Fact]
+    public void SoundBank_ReplaceWem_UpdatesMediaData()
+    {
+        // Arrange - Create a soundbank with embedded media
+        var bank = new PckTool.Core.WWise.Bnk.SoundBank(0x12345678, 0);
+        var originalData = new byte[] { 0x01, 0x02, 0x03, 0x04 };
+        var newData = new byte[] { 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F };
+
+        bank.Media.Add(100, originalData);
+
+        // Act
+        bank.ReplaceWem(100, newData);
+
+        // Assert
+        Assert.Equal(newData, bank.Media[100]);
+    }
+
+    [Fact]
+    public void SoundBank_ReplaceWem_ThrowsForNonExistentId()
+    {
+        // Arrange
+        var bank = new PckTool.Core.WWise.Bnk.SoundBank(0x12345678, 0);
+
+        // Act & Assert
+        Assert.Throws<KeyNotFoundException>(() => bank.ReplaceWem(999, new byte[] { 0x01 }));
+    }
+
+    [Fact]
+    public void SoundBank_SetWem_AddsNewMedia()
+    {
+        // Arrange
+        var bank = new PckTool.Core.WWise.Bnk.SoundBank(0x12345678, 0);
+        var data = new byte[] { 0x01, 0x02, 0x03 };
+
+        // Act
+        var updated = bank.SetWem(100, data);
+
+        // Assert
+        Assert.Equal(0, updated); // No HIRC references to update for new media
+        Assert.True(bank.Media.Contains(100));
+        Assert.Equal(data, bank.Media[100]);
+    }
+
+    [Fact]
+    public void SoundBank_SetWem_ReplacesExistingMedia()
+    {
+        // Arrange
+        var bank = new PckTool.Core.WWise.Bnk.SoundBank(0x12345678, 0);
+        var originalData = new byte[] { 0x01, 0x02, 0x03 };
+        var newData = new byte[] { 0x0A, 0x0B, 0x0C, 0x0D };
+
+        bank.Media.Add(100, originalData);
+
+        // Act
+        bank.SetWem(100, newData);
+
+        // Assert
+        Assert.Equal(newData, bank.Media[100]);
+    }
+
+    [Fact]
+    public void SoundBank_GetMediaReferences_ReturnsEmptyForNoReferences()
+    {
+        // Arrange
+        var bank = new PckTool.Core.WWise.Bnk.SoundBank(0x12345678, 0);
+        bank.Media.Add(100, new byte[] { 0x01, 0x02 });
+
+        // Act
+        var refs = bank.GetMediaReferences(100).ToList();
+
+        // Assert
+        Assert.Empty(refs);
+    }
+
+    [Fact]
+    public void SoundBank_GetItemsBySourceId_ReturnsEmptyForNoReferences()
+    {
+        // Arrange
+        var bank = new PckTool.Core.WWise.Bnk.SoundBank(0x12345678, 0);
+        bank.Media.Add(100, new byte[] { 0x01, 0x02 });
+
+        // Act
+        var items = bank.GetItemsBySourceId(100).ToList();
+
+        // Assert
+        Assert.Empty(items);
+    }
+
+    [Fact]
+    public void SoundBank_UpdateMediaSize_ReturnsZeroForNoReferences()
+    {
+        // Arrange
+        var bank = new PckTool.Core.WWise.Bnk.SoundBank(0x12345678, 0);
+
+        // Act
+        var updated = bank.UpdateMediaSize(100, 1000);
+
+        // Assert
+        Assert.Equal(0, updated);
+    }
+
+    [SkippableFact]
+    public void Integration_ReplaceWem_UpdatesHircSizes()
+    {
+        Skip.IfNot(File.Exists(SoundsPckPath), $"Sounds.pck not found at {SoundsPckPath}");
+
+        // Load the .pck file
+        using var pck = PckFile.Load(SoundsPckPath);
+        Assert.NotNull(pck);
+
+        // Find a bank with embedded media and Sound items
+        PckTool.Core.WWise.Bnk.SoundBank? testBank = null;
+        uint testSourceId = 0;
+        uint originalSize = 0;
+
+        foreach (var entry in pck.SoundBanks)
+        {
+            var bank = entry.Parse();
+
+            if (bank is null || bank.Media.Count == 0)
+            {
+                continue;
+            }
+
+            // Find a Sound item that references embedded media
+            foreach (var sound in bank.Sounds)
+            {
+                var sourceId = sound.Values.BankSourceData.MediaInformation.SourceId;
+
+                if (bank.Media.Contains(sourceId))
+                {
+                    testBank = bank;
+                    testSourceId = sourceId;
+                    originalSize = sound.Values.BankSourceData.MediaInformation.InMemoryMediaSize;
+
+                    break;
+                }
+            }
+
+            if (testBank is not null)
+            {
+                break;
+            }
+        }
+
+        Skip.If(testBank is null, "No suitable bank found with embedded media and Sound items");
+
+        // Create replacement data with different size
+        var newData = new byte[originalSize + 100];
+        Array.Fill(newData, (byte) 0xAB);
+
+        // Act - Replace the WEM
+        var updatedCount = testBank!.ReplaceWem(testSourceId, newData);
+
+        // Assert
+        Assert.True(updatedCount > 0, "Expected at least one HIRC reference to be updated");
+
+        // Verify the size was updated
+        var refs = testBank.GetMediaReferences(testSourceId).ToList();
+        Assert.All(refs, r => Assert.Equal((uint) newData.Length, r.InMemoryMediaSize));
+    }
+
+#endregion
 }

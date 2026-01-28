@@ -131,6 +131,184 @@ public class SoundBank
         return Media[sourceId];
     }
 
+    /// <summary>
+    ///     Gets all MediaInformation references for a given source ID.
+    ///     This includes Sound items, MusicTrack sources, and FeedbackNode sources.
+    /// </summary>
+    /// <param name="sourceId">The WEM source ID to find references for.</param>
+    /// <returns>All MediaInformation objects that reference this source ID.</returns>
+    public IEnumerable<MediaInformation> GetMediaReferences(uint sourceId)
+    {
+        // Check Sound items
+        foreach (var sound in Sounds)
+        {
+            if (sound.Values.BankSourceData.MediaInformation.SourceId == sourceId)
+            {
+                yield return sound.Values.BankSourceData.MediaInformation;
+            }
+        }
+
+        // Check MusicTrack items (can have multiple sources)
+        foreach (var track in MusicTracks)
+        {
+            foreach (var source in track.Values.Sources)
+            {
+                if (source.MediaInformation.SourceId == sourceId)
+                {
+                    yield return source.MediaInformation;
+                }
+            }
+        }
+
+        // Check FeedbackNode items
+        foreach (var item in Items.OfType<FeedbackNodeItem>())
+        {
+            foreach (var source in item.Values.Sources)
+            {
+                if (source.BankSourceData.MediaInformation.SourceId == sourceId)
+                {
+                    yield return source.BankSourceData.MediaInformation;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Gets all HIRC items that reference a given source ID.
+    /// </summary>
+    /// <param name="sourceId">The WEM source ID to find references for.</param>
+    /// <returns>All HIRC items that reference this source ID.</returns>
+    public IEnumerable<HircItem> GetItemsBySourceId(uint sourceId)
+    {
+        // Check Sound items
+        foreach (var sound in Sounds)
+        {
+            if (sound.Values.BankSourceData.MediaInformation.SourceId == sourceId)
+            {
+                yield return sound;
+            }
+        }
+
+        // Check MusicTrack items
+        foreach (var track in MusicTracks)
+        {
+            if (track.Values.Sources.Any(s => s.MediaInformation.SourceId == sourceId))
+            {
+                yield return track;
+            }
+        }
+
+        // Check FeedbackNode items
+        foreach (var item in Items.OfType<FeedbackNodeItem>())
+        {
+            if (item.Values.Sources.Any(s => s.BankSourceData.MediaInformation.SourceId == sourceId))
+            {
+                yield return item;
+            }
+        }
+    }
+
+#endregion
+
+#region WEM Replacement
+
+    /// <summary>
+    ///     Replaces embedded WEM data and updates all HIRC references to reflect the new size.
+    /// </summary>
+    /// <param name="sourceId">The WEM source ID to replace.</param>
+    /// <param name="newData">The new WEM data.</param>
+    /// <param name="updateHircSizes">If true, updates InMemoryMediaSize in all HIRC items that reference this WEM.</param>
+    /// <returns>The number of HIRC references that were updated.</returns>
+    /// <exception cref="KeyNotFoundException">Thrown if the source ID doesn't exist in the Media collection.</exception>
+    public int ReplaceWem(uint sourceId, byte[] newData, bool updateHircSizes = true)
+    {
+        if (!Media.Contains(sourceId))
+        {
+            throw new KeyNotFoundException($"WEM with source ID 0x{sourceId:X8} not found in embedded media.");
+        }
+
+        // Replace the media data
+        Media[sourceId] = newData;
+
+        if (!updateHircSizes)
+        {
+            return 0;
+        }
+
+        // Update all HIRC references
+        var updatedCount = 0;
+
+        foreach (var mediaInfo in GetMediaReferences(sourceId))
+        {
+            mediaInfo.InMemoryMediaSize = (uint) newData.Length;
+            updatedCount++;
+        }
+
+        return updatedCount;
+    }
+
+    /// <summary>
+    ///     Replaces embedded WEM data from a file and updates all HIRC references.
+    /// </summary>
+    /// <param name="sourceId">The WEM source ID to replace.</param>
+    /// <param name="filePath">Path to the new WEM file.</param>
+    /// <param name="updateHircSizes">If true, updates InMemoryMediaSize in all HIRC items that reference this WEM.</param>
+    /// <returns>The number of HIRC references that were updated.</returns>
+    public int ReplaceWemFromFile(uint sourceId, string filePath, bool updateHircSizes = true)
+    {
+        var newData = File.ReadAllBytes(filePath);
+
+        return ReplaceWem(sourceId, newData, updateHircSizes);
+    }
+
+    /// <summary>
+    ///     Adds a new embedded WEM or replaces an existing one, updating HIRC references if it exists.
+    /// </summary>
+    /// <param name="sourceId">The WEM source ID.</param>
+    /// <param name="data">The WEM data.</param>
+    /// <param name="updateHircSizes">If true and the WEM exists, updates InMemoryMediaSize in all HIRC items.</param>
+    /// <returns>The number of HIRC references that were updated (0 if this was a new WEM).</returns>
+    public int SetWem(uint sourceId, byte[] data, bool updateHircSizes = true)
+    {
+        var exists = Media.Contains(sourceId);
+        Media[sourceId] = data;
+
+        if (!exists || !updateHircSizes)
+        {
+            return 0;
+        }
+
+        var updatedCount = 0;
+
+        foreach (var mediaInfo in GetMediaReferences(sourceId))
+        {
+            mediaInfo.InMemoryMediaSize = (uint) data.Length;
+            updatedCount++;
+        }
+
+        return updatedCount;
+    }
+
+    /// <summary>
+    ///     Updates the InMemoryMediaSize for all HIRC items referencing a source ID.
+    ///     Useful when you've modified media externally and need to sync HIRC.
+    /// </summary>
+    /// <param name="sourceId">The WEM source ID.</param>
+    /// <param name="newSize">The new size to set.</param>
+    /// <returns>The number of HIRC references that were updated.</returns>
+    public int UpdateMediaSize(uint sourceId, uint newSize)
+    {
+        var updatedCount = 0;
+
+        foreach (var mediaInfo in GetMediaReferences(sourceId))
+        {
+            mediaInfo.InMemoryMediaSize = newSize;
+            updatedCount++;
+        }
+
+        return updatedCount;
+    }
+
 #endregion
 
 #region Constructors

@@ -380,6 +380,205 @@ public class PckFile : IDisposable
         }
     }
 
+#region WEM Replacement
+
+    /// <summary>
+    ///     Replaces a WEM file by ID, checking both embedded (in soundbanks) and streaming locations.
+    /// </summary>
+    /// <param name="id">The WEM source ID to replace.</param>
+    /// <param name="data">The replacement WEM data.</param>
+    /// <param name="updateHircSizes">If true, updates InMemoryMediaSize in all HIRC references.</param>
+    /// <returns>A result indicating where the WEM was found and how many references were updated.</returns>
+    public WemReplacementResult ReplaceWem(uint id, byte[] data, bool updateHircSizes = true)
+    {
+        var result = new WemReplacementResult { SourceId = id };
+
+        // Check streaming files first (more common for large audio)
+        var streamingEntry = StreamingFiles[id];
+
+        if (streamingEntry is not null)
+        {
+            streamingEntry.ReplaceWith(data);
+            result.ReplacedInStreaming = true;
+        }
+
+        // Check embedded media in all soundbanks
+        foreach (var bankEntry in SoundBanks)
+        {
+            var bank = bankEntry.Parse();
+
+            if (bank is null || !bank.Media.Contains(id))
+            {
+                continue;
+            }
+
+            // Replace embedded media and update HIRC
+            var updated = bank.ReplaceWem(id, data, updateHircSizes);
+            result.EmbeddedBanksModified++;
+            result.HircReferencesUpdated += updated;
+
+            // Re-serialize the modified bank
+            bankEntry.ReplaceWith(bank.ToByteArray());
+        }
+
+        // If only in streaming (not embedded), still update HIRC sizes across banks
+        if (result.ReplacedInStreaming && result.EmbeddedBanksModified == 0 && updateHircSizes)
+        {
+            result.HircReferencesUpdated = UpdateHircMediaSizes(id, (uint) data.Length);
+        }
+
+        if (!result.ReplacedInStreaming && result.EmbeddedBanksModified == 0)
+        {
+            throw new KeyNotFoundException($"WEM with ID 0x{id:X8} not found in streaming files or any soundbank.");
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    ///     Replaces a WEM file by ID from a file path.
+    /// </summary>
+    /// <param name="id">The WEM source ID to replace.</param>
+    /// <param name="filePath">Path to the replacement WEM file.</param>
+    /// <param name="updateHircSizes">If true, updates InMemoryMediaSize in all HIRC references.</param>
+    /// <returns>A result indicating where the WEM was found and how many references were updated.</returns>
+    public WemReplacementResult ReplaceWemFromFile(uint id, string filePath, bool updateHircSizes = true)
+    {
+        var data = File.ReadAllBytes(filePath);
+
+        return ReplaceWem(id, data, updateHircSizes);
+    }
+
+    /// <summary>
+    ///     Replaces a streaming WEM file by ID.
+    /// </summary>
+    /// <param name="id">The streaming file ID to replace.</param>
+    /// <param name="data">The replacement WEM data.</param>
+    /// <param name="updateHircSizes">If true, updates InMemoryMediaSize in all soundbanks that reference this WEM.</param>
+    /// <returns>The number of HIRC references updated (0 if updateHircSizes is false or no references found).</returns>
+    /// <exception cref="KeyNotFoundException">Thrown if the streaming file ID doesn't exist.</exception>
+    public int ReplaceStreamingWem(uint id, byte[] data, bool updateHircSizes = true)
+    {
+        var entry = StreamingFiles[id];
+
+        if (entry is null)
+        {
+            throw new KeyNotFoundException($"Streaming WEM with ID 0x{id:X8} not found.");
+        }
+
+        entry.ReplaceWith(data);
+
+        if (!updateHircSizes)
+        {
+            return 0;
+        }
+
+        return UpdateHircMediaSizes(id, (uint) data.Length);
+    }
+
+    /// <summary>
+    ///     Replaces a streaming WEM file by ID from a file path.
+    /// </summary>
+    /// <param name="id">The streaming file ID to replace.</param>
+    /// <param name="filePath">Path to the replacement WEM file.</param>
+    /// <param name="updateHircSizes">If true, updates InMemoryMediaSize in all soundbanks that reference this WEM.</param>
+    /// <returns>The number of HIRC references updated.</returns>
+    public int ReplaceStreamingWemFromFile(uint id, string filePath, bool updateHircSizes = true)
+    {
+        var data = File.ReadAllBytes(filePath);
+
+        return ReplaceStreamingWem(id, data, updateHircSizes);
+    }
+
+    /// <summary>
+    ///     Replaces an external file by ID.
+    /// </summary>
+    /// <param name="id">The external file ID (64-bit) to replace.</param>
+    /// <param name="data">The replacement file data.</param>
+    /// <returns>True if the entry was found and replaced.</returns>
+    /// <exception cref="KeyNotFoundException">Thrown if the external file ID doesn't exist.</exception>
+    public bool ReplaceExternalFile(ulong id, byte[] data)
+    {
+        var entry = ExternalFiles[id];
+
+        if (entry is null)
+        {
+            throw new KeyNotFoundException($"External file with ID 0x{id:X16} not found.");
+        }
+
+        entry.ReplaceWith(data);
+
+        return true;
+    }
+
+    /// <summary>
+    ///     Replaces an external file by ID from a file path.
+    /// </summary>
+    /// <param name="id">The external file ID (64-bit) to replace.</param>
+    /// <param name="filePath">Path to the replacement file.</param>
+    /// <returns>True if the entry was found and replaced.</returns>
+    public bool ReplaceExternalFileFromFile(ulong id, string filePath)
+    {
+        var data = File.ReadAllBytes(filePath);
+
+        return ReplaceExternalFile(id, data);
+    }
+
+    /// <summary>
+    ///     Updates InMemoryMediaSize in all soundbanks for a given source ID.
+    ///     This parses each soundbank, updates the HIRC references, and replaces the soundbank data.
+    /// </summary>
+    /// <param name="sourceId">The WEM source ID.</param>
+    /// <param name="newSize">The new size to set.</param>
+    /// <returns>The total number of HIRC references updated across all soundbanks.</returns>
+    public int UpdateHircMediaSizes(uint sourceId, uint newSize)
+    {
+        var totalUpdated = 0;
+
+        foreach (var entry in SoundBanks)
+        {
+            var soundBank = entry.Parse();
+
+            if (soundBank is null)
+            {
+                continue;
+            }
+
+            var updated = soundBank.UpdateMediaSize(sourceId, newSize);
+
+            if (updated > 0)
+            {
+                // Re-serialize the modified soundbank
+                entry.ReplaceWith(soundBank.ToByteArray());
+                totalUpdated += updated;
+            }
+        }
+
+        return totalUpdated;
+    }
+
+    /// <summary>
+    ///     Gets a streaming file entry by ID.
+    /// </summary>
+    /// <param name="id">The streaming file ID.</param>
+    /// <returns>The entry, or null if not found.</returns>
+    public StreamingFileEntry? GetStreamingFile(uint id)
+    {
+        return StreamingFiles[id];
+    }
+
+    /// <summary>
+    ///     Gets an external file entry by ID.
+    /// </summary>
+    /// <param name="id">The external file ID (64-bit).</param>
+    /// <returns>The entry, or null if not found.</returns>
+    public ExternalFileEntry? GetExternalFile(ulong id)
+    {
+        return ExternalFiles[id];
+    }
+
+#endregion
+
     public void Save(string path)
     {
         using var writer = new BinaryWriter(File.Create(path));

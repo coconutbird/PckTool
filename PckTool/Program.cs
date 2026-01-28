@@ -91,6 +91,41 @@ public static class Program
 
         rootCommand.Subcommands.Add(replaceCommand);
 
+        // Replace WEM command - replaces a WEM file
+        var replaceWemCommand = new Command("replace-wem", "Replace a WEM file in the package.");
+
+        var targetWemOption = new Option<string>("--target", "-t")
+        {
+            Description = "Target WEM ID (decimal or hex with 0x prefix) to replace.", Required = true
+        };
+
+        var sourceWemOption = new Option<string>("--source", "-s")
+        {
+            Description =
+                "Source WEM ID or file path. If a file path, uses that file. If an ID, copies from that WEM."
+        };
+
+        var wemInputFileOption = new Option<string?>("--input", "-i")
+        {
+            Description = "Path to the replacement .wem file. Alternative to --source."
+        };
+
+        replaceWemCommand.Options.Add(targetWemOption);
+        replaceWemCommand.Options.Add(sourceWemOption);
+        replaceWemCommand.Options.Add(wemInputFileOption);
+
+        replaceWemCommand.SetAction(parseResult =>
+        {
+            var gameDir = parseResult.GetValue(gameDirOption);
+            var output = parseResult.GetValue(outputOption) ?? "dumps";
+            var targetWem = parseResult.GetValue(targetWemOption)!;
+            var sourceWem = parseResult.GetValue(sourceWemOption);
+            var inputFile = parseResult.GetValue(wemInputFileOption);
+            RunReplaceWem(gameDir, output, targetWem, sourceWem, inputFile);
+        });
+
+        rootCommand.Subcommands.Add(replaceWemCommand);
+
         // List command - lists all sound banks
         var listCommand = new Command("list", "List all sound banks in the package file.");
 
@@ -741,6 +776,172 @@ public static class Program
         package.Save(outputFile);
 
         Log.Info("Done! Sound bank {0:X8} has been replaced.", bankId);
+    }
+
+    private static void RunReplaceWem(
+        string? gameDirArg,
+        string outputPath,
+        string targetWemArg,
+        string? sourceWemArg,
+        string? inputFile)
+    {
+        var gameDir = gameDirArg ?? FindHaloWarsGameDirectory();
+
+        if (gameDir is null)
+        {
+            Log.Error("Could not find Halo Wars game directory. Use --game-dir to specify.");
+
+            return;
+        }
+
+        // Parse target WEM ID
+        uint targetWemId;
+
+        if (targetWemArg.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+        {
+            targetWemId = uint.Parse(targetWemArg[2..], NumberStyles.HexNumber);
+        }
+        else
+        {
+            targetWemId = uint.Parse(targetWemArg);
+        }
+
+        Log.Info("Target WEM ID: {0} (0x{0:X8})", targetWemId);
+
+        // Get replacement data
+        byte[] replacementData;
+
+        if (inputFile is not null && File.Exists(inputFile))
+        {
+            // Use file directly
+            replacementData = File.ReadAllBytes(inputFile);
+            Log.Info("Using replacement file: {0} ({1} bytes)", inputFile, replacementData.Length);
+        }
+        else if (sourceWemArg is not null)
+        {
+            // Check if it's a file path or WEM ID
+            if (File.Exists(sourceWemArg))
+            {
+                replacementData = File.ReadAllBytes(sourceWemArg);
+                Log.Info("Using replacement file: {0} ({1} bytes)", sourceWemArg, replacementData.Length);
+            }
+            else
+            {
+                // Parse as WEM ID and find it in the package
+                uint sourceWemId;
+
+                if (sourceWemArg.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                {
+                    sourceWemId = uint.Parse(sourceWemArg[2..], NumberStyles.HexNumber);
+                }
+                else
+                {
+                    sourceWemId = uint.Parse(sourceWemArg);
+                }
+
+                Log.Info("Source WEM ID: {0} (0x{0:X8})", sourceWemId);
+
+                // Load package to find source WEM
+                var soundsPackagePath = GetSoundsPackagePath(gameDir);
+
+                if (!File.Exists(soundsPackagePath))
+                {
+                    Log.Error("Sounds.pck not found at: {0}", soundsPackagePath);
+
+                    return;
+                }
+
+                using var tempPck = PckFile.Load(soundsPackagePath);
+
+                // Try streaming files first
+                var streamingEntry = tempPck.StreamingFiles[sourceWemId];
+
+                if (streamingEntry is not null)
+                {
+                    replacementData = streamingEntry.GetData();
+                    Log.Info("Found source WEM in streaming files ({0} bytes)", replacementData.Length);
+                }
+                else
+                {
+                    // Search embedded media in all soundbanks
+                    byte[]? foundData = null;
+
+                    foreach (var bankEntry in tempPck.SoundBanks)
+                    {
+                        var bank = bankEntry.Parse();
+
+                        if (bank is not null && bank.Media.Contains(sourceWemId))
+                        {
+                            foundData = bank.Media[sourceWemId];
+                            Log.Info(
+                                "Found source WEM in soundbank 0x{0:X8} ({1} bytes)",
+                                bankEntry.Id,
+                                foundData.Length);
+
+                            break;
+                        }
+                    }
+
+                    if (foundData is null)
+                    {
+                        Log.Error("Source WEM {0} (0x{0:X8}) not found in package", sourceWemId);
+
+                        return;
+                    }
+
+                    replacementData = foundData;
+                }
+            }
+        }
+        else
+        {
+            Log.Error("Must specify either --source or --input for replacement data");
+
+            return;
+        }
+
+        // Load the package
+        var packagePath = GetSoundsPackagePath(gameDir);
+
+        if (!File.Exists(packagePath))
+        {
+            Log.Error("Sounds.pck not found at: {0}", packagePath);
+
+            return;
+        }
+
+        Log.Info("Loading package: {0}", packagePath);
+
+        using var package = PckFile.Load(packagePath);
+
+        // Replace the WEM using the unified API
+        Log.Info("Replacing WEM...");
+        var result = package.ReplaceWem(targetWemId, replacementData);
+
+        Log.Info("");
+        Log.Info("Replacement result:");
+        Log.Info("  Replaced in streaming: {0}", result.ReplacedInStreaming);
+        Log.Info("  Embedded banks modified: {0}", result.EmbeddedBanksModified);
+        Log.Info("  HIRC references updated: {0}", result.HircReferencesUpdated);
+
+        // Determine output path
+        var outputFile = outputPath;
+
+        if (Directory.Exists(outputPath))
+        {
+            outputFile = Path.Combine(outputPath, "Sounds_modified.pck");
+        }
+        else if (!outputPath.EndsWith(".pck", StringComparison.OrdinalIgnoreCase))
+        {
+            outputFile = outputPath + ".pck";
+        }
+
+        // Save the modified package
+        Log.Info("");
+        Log.Info("Saving modified package to: {0}", outputFile);
+        package.Save(outputFile);
+
+        Log.Info("Done! WEM {0} (0x{0:X8}) has been replaced.", targetWemId);
     }
 
     private static void RunInfo()
