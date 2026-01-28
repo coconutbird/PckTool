@@ -722,4 +722,41 @@ public class FileEntryTests
     }
 
 #endregion
+
+#region PCK File Round-Trip Tests
+
+    private const string SoundsPckPath =
+        @"C:\Program Files (x86)\Steam\steamapps\common\HaloWarsDE\sound\wwise_2013\GeneratedSoundBanks\Windows\Sounds.pck";
+
+    [SkippableFact]
+    public void PckFile_RoundTrip_SaveAndLoadProducesIdenticalData()
+    {
+        Skip.IfNot(File.Exists(SoundsPckPath), $"Sounds.pck not found at {SoundsPckPath}");
+
+        // Load the original PCK
+        using var original = PckFile.Load(SoundsPckPath);
+        Assert.NotNull(original);
+
+        // Save to temp file
+        var tempPath = Path.GetTempFileName();
+
+        try
+        {
+            original.Save(tempPath);
+
+            // Load the saved file
+            using var reloaded = PckFile.Load(tempPath);
+            Assert.NotNull(reloaded);
+
+            // Use equality operator - should be identical
+            Assert.True(original == reloaded, "Round-trip produced different data (equality operator)");
+            Assert.Equal(original, reloaded);
+        }
+        finally
+        {
+            if (File.Exists(tempPath)) File.Delete(tempPath);
+        }
+    }
+
+#endregion
 }

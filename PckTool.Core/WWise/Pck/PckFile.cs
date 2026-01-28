@@ -6,7 +6,7 @@ using PckTool.Core.WWise.Util;
 
 namespace PckTool.Core.WWise.Pck;
 
-public class PckFile : IDisposable
+public class PckFile : IDisposable, IEquatable<PckFile>
 {
     private const uint ValidVersion = 0x1;
     private static readonly uint ValidHeaderTag = Hash.AkmmioFourcc('A', 'K', 'P', 'K');
@@ -992,6 +992,61 @@ public class PckFile : IDisposable
     public ExternalFileEntry? GetExternalFile(ulong id)
     {
         return ExternalFiles[id];
+    }
+
+#endregion
+
+#region Equality
+
+    /// <summary>
+    ///     Determines whether this PckFile is equal to another PckFile.
+    ///     Compares languages and all LUTs.
+    /// </summary>
+    public bool Equals(PckFile? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+
+        // Compare languages
+        if (Languages.Count != other.Languages.Count) return false;
+
+        foreach (var (key, value) in Languages)
+        {
+            if (!other.Languages.TryGetValue(key, out var otherValue) || value != otherValue) return false;
+        }
+
+        // Compare LUTs
+        if (!SoundBanks.Equals(other.SoundBanks)) return false;
+        if (!StreamingFiles.Equals(other.StreamingFiles)) return false;
+        if (!ExternalFiles.Equals(other.ExternalFiles)) return false;
+
+        return true;
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as PckFile);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(
+            Languages.Count,
+            SoundBanks.GetHashCode(),
+            StreamingFiles.GetHashCode(),
+            ExternalFiles.GetHashCode());
+    }
+
+    public static bool operator ==(PckFile? left, PckFile? right)
+    {
+        if (left is null) return right is null;
+
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(PckFile? left, PckFile? right)
+    {
+        return !(left == right);
     }
 
 #endregion

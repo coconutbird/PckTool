@@ -163,8 +163,8 @@ public class StringMapTests
 
         var bytesWritten = stringMap.Write(writer);
 
-        // 4 (count) + 8 (entry) + 10 (5 wide chars including null) = 22
-        Assert.Equal(22u, bytesWritten);
+        // 4 (count) + 8 (entry) + 10 (5 wide chars including null) = 22, padded to 4-byte alignment = 24
+        Assert.Equal(24u, bytesWritten);
     }
 
 #endregion

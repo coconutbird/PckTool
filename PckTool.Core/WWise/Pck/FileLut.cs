@@ -9,7 +9,7 @@ namespace PckTool.Core.WWise.Pck;
 /// </summary>
 /// <typeparam name="TKey">The type of the file ID (uint or ulong).</typeparam>
 /// <typeparam name="TEntry">The type of entry stored in this LUT.</typeparam>
-public abstract class FileLut<TKey, TEntry> : IEnumerable<TEntry>
+public abstract class FileLut<TKey, TEntry> : IEnumerable<TEntry>, IEquatable<FileLut<TKey, TEntry>>
     where TKey : struct, INumber<TKey>
     where TEntry : FileEntry<TKey>
 {
@@ -201,4 +201,52 @@ public abstract class FileLut<TKey, TEntry> : IEnumerable<TEntry>
     ///     Creates a new entry instance.
     /// </summary>
     protected abstract TEntry CreateEntry(TKey id, uint blockSize, uint startBlock, uint languageId);
+
+    /// <summary>
+    ///     Determines whether this LUT is equal to another LUT.
+    ///     Compares entry count and all entries in order.
+    /// </summary>
+    public bool Equals(FileLut<TKey, TEntry>? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+        if (TotalCount != other.TotalCount) return false;
+
+        for (var i = 0; i < _orderedEntries.Count; i++)
+        {
+            if (!_orderedEntries[i].Equals(other._orderedEntries[i])) return false;
+        }
+
+        return true;
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as FileLut<TKey, TEntry>);
+    }
+
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(TotalCount);
+
+        foreach (var entry in _orderedEntries)
+        {
+            hash.Add(entry.GetHashCode());
+        }
+
+        return hash.ToHashCode();
+    }
+
+    public static bool operator ==(FileLut<TKey, TEntry>? left, FileLut<TKey, TEntry>? right)
+    {
+        if (left is null) return right is null;
+
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(FileLut<TKey, TEntry>? left, FileLut<TKey, TEntry>? right)
+    {
+        return !(left == right);
+    }
 }

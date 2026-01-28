@@ -2,7 +2,7 @@
 
 namespace PckTool.Core.WWise.Pck;
 
-public class StringMap
+public class StringMap : IEquatable<StringMap>
 {
     public Dictionary<uint, string> Map { get; } = new();
 
@@ -113,5 +113,53 @@ public class StringMap
         }
 
         return (uint) (writer.BaseStream.Position - startPosition);
+    }
+
+    /// <summary>
+    ///     Determines whether this StringMap is equal to another StringMap.
+    /// </summary>
+    public bool Equals(StringMap? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+        if (Map.Count != other.Map.Count) return false;
+
+        foreach (var (key, value) in Map)
+        {
+            if (!other.Map.TryGetValue(key, out var otherValue) || value != otherValue) return false;
+        }
+
+        return true;
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as StringMap);
+    }
+
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(Map.Count);
+
+        foreach (var (key, value) in Map)
+        {
+            hash.Add(key);
+            hash.Add(value);
+        }
+
+        return hash.ToHashCode();
+    }
+
+    public static bool operator ==(StringMap? left, StringMap? right)
+    {
+        if (left is null) return right is null;
+
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(StringMap? left, StringMap? right)
+    {
+        return !(left == right);
     }
 }

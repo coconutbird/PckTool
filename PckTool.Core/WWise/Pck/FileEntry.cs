@@ -9,7 +9,7 @@ namespace PckTool.Core.WWise.Pck;
 ///     Provides common functionality for data storage, replacement, and change tracking.
 /// </summary>
 /// <typeparam name="TKey">The type of the file ID (uint or ulong).</typeparam>
-public abstract class FileEntry<TKey> : INotifyPropertyChanged
+public abstract class FileEntry<TKey> : INotifyPropertyChanged, IEquatable<FileEntry<TKey>>
     where TKey : struct, INumber<TKey>
 {
     private byte[]? _originalData;
@@ -136,5 +136,42 @@ public abstract class FileEntry<TKey> : INotifyPropertyChanged
     internal void SetOriginalData(byte[] data)
     {
         _originalData = data;
+    }
+
+    /// <summary>
+    ///     Determines whether this entry is equal to another entry.
+    ///     Compares Id, LanguageId, BlockSize, and data content.
+    /// </summary>
+    public bool Equals(FileEntry<TKey>? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+
+        return Id.Equals(other.Id)
+               && LanguageId == other.LanguageId
+               && BlockSize == other.BlockSize
+               && GetData().AsSpan().SequenceEqual(other.GetData());
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as FileEntry<TKey>);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Id, LanguageId, BlockSize);
+    }
+
+    public static bool operator ==(FileEntry<TKey>? left, FileEntry<TKey>? right)
+    {
+        if (left is null) return right is null;
+
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(FileEntry<TKey>? left, FileEntry<TKey>? right)
+    {
+        return !(left == right);
     }
 }
