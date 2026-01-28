@@ -1,5 +1,4 @@
-﻿using PckTool.Core.WWise.Bnk.Bank;
-using PckTool.Core.WWise.Util;
+using PckTool.Core.WWise.Common;
 
 namespace PckTool.Core.WWise.Bnk.Chunks;
 
@@ -9,11 +8,11 @@ public class EnvSettingsChunk : BaseChunk
 
     public override uint Magic => Hash.AkmmioFourcc('E', 'N', 'V', 'S');
 
-    public ConversionTable? ConversionTable { get; private set; }
+    public EnvSettingsConversionTable? ConversionTable { get; private set; }
 
     protected override bool ReadInternal(SoundBank soundBank, BinaryReader reader, uint size, long startPosition)
     {
-        var conversionTable = new ConversionTable();
+        var conversionTable = new EnvSettingsConversionTable();
 
         if (!conversionTable.Read(reader, size))
         {

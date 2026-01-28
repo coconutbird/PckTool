@@ -2,7 +2,8 @@ using System.Text;
 
 using PckTool.Core.WWise.Bnk;
 using PckTool.Core.WWise.Bnk.Enums;
-using PckTool.Core.WWise.Bnk.Structs;
+using PckTool.Core.WWise.Bnk.Hirc.Items;
+using PckTool.Core.WWise.Bnk.Hirc.Params;
 using PckTool.Core.WWise.Pck;
 
 namespace PckTool.Core.Tests;

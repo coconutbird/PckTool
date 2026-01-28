@@ -1,5 +1,5 @@
 using PckTool.Abstractions;
-using PckTool.Core.WWise.Bnk.Structs;
+using PckTool.Core.WWise.Bnk.Hirc.Items;
 
 namespace PckTool.Core.WWise.Bnk;
 

@@ -1,5 +1,5 @@
-﻿using PckTool.Core.WWise.Bnk.Structs;
-using PckTool.Core.WWise.Util;
+using PckTool.Core.WWise.Bnk.Hirc.Items;
+using PckTool.Core.WWise.Common;
 
 namespace PckTool.Core.WWise.Bnk.Chunks;
 

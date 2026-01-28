@@ -1,7 +1,7 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Specialized;
 
-using PckTool.Core.WWise.Bnk.Structs;
+using PckTool.Core.WWise.Bnk.Hirc.Items;
 
 namespace PckTool.Core.WWise.Bnk;
 

@@ -1,9 +1,10 @@
-﻿using System.Text;
+using System.Text;
 
 using PckTool.Abstractions;
 using PckTool.Core.WWise.Bnk.Chunks;
 using PckTool.Core.WWise.Bnk.Enums;
-using PckTool.Core.WWise.Bnk.Structs;
+using PckTool.Core.WWise.Bnk.Hirc.Items;
+using PckTool.Core.WWise.Bnk.Hirc.Params;
 
 namespace PckTool.Core.WWise.Bnk;
 

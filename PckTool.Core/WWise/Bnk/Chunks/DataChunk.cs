@@ -1,4 +1,4 @@
-﻿using PckTool.Core.WWise.Util;
+using PckTool.Core.WWise.Common;
 
 namespace PckTool.Core.WWise.Bnk.Chunks;
 

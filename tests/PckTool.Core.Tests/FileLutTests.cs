@@ -1,4 +1,5 @@
-using PckTool.Core.WWise.Pck;
+using PckTool.Core.WWise.Pck.Collections;
+using PckTool.Core.WWise.Pck.Entries;
 
 namespace PckTool.Core.Tests;
 

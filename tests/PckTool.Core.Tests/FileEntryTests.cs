@@ -1,5 +1,6 @@
 using PckTool.Core.WWise.Bnk;
 using PckTool.Core.WWise.Pck;
+using PckTool.Core.WWise.Pck.Entries;
 
 namespace PckTool.Core.Tests;
 

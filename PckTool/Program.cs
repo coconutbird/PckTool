@@ -4,8 +4,8 @@ using System.Globalization;
 using Microsoft.Win32;
 
 using PckTool.Abstractions;
-using PckTool.Core.HaloWars;
-using PckTool.Core.Package;
+using PckTool.Core.Games.HaloWars;
+using PckTool.Core.Services;
 using PckTool.Core.WWise.Bnk;
 using PckTool.Services;
 
