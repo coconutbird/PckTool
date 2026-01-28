@@ -35,18 +35,18 @@ public static class Program
             config.AddCommand<SoundsCommand>("sounds")
                   .WithDescription("List all sounds in a specific bank.");
 
-            config.AddBranch(
-                "project",
-                project =>
-                {
-                    project.SetDescription("Manage project files.");
-
-                    project.AddCommand<ProjectCreateCommand>("create")
-                           .WithDescription("Create a new project file.");
-
-                    project.AddCommand<ProjectInfoCommand>("info")
-                           .WithDescription("Show project information.");
-                });
+            // config.AddBranch(
+            //     "project",
+            //     project =>
+            //     {
+            //         project.SetDescription("Manage project files.");
+            // 
+            //         project.AddCommand<ProjectCreateCommand>("create")
+            //                .WithDescription("Create a new project file.");
+            // 
+            //         project.AddCommand<ProjectInfoCommand>("info")
+            //                .WithDescription("Show project information.");
+            //     });
         });
 
         return app.Run(args);

@@ -205,9 +205,8 @@ public class DumpCommand : Command<DumpSettings>
                                    metadata.Save(metadataFile);
 
                                    var bnkFile = Path.Join(settings.Output, language, $"{soundbankId:X8}.bnk");
-                                   var fileEntry =
-                                       package.SoundBanks.Entries.First(e => e.Id == soundbankId
-                                                                             && e.LanguageId == languageId);
+                                   var fileEntry = package.SoundBanks.Entries.First(e => e.Id == soundbankId
+                                       && e.LanguageId == languageId);
 
                                    File.WriteAllBytes(bnkFile, fileEntry.GetData());
 
@@ -222,80 +221,106 @@ public class DumpCommand : Command<DumpSettings>
             // Phase 4: Extract streaming files
             if (package.StreamingFiles.Count > 0)
             {
-                AnsiConsole.MarkupLine($"[blue]Extracting {package.StreamingFiles.Count} streaming WEM files...[/]");
-
                 var streamingByLanguage = package.StreamingFiles
                                                  .Entries
                                                  .GroupBy(f => f.LanguageId)
                                                  .ToDictionary(g => g.Key, g => g.ToList());
 
-                foreach (var (languageId, files) in streamingByLanguage)
-                {
-                    var language = package.Languages.GetValueOrDefault(languageId, $"lang_{languageId}");
-                    var streamingDir = Path.Join(settings.Output, language, "_streaming");
-                    GameHelpers.EnsureDirectoryCreated(streamingDir + Path.DirectorySeparatorChar);
+                AnsiConsole.Progress()
+                           .Start(ctx =>
+                           {
+                               var task = ctx.AddTask("[green]Extracting streaming WEM files...[/]");
+                               var totalFiles = package.StreamingFiles.Count;
+                               var processedFiles = 0;
 
-                    var metadata = new StreamingMetadata { Language = language, LanguageId = languageId };
+                               foreach (var (languageId, files) in streamingByLanguage)
+                               {
+                                   var language = package.Languages.GetValueOrDefault(languageId, $"lang_{languageId}");
+                                   var streamingDir = Path.Join(settings.Output, language, "_streaming");
+                                   GameHelpers.EnsureDirectoryCreated(streamingDir + Path.DirectorySeparatorChar);
 
-                    foreach (var file in files)
-                    {
-                        var wemFile = Path.Join(streamingDir, $"{file.Id}.wem");
-                        var wemData = file.GetData();
-                        File.WriteAllBytes(wemFile, wemData);
+                                   var metadata = new StreamingMetadata
+                                   {
+                                       Language = language, LanguageId = languageId
+                                   };
 
-                        var cueRefs = soundTable.GetCueReferencesByFileId(file.Id);
-                        var cueMetadataList = cueRefs
-                                              .OrderBy(r => r.CueName)
-                                              .ThenBy(r => r.SourceBankId)
-                                              .Select(r => new CueMetadata
-                                              {
-                                                  Name = r.CueName,
-                                                  EventId = r.CueIndex,
-                                                  SourceBankId = r.SourceBankId
-                                              })
-                                              .ToList();
+                                   foreach (var file in files)
+                                   {
+                                       var wemFile = Path.Join(streamingDir, $"{file.Id}.wem");
+                                       var wemData = file.GetData();
+                                       File.WriteAllBytes(wemFile, wemData);
 
-                        metadata.Files.Add(
-                            new StreamingFileMetadataEntry
-                            {
-                                Id = file.Id, Size = wemData.Length, Cues = cueMetadataList
-                            });
-                    }
+                                       var cueRefs = soundTable.GetCueReferencesByFileId(file.Id);
+                                       var cueMetadataList = cueRefs
+                                                             .OrderBy(r => r.CueName)
+                                                             .ThenBy(r => r.SourceBankId)
+                                                             .Select(r => new CueMetadata
+                                                             {
+                                                                 Name = r.CueName,
+                                                                 EventId = r.CueIndex,
+                                                                 SourceBankId = r.SourceBankId
+                                                             })
+                                                             .ToList();
 
-                    var metadataFile = Path.Join(streamingDir, "metadata.json");
-                    metadata.Save(metadataFile);
-                }
+                                       metadata.Files.Add(
+                                           new StreamingFileMetadataEntry
+                                           {
+                                               Id = file.Id, Size = wemData.Length, Cues = cueMetadataList
+                                           });
+
+                                       processedFiles++;
+                                       task.Value = (double) processedFiles / totalFiles * 100;
+                                   }
+
+                                   var metadataFile = Path.Join(streamingDir, "metadata.json");
+                                   metadata.Save(metadataFile);
+                               }
+
+                               task.Value = 100;
+                           });
             }
 
             // Phase 5: Extract external files
             if (package.ExternalFiles.Count > 0)
             {
-                AnsiConsole.MarkupLine($"[blue]Extracting {package.ExternalFiles.Count} external files...[/]");
-
                 var externalByLanguage = package.ExternalFiles
                                                 .GroupBy(f => f.LanguageId)
                                                 .ToDictionary(g => g.Key, g => g.ToList());
 
-                foreach (var (languageId, files) in externalByLanguage)
-                {
-                    var language = package.Languages.GetValueOrDefault(languageId, $"lang_{languageId}");
-                    var externalDir = Path.Join(settings.Output, language, "_external");
-                    GameHelpers.EnsureDirectoryCreated(externalDir + Path.DirectorySeparatorChar);
+                AnsiConsole.Progress()
+                           .Start(ctx =>
+                           {
+                               var task = ctx.AddTask("[green]Extracting external WEM files...[/]");
+                               var totalFiles = package.ExternalFiles.Count;
+                               var processedFiles = 0;
 
-                    var metadata = new ExternalMetadata { Language = language, LanguageId = languageId };
+                               foreach (var (languageId, files) in externalByLanguage)
+                               {
+                                   var language = package.Languages.GetValueOrDefault(languageId, $"lang_{languageId}");
+                                   var externalDir = Path.Join(settings.Output, language, "_external");
+                                   GameHelpers.EnsureDirectoryCreated(externalDir + Path.DirectorySeparatorChar);
 
-                    foreach (var file in files)
-                    {
-                        var wemFile = Path.Join(externalDir, $"{file.Id}.wem");
-                        var wemData = file.GetData();
-                        File.WriteAllBytes(wemFile, wemData);
+                                   var metadata = new ExternalMetadata { Language = language, LanguageId = languageId };
 
-                        metadata.Files.Add(new ExternalFileMetadataEntry { Id = file.Id, Size = wemData.Length });
-                    }
+                                   foreach (var file in files)
+                                   {
+                                       var wemFile = Path.Join(externalDir, $"{file.Id}.wem");
+                                       var wemData = file.GetData();
+                                       File.WriteAllBytes(wemFile, wemData);
 
-                    var metadataFile = Path.Join(externalDir, "metadata.json");
-                    metadata.Save(metadataFile);
-                }
+                                       metadata.Files.Add(
+                                           new ExternalFileMetadataEntry { Id = file.Id, Size = wemData.Length });
+
+                                       processedFiles++;
+                                       task.Value = (double) processedFiles / totalFiles * 100;
+                                   }
+
+                                   var metadataFile = Path.Join(externalDir, "metadata.json");
+                                   metadata.Save(metadataFile);
+                               }
+
+                               task.Value = 100;
+                           });
             }
 
             AnsiConsole.MarkupLine("[green]Done![/]");
