@@ -121,6 +121,15 @@ public abstract class FileLut<TKey, TEntry> : IEnumerable<TEntry>
             var startBlock = reader.ReadUInt32();
             var languageId = reader.ReadUInt32();
 
+            // Sanity check for file size
+            if (fileSize < 0)
+            {
+                throw new InvalidDataException(
+                    $"Invalid file size {fileSize} for entry {i}/{fileCount} at offset 0x{baseOffset:X}. "
+                    + $"FileId=0x{fileId:X}, BlockSize={blockSize}, StartBlock=0x{startBlock:X}, LanguageId={languageId}. "
+                    + $"LUT size={size}, KeySize={KeySize}");
+            }
+
             // Read the actual file data
             var position = reader.BaseStream.Position;
             reader.BaseStream.Seek(startBlock, SeekOrigin.Begin);

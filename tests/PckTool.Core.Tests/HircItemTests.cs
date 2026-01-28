@@ -2170,5 +2170,105 @@ public class HircItemTests
         Assert.All(refs, r => Assert.Equal((uint) newData.Length, r.InMemoryMediaSize));
     }
 
+    [SkippableFact]
+    public void Integration_SoundBankRoundTrip_ProducesIdenticalData()
+    {
+        Skip.IfNot(File.Exists(SoundsPckPath), $"Sounds.pck not found at {SoundsPckPath}");
+
+        // Load the .pck file
+        using var pck = PckFile.Load(SoundsPckPath);
+        Assert.NotNull(pck);
+
+        // WEM 970927665 - the one user is trying to replace
+        uint targetWem = 970927665;
+        var failures = new List<string>();
+
+        foreach (var entry in pck.SoundBanks)
+        {
+            var bank = entry.Parse();
+
+            if (bank == null || !bank.Media.Contains(targetWem))
+            {
+                continue;
+            }
+
+            var originalData = entry.GetData();
+            var serialized = bank.ToByteArray();
+
+            if (originalData.Length != serialized.Length)
+            {
+                failures.Add(
+                    $"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): "
+                    + $"Size mismatch! Original={originalData.Length}, Serialized={serialized.Length}, "
+                    + $"Diff={serialized.Length - originalData.Length}");
+
+                continue;
+            }
+
+            // Compare byte-by-byte
+            int diffCount = 0;
+            int firstDiff = -1;
+
+            for (int i = 0; i < originalData.Length; i++)
+            {
+                if (originalData[i] != serialized[i])
+                {
+                    if (firstDiff == -1) firstDiff = i;
+                    diffCount++;
+                }
+            }
+
+            if (diffCount > 0)
+            {
+                failures.Add(
+                    $"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): "
+                    + $"Content mismatch! {diffCount} bytes differ, first at offset {firstDiff}");
+            }
+        }
+
+        Assert.True(
+            failures.Count == 0,
+            $"Soundbank round-trip failures:\n{string.Join("\n", failures)}");
+    }
+
+    private const string ModifiedPckPath = @"c:\Users\dev\Documents\Git\coconutbird\SoundsUnpack\Sounds_modified.pck";
+
+    [SkippableFact]
+    public void Integration_ModifiedPck_CanBeLoaded()
+    {
+        Skip.IfNot(File.Exists(ModifiedPckPath), $"Sounds_modified.pck not found at {ModifiedPckPath}");
+
+        // Try to load the modified PCK file
+        using var pck = PckFile.Load(ModifiedPckPath);
+        Assert.NotNull(pck);
+
+        // Verify the modified file has the expected number of entries
+        Assert.True(pck.SoundBanks.Count > 0, "Should have sound banks");
+        Assert.True(pck.StreamingFiles.Count > 0, "Should have streaming files");
+
+        // Parse all soundbanks to ensure none are corrupted
+        int parsedBanks = 0;
+        var errors = new List<string>();
+
+        foreach (var entry in pck.SoundBanks)
+        {
+            try
+            {
+                var bank = entry.Parse();
+                if (bank != null) parsedBanks++;
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): {ex.Message}");
+            }
+        }
+
+        Assert.True(
+            errors.Count == 0,
+            $"Failed to parse {errors.Count} banks. "
+            + $"Parsed {parsedBanks} successfully. "
+            + $"Errors:\n{string.Join("\n", errors.Take(10))}");
+    }
+
 #endregion
 }

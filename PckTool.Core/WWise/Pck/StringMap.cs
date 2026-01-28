@@ -103,6 +103,15 @@ public class StringMap
             writer.Write((ushort) 0); // null terminator
         }
 
+        // Pad to 4-byte alignment (required by Wwise PCK format)
+        var written = writer.BaseStream.Position - startPosition;
+        var padding = (4 - written % 4) % 4;
+
+        for (var i = 0; i < padding; i++)
+        {
+            writer.Write((byte) 0);
+        }
+
         return (uint) (writer.BaseStream.Position - startPosition);
     }
 }
