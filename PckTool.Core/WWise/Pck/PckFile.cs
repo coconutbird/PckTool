@@ -1,12 +1,16 @@
 ﻿using System.Numerics;
 using System.Text;
 
+using PckTool.Abstractions;
 using PckTool.Core.WWise.Bnk;
 using PckTool.Core.WWise.Util;
 
 namespace PckTool.Core.WWise.Pck;
 
-public class PckFile : IDisposable, IEquatable<PckFile>
+/// <summary>
+///     Represents a Wwise PCK package file containing soundbanks and streaming audio.
+/// </summary>
+public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile
 {
     private const uint ValidVersion = 0x1;
     private static readonly uint ValidHeaderTag = Hash.AkmmioFourcc('A', 'K', 'P', 'K');
@@ -43,6 +47,88 @@ public class PckFile : IDisposable, IEquatable<PckFile>
     /// </summary>
     public bool HasModifications =>
         SoundBanks.HasModifications || StreamingFiles.HasModifications || ExternalFiles.HasModifications;
+
+#region IPckFile Implementation
+
+    /// <inheritdoc />
+    public int SoundBankCount => SoundBanks.Count;
+
+    /// <inheritdoc />
+    public int StreamingFileCount => StreamingFiles.Count;
+
+    /// <inheritdoc />
+    public byte[]? FindWem(uint sourceId)
+    {
+        // Check streaming files first
+        var streamingEntry = StreamingFiles[sourceId];
+
+        if (streamingEntry is not null)
+        {
+            return streamingEntry.GetData();
+        }
+
+        // Check embedded media in soundbanks
+        foreach (var bankEntry in SoundBanks)
+        {
+            var bank = bankEntry.Parse();
+
+            if (bank?.Media.Contains(sourceId) == true)
+            {
+                return bank.Media[sourceId];
+            }
+        }
+
+        return null;
+    }
+
+    /// <inheritdoc />
+    public bool ContainsWem(uint sourceId)
+    {
+        // Check streaming files
+        if (StreamingFiles[sourceId] is not null)
+        {
+            return true;
+        }
+
+        // Check embedded media in soundbanks
+        foreach (var bankEntry in SoundBanks)
+        {
+            var bank = bankEntry.Parse();
+
+            if (bank?.Media.Contains(sourceId) == true)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <inheritdoc />
+    void IPckFile.AddSoundBank(ISoundBank soundBank)
+    {
+        AddSoundBank(soundBank.Id, soundBank.ToByteArray(), soundBank.LanguageId);
+    }
+
+    /// <inheritdoc />
+    public bool RemoveSoundBank(uint bankId)
+    {
+        return SoundBanks.Remove(bankId);
+    }
+
+    /// <inheritdoc />
+    void IPckFile.AddStreamingFile(uint sourceId, byte[] data)
+    {
+        AddStreamingFile(sourceId, data);
+    }
+
+    /// <inheritdoc />
+    public bool RemoveStreamingFile(uint sourceId)
+    {
+        return StreamingFiles.Remove(sourceId);
+    }
+
+#endregion
 
     public void Dispose()
     {

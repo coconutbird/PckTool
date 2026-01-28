@@ -1,5 +1,6 @@
 ﻿using System.Text;
 
+using PckTool.Abstractions;
 using PckTool.Core.WWise.Bnk.Bank;
 using PckTool.Core.WWise.Bnk.Chunks;
 using PckTool.Core.WWise.Bnk.Enums;
@@ -11,7 +12,7 @@ namespace PckTool.Core.WWise.Bnk;
 ///     Represents a WWise SoundBank (.bnk) file.
 ///     Provides parsing, modification, and (future) serialization of sound banks.
 /// </summary>
-public class SoundBank
+public class SoundBank : ISoundBank
 {
 #region Properties
 
@@ -58,6 +59,19 @@ public class SoundBank
     ///     Embedded media (WEM files) in this sound bank.
     /// </summary>
     public MediaCollection Media { get; } = new();
+
+    /// <inheritdoc />
+    public int MediaCount => Media.Count;
+
+    /// <inheritdoc />
+    public int HircItemCount => Items.Count;
+
+#endregion
+
+#region ISoundBank Implementation
+
+    /// <inheritdoc />
+    public bool ContainsMedia(uint sourceId) => Media.Contains(sourceId);
 
 #endregion
 

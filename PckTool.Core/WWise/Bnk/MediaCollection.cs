@@ -1,13 +1,15 @@
 ﻿using System.Collections;
 using System.Collections.Specialized;
 
+using PckTool.Abstractions;
+
 namespace PckTool.Core.WWise.Bnk;
 
 /// <summary>
 ///     Dictionary-backed collection for embedded media (sourceId -> byte[]).
 ///     Preserves insertion order for serialization.
 /// </summary>
-public class MediaCollection : IEnumerable<KeyValuePair<uint, byte[]>>, INotifyCollectionChanged
+public class MediaCollection : IMediaCollection, INotifyCollectionChanged
 {
     private readonly Dictionary<uint, byte[]> _media = new();
     private readonly List<uint> _orderedIds = new(); // Preserve insertion order for serialization
@@ -18,22 +20,20 @@ public class MediaCollection : IEnumerable<KeyValuePair<uint, byte[]>>, INotifyC
     public int Count => _media.Count;
 
     /// <summary>
+    ///     Gets all source IDs in this collection.
+    /// </summary>
+    public IEnumerable<uint> SourceIds => _orderedIds.AsReadOnly();
+
+    /// <summary>
     ///     Gets or sets media data by source ID.
     /// </summary>
-    public byte[]? this[uint sourceId]
+    public byte[] this[uint sourceId]
     {
-        get => _media.GetValueOrDefault(sourceId);
-        set
-        {
-            if (value is null)
-            {
-                Remove(sourceId);
-            }
-            else
-            {
-                Set(sourceId, value);
-            }
-        }
+        get =>
+            _media.TryGetValue(sourceId, out var data)
+                ? data
+                : throw new KeyNotFoundException($"Media with source ID 0x{sourceId:X8} not found.");
+        set => Set(sourceId, value);
     }
 
     public IEnumerator<KeyValuePair<uint, byte[]>> GetEnumerator()

@@ -1,9 +1,11 @@
-﻿namespace PckTool.Core.WWise.Pck;
+﻿using PckTool.Abstractions;
+
+namespace PckTool.Core.WWise.Pck;
 
 /// <summary>
 ///     Represents a streaming audio file (.wem) entry in a package file.
 /// </summary>
-public class StreamingFileEntry : FileEntry<uint>
+public class StreamingFileEntry : FileEntry<uint>, IStreamingFileEntry
 {
     /// <summary>
     ///     Human-readable name (if resolved from cue table).
@@ -14,6 +16,12 @@ public class StreamingFileEntry : FileEntry<uint>
     ///     The language name (resolved from LanguageMap).
     /// </summary>
     public string? Language { get; set; }
+
+    /// <inheritdoc />
+    uint IStreamingFileEntry.SourceId => Id;
+
+    /// <inheritdoc />
+    uint IStreamingFileEntry.Size => (uint) base.Size;
 
     public override string ToString()
     {

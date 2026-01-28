@@ -1,4 +1,4 @@
-﻿using System.CommandLine;
+using System.CommandLine;
 using System.Globalization;
 
 using Microsoft.Win32;
@@ -510,6 +510,7 @@ public static class Program
 
             // Group streaming files by language
             var streamingByLanguage = package.StreamingFiles
+                                             .Entries
                                              .GroupBy(f => f.LanguageId)
                                              .ToDictionary(g => g.Key, g => g.ToList());
 
