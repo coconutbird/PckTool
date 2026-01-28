@@ -2197,10 +2197,47 @@ public class HircItemTests
 
             if (originalData.Length != serialized.Length)
             {
-                failures.Add(
-                    $"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): "
-                    + $"Size mismatch! Original={originalData.Length}, Serialized={serialized.Length}, "
-                    + $"Diff={serialized.Length - originalData.Length}");
+                // Diagnostic: dump chunk info from both original and serialized
+                var diagInfo = new System.Text.StringBuilder();
+                diagInfo.AppendLine($"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}):");
+                diagInfo.AppendLine(
+                    $"  Original size: {originalData.Length}, Serialized: {serialized.Length}, Diff: {serialized.Length - originalData.Length}");
+
+                // Parse original chunks
+                diagInfo.AppendLine("  Original chunks:");
+
+                using (var ms = new MemoryStream(originalData))
+                using (var reader = new BinaryReader(ms))
+                {
+                    while (reader.BaseStream.Position < reader.BaseStream.Length - 8)
+                    {
+                        var pos = reader.BaseStream.Position;
+                        var magic = reader.ReadUInt32();
+                        var size = reader.ReadUInt32();
+                        var magicStr = System.Text.Encoding.ASCII.GetString(BitConverter.GetBytes(magic));
+                        diagInfo.AppendLine($"    {magicStr} at {pos}: size={size}");
+                        reader.BaseStream.Position += size;
+                    }
+                }
+
+                // Parse serialized chunks
+                diagInfo.AppendLine("  Serialized chunks:");
+
+                using (var ms = new MemoryStream(serialized))
+                using (var reader = new BinaryReader(ms))
+                {
+                    while (reader.BaseStream.Position < reader.BaseStream.Length - 8)
+                    {
+                        var pos = reader.BaseStream.Position;
+                        var magic = reader.ReadUInt32();
+                        var size = reader.ReadUInt32();
+                        var magicStr = System.Text.Encoding.ASCII.GetString(BitConverter.GetBytes(magic));
+                        diagInfo.AppendLine($"    {magicStr} at {pos}: size={size}");
+                        reader.BaseStream.Position += size;
+                    }
+                }
+
+                failures.Add(diagInfo.ToString());
 
                 continue;
             }

@@ -56,29 +56,53 @@ public class DataChunk : BaseChunk
     {
         if (Data is null) return;
 
-        // Update MediaIndexChunk headers with correct offsets before writing
         var mediaIndexChunk = soundBank.MediaIndexChunk;
 
-        if (mediaIndexChunk?.LoadedMedia is not null)
+        if (mediaIndexChunk?.LoadedMedia is null)
         {
-            uint currentOffset = 0;
-
-            for (var i = 0; i < Data.Count && i < mediaIndexChunk.LoadedMedia.Count; i++)
+            // No index chunk - write all media data sequentially (fallback)
+            foreach (var entry in Data)
             {
-                var header = mediaIndexChunk.LoadedMedia[i];
-                var entry = Data[i];
-
-                header.Offset = currentOffset;
-                header.Size = (uint) entry.Data.Length;
-
-                currentOffset += header.Size;
+                writer.Write(entry.Data);
             }
+
+            return;
         }
 
-        // Write all media data sequentially
-        foreach (var entry in Data)
+        // Write media data at original offsets to preserve alignment/padding
+        // The MediaHeader contains the original offset where each entry should be written
+        var startPosition = writer.BaseStream.Position;
+
+        for (var i = 0; i < Data.Count && i < mediaIndexChunk.LoadedMedia.Count; i++)
         {
+            var header = mediaIndexChunk.LoadedMedia[i];
+            var entry = Data[i];
+
+            // Calculate how much padding we need before this entry
+            var targetPosition = startPosition + header.Offset;
+            var currentPosition = writer.BaseStream.Position;
+            var paddingNeeded = (int) (targetPosition - currentPosition);
+
+            // Write padding bytes (zeros) if needed
+            if (paddingNeeded > 0)
+            {
+                writer.Write(new byte[paddingNeeded]);
+            }
+            else if (paddingNeeded < 0)
+            {
+                // This shouldn't happen if offsets are in order, but handle it gracefully
+                Log.Warn(
+                    "Media entry {0} offset overlap: expected position {1}, current position {2}",
+                    header.Id,
+                    targetPosition,
+                    currentPosition);
+            }
+
+            // Write the media data
             writer.Write(entry.Data);
+
+            // Update the header size in case the data changed (for modified banks)
+            header.Size = (uint) entry.Data.Length;
         }
     }
 

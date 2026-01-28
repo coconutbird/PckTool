@@ -411,8 +411,12 @@ public class SoundBank
         }
 
         // Write optional chunks if they exist
+        StringMapChunk?.Write(this, writer);
+        StateManagerChunk?.Write(this, writer);
+        FxParamsChunk?.Write(this, writer);
         EnvSettingsChunk?.Write(this, writer);
         PlatformChunk?.Write(this, writer);
+        InitChunk?.Write(this, writer);
     }
 
     /// <summary>
@@ -486,7 +490,16 @@ public class SoundBank
     /// </summary>
     private void SyncMediaChunks()
     {
-        // Create MediaIndexChunk with headers
+        // If we already have MediaIndexChunk and DataChunk from parsing, preserve the original
+        // offsets to maintain alignment/padding. Only create new headers if we're building from scratch.
+        if (MediaIndexChunk?.LoadedMedia is not null && DataChunk?.Data is not null)
+        {
+            // Already have parsed chunks - the DataChunk.WriteInternal will use the existing
+            // headers with their original offsets to preserve padding
+            return;
+        }
+
+        // Create new MediaIndexChunk with headers (no existing chunks - building from scratch)
         var headers = new List<MediaHeader>();
         var dataEntries = new List<DataChunk.MediaIndexEntry>();
 
@@ -503,11 +516,11 @@ public class SoundBank
             currentOffset += header.Size;
         }
 
-        // Update or create MediaIndexChunk
+        // Create MediaIndexChunk
         MediaIndexChunk ??= new MediaIndexChunk();
         MediaIndexChunk.SetLoadedMedia(headers);
 
-        // Update or create DataChunk
+        // Create DataChunk
         DataChunk ??= new DataChunk();
         DataChunk.SetData(dataEntries);
     }
@@ -526,6 +539,10 @@ public class SoundBank
     internal MediaIndexChunk? MediaIndexChunk { get; private set; }
     internal CustomPlatformChunk? PlatformChunk { get; private set; }
     internal EnvSettingsChunk? EnvSettingsChunk { get; private set; }
+    internal StringMapChunk? StringMapChunk { get; private set; }
+    internal StateManagerChunk? StateManagerChunk { get; private set; }
+    internal FxParamsChunk? FxParamsChunk { get; private set; }
+    internal InitChunk? InitChunk { get; private set; }
 
 #endregion
 
@@ -667,103 +684,45 @@ public class SoundBank
         }
         else if (chunk.Tag == BnkChunkIds.BankStrMapChunkId)
         {
-            var position = reader.BaseStream.Position;
+            var stringMapChunk = new StringMapChunk();
 
-            var uiType = (BnkStringType) reader.ReadUInt32();
-
-            if (uiType == BnkStringType.Bank)
+            if (!stringMapChunk.Read(this, reader, chunk.Size))
             {
-                var numberOfStrings = reader.ReadUInt32();
+                Log.Error("Failed to read STID chunk for bank 0x{0:X8}", Id);
 
-                for (var i = 0; i < numberOfStrings; ++i)
-                {
-                    var bankId = reader.ReadUInt32();
-                    var stringSize = reader.ReadByte();
-                    var stringBuffer = reader.ReadBytes(stringSize);
-                    var str = Encoding.ASCII.GetString(stringBuffer);
-
-                    // TODO: Store string map
-                }
+                return false;
             }
 
-            // Skip unsupported string types (there are multiple types like 1/2/3/4/5/7/8/9/11)
-            // We only care about type 1 (Bank) for now
-
-            reader.BaseStream.Position = position + chunk.Size;
+            StringMapChunk = stringMapChunk;
+            Log.Trace("  STID: {0} bank names", stringMapChunk.BankNames.Count);
         }
         else if (chunk.Tag == BnkChunkIds.BankStateMgrChunkId)
         {
-            var position = reader.BaseStream.Position;
+            var stateManagerChunk = new StateManagerChunk();
 
-            if (chunk.Size > 0)
+            if (!stateManagerChunk.Read(this, reader, chunk.Size))
             {
-                var volumeThreshold = reader.ReadSingle();
-                var maxNumberOfVoicesLimitInternal = reader.ReadUInt16();
-                var numberOfStateGroups = reader.ReadUInt32();
+                Log.Error("Failed to read STMG chunk for bank 0x{0:X8}", Id);
 
-                var mapTransitions = new List<SubHircSection>();
-
-                for (var i = 0; i < numberOfStateGroups; ++i)
-                {
-                    var stateGroupId = reader.ReadUInt32();
-                    var defaultTransitionTime = reader.ReadInt32();
-                    var numberOfTransitions = reader.ReadUInt32();
-
-                    for (var j = 0; j < numberOfTransitions; ++j)
-                    {
-                        var stateType = reader.ReadUInt32();
-                        var group = new SubHircSection
-                        {
-                            Type = (HircType) reader.ReadByte(), SectionSize = reader.ReadUInt32()
-                        };
-
-                        mapTransitions.Add(group);
-                    }
-                }
-
-                var numberOfSwitchGroups = reader.ReadUInt32();
-
-                for (var i = 0; i < numberOfSwitchGroups; ++i)
-                {
-                    var switchGroupId = reader.ReadUInt32();
-                    var rtpcId = reader.ReadUInt32();
-
-                    var rtpcGraphPointIntegers = new List<RtpcGraphPointBase<uint>>();
-                    var rtpcGraphPointIntegerCount = reader.ReadUInt32();
-
-                    for (var j = 0; j < rtpcGraphPointIntegerCount; ++j)
-                    {
-                        var point = new RtpcGraphPointBase<uint>();
-
-                        if (!point.Read(reader))
-                        {
-                            return false;
-                        }
-
-                        rtpcGraphPointIntegers.Add(point);
-                    }
-                }
-
-                var numberOfParams = reader.ReadUInt32();
-
-                for (var i = 0; i < numberOfParams; ++i)
-                {
-                    var rtpcId = reader.ReadUInt32();
-                    var value = reader.ReadSingle();
-                    var rampType = reader.ReadUInt32();
-                    var rampUp = reader.ReadSingle();
-                    var rampDown = reader.ReadSingle();
-                    var bindToBuiltInParameter = reader.ReadByte();
-                }
+                return false;
             }
 
-            reader.BaseStream.Position = position + chunk.Size;
+            StateManagerChunk = stateManagerChunk;
+            Log.Trace("  STMG: Global settings loaded ({0} bytes)", chunk.Size);
         }
         else if (chunk.Tag == BnkChunkIds.BankFxParamsChunkId)
         {
-            var position = reader.BaseStream.Position;
+            var fxParamsChunk = new FxParamsChunk();
 
-            reader.BaseStream.Position = position + chunk.Size;
+            if (!fxParamsChunk.Read(this, reader, chunk.Size))
+            {
+                Log.Error("Failed to read FXPR chunk for bank 0x{0:X8}", Id);
+
+                return false;
+            }
+
+            FxParamsChunk = fxParamsChunk;
+            Log.Trace("  FXPR: FX params loaded ({0} bytes)", chunk.Size);
         }
         else if (chunk.Tag == BnkChunkIds.BankEnvSettingChunkId)
         {
@@ -776,6 +735,7 @@ public class SoundBank
                 return false;
             }
 
+            EnvSettingsChunk = envSettingsChunk;
             Log.Trace("  ENVS: Environment settings loaded");
         }
         else if (chunk.Tag == BnkChunkIds.BankPlatChunkId)
@@ -789,14 +749,22 @@ public class SoundBank
                 return false;
             }
 
+            PlatformChunk = platform;
             Log.Trace("  PLAT: Platform chunk loaded");
         }
         else if (chunk.Tag == BnkChunkIds.BankInitChunkId)
         {
-            // INIT chunk contains plugin information (version 118+)
-            // Skip for now - we don't need to parse plugin details
-            Log.Trace("  INIT: Skipping plugin info chunk ({0} bytes)", chunk.Size);
-            reader.BaseStream.Position += chunk.Size;
+            var initChunk = new InitChunk();
+
+            if (!initChunk.Read(this, reader, chunk.Size))
+            {
+                Log.Error("Failed to read INIT chunk for bank 0x{0:X8}", Id);
+
+                return false;
+            }
+
+            InitChunk = initChunk;
+            Log.Trace("  INIT: Plugin info loaded ({0} bytes)", chunk.Size);
         }
         else
         {
