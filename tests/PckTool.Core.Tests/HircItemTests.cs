@@ -1,5 +1,6 @@
 using System.Text;
 
+using PckTool.Core.WWise.Bnk;
 using PckTool.Core.WWise.Bnk.Enums;
 using PckTool.Core.WWise.Bnk.Structs;
 using PckTool.Core.WWise.Pck;
@@ -616,6 +617,56 @@ public class HircItemTests
         values.Write(writer);
 
         Assert.Equal(originalData, writeStream.ToArray());
+    }
+
+#endregion
+
+#region Full PCK Round-Trip Tests
+
+    [SkippableFact]
+    public void Integration_RealPckFile_FullRoundTrip()
+    {
+        Skip.IfNot(File.Exists(SoundsPckPath), $"Sounds.pck not found at {SoundsPckPath}");
+
+        // Save to a temp file (Sounds.pck is too large for MemoryStream)
+        var tempPath = Path.GetTempFileName();
+        bool isIdentical;
+
+        try
+        {
+            // Load the original .pck file
+            using (var original = PckFile.Load(SoundsPckPath))
+            {
+                Assert.NotNull(original);
+                original.Save(tempPath);
+
+                // Load the saved file and compare
+                using (var reloaded = PckFile.Load(tempPath))
+                {
+                    Assert.NotNull(reloaded);
+
+                    // Compare using the built-in Compare method
+                    isIdentical = original.Compare(reloaded);
+                }
+            }
+        }
+        finally
+        {
+            // Try to delete, but don't fail if we can't (OS will clean up temp files)
+            try
+            {
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+            }
+            catch (IOException)
+            {
+                // Ignore - temp file will be cleaned up by OS
+            }
+        }
+
+        Assert.True(isIdentical, "Round-trip produced different data - see test output for details");
     }
 
 #endregion
@@ -1961,7 +2012,7 @@ public class HircItemTests
     public void SoundBank_ReplaceWem_UpdatesMediaData()
     {
         // Arrange - Create a soundbank with embedded media
-        var bank = new PckTool.Core.WWise.Bnk.SoundBank(0x12345678, 0);
+        var bank = new SoundBank(0x12345678);
         var originalData = new byte[] { 0x01, 0x02, 0x03, 0x04 };
         var newData = new byte[] { 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F };
 
@@ -1978,7 +2029,7 @@ public class HircItemTests
     public void SoundBank_ReplaceWem_ThrowsForNonExistentId()
     {
         // Arrange
-        var bank = new PckTool.Core.WWise.Bnk.SoundBank(0x12345678, 0);
+        var bank = new SoundBank(0x12345678);
 
         // Act & Assert
         Assert.Throws<KeyNotFoundException>(() => bank.ReplaceWem(999, new byte[] { 0x01 }));
@@ -1988,7 +2039,7 @@ public class HircItemTests
     public void SoundBank_SetWem_AddsNewMedia()
     {
         // Arrange
-        var bank = new PckTool.Core.WWise.Bnk.SoundBank(0x12345678, 0);
+        var bank = new SoundBank(0x12345678);
         var data = new byte[] { 0x01, 0x02, 0x03 };
 
         // Act
@@ -2004,7 +2055,7 @@ public class HircItemTests
     public void SoundBank_SetWem_ReplacesExistingMedia()
     {
         // Arrange
-        var bank = new PckTool.Core.WWise.Bnk.SoundBank(0x12345678, 0);
+        var bank = new SoundBank(0x12345678);
         var originalData = new byte[] { 0x01, 0x02, 0x03 };
         var newData = new byte[] { 0x0A, 0x0B, 0x0C, 0x0D };
 
@@ -2021,7 +2072,7 @@ public class HircItemTests
     public void SoundBank_GetMediaReferences_ReturnsEmptyForNoReferences()
     {
         // Arrange
-        var bank = new PckTool.Core.WWise.Bnk.SoundBank(0x12345678, 0);
+        var bank = new SoundBank(0x12345678);
         bank.Media.Add(100, new byte[] { 0x01, 0x02 });
 
         // Act
@@ -2035,7 +2086,7 @@ public class HircItemTests
     public void SoundBank_GetItemsBySourceId_ReturnsEmptyForNoReferences()
     {
         // Arrange
-        var bank = new PckTool.Core.WWise.Bnk.SoundBank(0x12345678, 0);
+        var bank = new SoundBank(0x12345678);
         bank.Media.Add(100, new byte[] { 0x01, 0x02 });
 
         // Act
@@ -2049,7 +2100,7 @@ public class HircItemTests
     public void SoundBank_UpdateMediaSize_ReturnsZeroForNoReferences()
     {
         // Arrange
-        var bank = new PckTool.Core.WWise.Bnk.SoundBank(0x12345678, 0);
+        var bank = new SoundBank(0x12345678);
 
         // Act
         var updated = bank.UpdateMediaSize(100, 1000);
@@ -2068,7 +2119,7 @@ public class HircItemTests
         Assert.NotNull(pck);
 
         // Find a bank with embedded media and Sound items
-        PckTool.Core.WWise.Bnk.SoundBank? testBank = null;
+        SoundBank? testBank = null;
         uint testSourceId = 0;
         uint originalSize = 0;
 

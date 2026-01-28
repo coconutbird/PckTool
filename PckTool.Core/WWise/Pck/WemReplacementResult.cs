@@ -30,4 +30,3 @@ public class WemReplacementResult
     /// </summary>
     public bool WasReplaced => ReplacedInStreaming || EmbeddedBanksModified > 0;
 }
-

@@ -27,9 +27,14 @@ public abstract class FileLut<TKey, TEntry> : IEnumerable<TEntry>
     public IReadOnlyList<TEntry> Entries => _orderedEntries;
 
     /// <summary>
-    ///     Number of entries in this LUT.
+    ///     Number of unique entries by ID in this LUT.
     /// </summary>
     public int Count => _entries.Count;
+
+    /// <summary>
+    ///     Total number of entries including duplicates (for serialization).
+    /// </summary>
+    public int TotalCount => _orderedEntries.Count;
 
     /// <summary>
     ///     Gets an entry by ID, or null if not found.
@@ -146,7 +151,8 @@ public abstract class FileLut<TKey, TEntry> : IEnumerable<TEntry>
     {
         var startPosition = writer.BaseStream.Position;
 
-        writer.Write((uint) Count);
+        // Write TotalCount (includes duplicates) to match what we actually iterate over
+        writer.Write((uint) TotalCount);
 
         foreach (var entry in _orderedEntries)
         {
@@ -168,7 +174,8 @@ public abstract class FileLut<TKey, TEntry> : IEnumerable<TEntry>
         // 4 bytes for count + per entry: KeySize + BlockSize(4) + FileSize(4) + StartBlock(4) + LanguageId(4)
         var entrySize = KeySize + 16;
 
-        return 4 + (uint) (Count * entrySize);
+        // Use TotalCount to include duplicate IDs (same sound in different languages)
+        return 4 + (uint) (TotalCount * entrySize);
     }
 
     /// <summary>
