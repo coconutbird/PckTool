@@ -8,9 +8,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PckTool.Core.Tests", "tests
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{2331D761-45E2-4FE9-A869-BAD9068E1506}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PckTool.Abstractions", "src\PckTool.Abstractions\PckTool.Abstractions.csproj", "{868AE837-FA5A-434C-A6FB-804F69CC4DB6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PckTool.Abstractions", "PckTool.Abstractions\PckTool.Abstractions.csproj", "{868AE837-FA5A-434C-A6FB-804F69CC4DB6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -76,6 +74,5 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{7EB71208-4B93-43D9-A6D3-68AA199244B5} = {2331D761-45E2-4FE9-A869-BAD9068E1506}
-		{868AE837-FA5A-434C-A6FB-804F69CC4DB6} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

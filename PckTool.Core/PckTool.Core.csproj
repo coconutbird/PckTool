@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\src\PckTool.Abstractions\PckTool.Abstractions.csproj" />
+    <ProjectReference Include="..\PckTool.Abstractions\PckTool.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>
