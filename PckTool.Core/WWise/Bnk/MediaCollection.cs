@@ -49,8 +49,6 @@ public class MediaCollection : IMediaCollection, INotifyCollectionChanged
         return GetEnumerator();
     }
 
-    public event NotifyCollectionChangedEventHandler? CollectionChanged;
-
     /// <summary>
     ///     Adds media data with the specified source ID.
     /// </summary>
@@ -69,28 +67,6 @@ public class MediaCollection : IMediaCollection, INotifyCollectionChanged
             new NotifyCollectionChangedEventArgs(
                 NotifyCollectionChangedAction.Add,
                 new KeyValuePair<uint, byte[]>(sourceId, data)));
-    }
-
-    /// <summary>
-    ///     Adds or replaces media data.
-    /// </summary>
-    public void Set(uint sourceId, byte[] data)
-    {
-        if (_media.ContainsKey(sourceId))
-        {
-            var oldData = _media[sourceId];
-            _media[sourceId] = data;
-
-            OnCollectionChanged(
-                new NotifyCollectionChangedEventArgs(
-                    NotifyCollectionChangedAction.Replace,
-                    new KeyValuePair<uint, byte[]>(sourceId, data),
-                    new KeyValuePair<uint, byte[]>(sourceId, oldData)));
-        }
-        else
-        {
-            Add(sourceId, data);
-        }
     }
 
     /// <summary>
@@ -116,17 +92,6 @@ public class MediaCollection : IMediaCollection, INotifyCollectionChanged
     }
 
     /// <summary>
-    ///     Removes all media from the collection.
-    /// </summary>
-    public void Clear()
-    {
-        _media.Clear();
-        _orderedIds.Clear();
-
-        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
-    }
-
-    /// <summary>
     ///     Checks if media with the specified source ID exists.
     /// </summary>
     public bool Contains(uint sourceId)
@@ -140,6 +105,41 @@ public class MediaCollection : IMediaCollection, INotifyCollectionChanged
     public bool TryGet(uint sourceId, out byte[]? data)
     {
         return _media.TryGetValue(sourceId, out data);
+    }
+
+    public event NotifyCollectionChangedEventHandler? CollectionChanged;
+
+    /// <summary>
+    ///     Adds or replaces media data.
+    /// </summary>
+    public void Set(uint sourceId, byte[] data)
+    {
+        if (_media.ContainsKey(sourceId))
+        {
+            var oldData = _media[sourceId];
+            _media[sourceId] = data;
+
+            OnCollectionChanged(
+                new NotifyCollectionChangedEventArgs(
+                    NotifyCollectionChangedAction.Replace,
+                    new KeyValuePair<uint, byte[]>(sourceId, data),
+                    new KeyValuePair<uint, byte[]>(sourceId, oldData)));
+        }
+        else
+        {
+            Add(sourceId, data);
+        }
+    }
+
+    /// <summary>
+    ///     Removes all media from the collection.
+    /// </summary>
+    public void Clear()
+    {
+        _media.Clear();
+        _orderedIds.Clear();
+
+        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
     }
 
     /// <summary>

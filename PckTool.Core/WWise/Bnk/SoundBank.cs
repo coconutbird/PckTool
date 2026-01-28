@@ -1,7 +1,6 @@
 ﻿using System.Text;
 
 using PckTool.Abstractions;
-using PckTool.Core.WWise.Bnk.Bank;
 using PckTool.Core.WWise.Bnk.Chunks;
 using PckTool.Core.WWise.Bnk.Enums;
 using PckTool.Core.WWise.Bnk.Structs;
@@ -14,6 +13,16 @@ namespace PckTool.Core.WWise.Bnk;
 /// </summary>
 public class SoundBank : ISoundBank
 {
+#region ISoundBank Implementation
+
+    /// <inheritdoc />
+    public bool ContainsMedia(uint sourceId)
+    {
+        return Media.Contains(sourceId);
+    }
+
+#endregion
+
 #region Properties
 
     /// <summary>
@@ -65,13 +74,6 @@ public class SoundBank : ISoundBank
 
     /// <inheritdoc />
     public int HircItemCount => Items.Count;
-
-#endregion
-
-#region ISoundBank Implementation
-
-    /// <inheritdoc />
-    public bool ContainsMedia(uint sourceId) => Media.Contains(sourceId);
 
 #endregion
 

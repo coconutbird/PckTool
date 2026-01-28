@@ -13,7 +13,7 @@ public class FileLutTests
         lut.Add(CreateEntry(0x00000001));
         lut.Add(CreateEntry(0x00000002));
 
-        var ids = lut.Select(e => e.Id).ToList();
+        var ids = lut.Entries.Select(e => e.Id).ToList();
 
         Assert.Equal(2, ids.Count);
         Assert.Contains(0x00000001u, ids);

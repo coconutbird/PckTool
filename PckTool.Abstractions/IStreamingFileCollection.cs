@@ -11,6 +11,11 @@ public interface IStreamingFileCollection : IEnumerable<IStreamingFileEntry>
     int Count { get; }
 
     /// <summary>
+    ///     Gets all entries in insertion order (for LINQ operations).
+    /// </summary>
+    IReadOnlyList<IStreamingFileEntry> Entries { get; }
+
+    /// <summary>
     ///     Gets a streaming file entry by its source ID.
     /// </summary>
     /// <param name="sourceId">The Wwise source ID.</param>

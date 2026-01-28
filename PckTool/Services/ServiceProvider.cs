@@ -53,4 +53,3 @@ public static class ServiceProvider
         _soundBankBuilderFactory = null;
     }
 }
-

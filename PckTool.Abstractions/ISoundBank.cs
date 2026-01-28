@@ -55,6 +55,13 @@ public interface ISoundBank
     bool ContainsMedia(uint sourceId);
 
     /// <summary>
+    ///     Gets embedded media by source ID.
+    /// </summary>
+    /// <param name="sourceId">The source ID of the media.</param>
+    /// <returns>The media data if found; otherwise, null.</returns>
+    byte[]? GetMedia(uint sourceId);
+
+    /// <summary>
     ///     Replaces embedded media data and optionally updates HIRC size references.
     /// </summary>
     /// <param name="sourceId">The source ID of the media to replace.</param>

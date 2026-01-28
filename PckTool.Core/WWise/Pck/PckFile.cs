@@ -18,11 +18,6 @@ public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile
     private BinaryReader? _reader;
 
     /// <summary>
-    ///     The source file path this package was loaded from.
-    /// </summary>
-    public string? SourcePath { get; private set; }
-
-    /// <summary>
     ///     Language ID to name mapping.
     /// </summary>
     public Dictionary<uint, string> Languages { get; private set; } = new();
@@ -42,98 +37,97 @@ public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile
     /// </summary>
     public ExternalFileLut ExternalFiles { get; private set; } = new();
 
+    public void Dispose()
+    {
+        _reader?.Dispose();
+        _reader = null;
+    }
+
+    /// <summary>
+    ///     The source file path this package was loaded from.
+    /// </summary>
+    public string? SourcePath { get; private set; }
+
     /// <summary>
     ///     Returns true if any entries have been modified.
     /// </summary>
     public bool HasModifications =>
         SoundBanks.HasModifications || StreamingFiles.HasModifications || ExternalFiles.HasModifications;
 
-#region IPckFile Implementation
-
-    /// <inheritdoc />
-    public int SoundBankCount => SoundBanks.Count;
-
-    /// <inheritdoc />
-    public int StreamingFileCount => StreamingFiles.Count;
-
-    /// <inheritdoc />
-    public byte[]? FindWem(uint sourceId)
+    public void Save(string path)
     {
-        // Check streaming files first
-        var streamingEntry = StreamingFiles[sourceId];
+        using var stream = File.Create(path);
+        Save(stream);
+    }
 
-        if (streamingEntry is not null)
+    public void Save(Stream stream)
+    {
+        using var writer = new BinaryWriter(stream, Encoding.UTF8, true);
+
+        // Write tag
+        writer.Write(ValidHeaderTag);
+
+        // Placeholder for header size (will be filled in later)
+        var headerSizePosition = writer.BaseStream.Position;
+        writer.Write(0u);
+
+        writer.Write(ValidVersion);
+
+        // Placeholders for section sizes (will be filled in later)
+        var languageMapSizePosition = writer.BaseStream.Position;
+        writer.Write(0u); // language map size
+        writer.Write(0u); // sound banks lut size
+        writer.Write(0u); // stm files lut size
+        writer.Write(0u); // external luts size
+
+        // Write language map
+        var stringMap = new StringMap();
+
+        foreach (var (id, name) in Languages)
         {
-            return streamingEntry.GetData();
+            stringMap.Map[id] = name;
         }
 
-        // Check embedded media in soundbanks
-        foreach (var bankEntry in SoundBanks)
-        {
-            var bank = bankEntry.Parse();
+        var languageMapSize = stringMap.Write(writer);
 
-            if (bank?.Media.Contains(sourceId) == true)
-            {
-                return bank.Media[sourceId];
-            }
-        }
+        // Write LUT headers (without correct StartBlock values yet)
+        var soundBanksLutSize = SoundBanks.CalculateHeaderSize();
+        var stmFilesLutSize = StreamingFiles.CalculateHeaderSize();
+        var externalLutsSize = ExternalFiles.CalculateHeaderSize();
 
-        return null;
-    }
+        // Calculate where file data will start
+        var headerSize = (uint) writer.BaseStream.Position + soundBanksLutSize + stmFilesLutSize + externalLutsSize - 8;
+        var dataStartOffset = 8 + headerSize; // 8 = tag (4) + headerSize field (4)
 
-    /// <inheritdoc />
-    public bool ContainsWem(uint sourceId)
-    {
-        // Check streaming files
-        if (StreamingFiles[sourceId] is not null)
-        {
-            return true;
-        }
+        // Update StartBlock values for all entries
+        var currentDataOffset = dataStartOffset;
+        UpdateStartBlocks(SoundBanks, ref currentDataOffset);
+        UpdateStartBlocks(StreamingFiles, ref currentDataOffset);
+        UpdateStartBlocks(ExternalFiles, ref currentDataOffset);
 
-        // Check embedded media in soundbanks
-        foreach (var bankEntry in SoundBanks)
-        {
-            var bank = bankEntry.Parse();
+        // Now write the LUT headers with correct StartBlock values
+        SoundBanks.Write(writer);
+        StreamingFiles.Write(writer);
+        ExternalFiles.Write(writer);
 
-            if (bank?.Media.Contains(sourceId) == true)
-            {
-                return true;
-            }
-        }
+        // Write actual file data
+        WriteFileData(SoundBanks, writer);
+        WriteFileData(StreamingFiles, writer);
+        WriteFileData(ExternalFiles, writer);
 
-        return false;
-    }
+        // Go back and fill in the sizes
+        var endPosition = writer.BaseStream.Position;
 
-    /// <inheritdoc />
-    void IPckFile.AddSoundBank(ISoundBank soundBank)
-    {
-        AddSoundBank(soundBank.Id, soundBank.ToByteArray(), soundBank.LanguageId);
-    }
+        writer.BaseStream.Position = headerSizePosition;
+        writer.Write(headerSize);
 
-    /// <inheritdoc />
-    public bool RemoveSoundBank(uint bankId)
-    {
-        return SoundBanks.Remove(bankId);
-    }
+        writer.BaseStream.Position = languageMapSizePosition;
+        writer.Write(languageMapSize);
+        writer.Write(soundBanksLutSize);
+        writer.Write(stmFilesLutSize);
+        writer.Write(externalLutsSize);
 
-    /// <inheritdoc />
-    void IPckFile.AddStreamingFile(uint sourceId, byte[] data)
-    {
-        AddStreamingFile(sourceId, data);
-    }
-
-    /// <inheritdoc />
-    public bool RemoveStreamingFile(uint sourceId)
-    {
-        return StreamingFiles.Remove(sourceId);
-    }
-
-#endregion
-
-    public void Dispose()
-    {
-        _reader?.Dispose();
-        _reader = null;
+        writer.BaseStream.Position = endPosition;
     }
 
     /// <summary>
@@ -484,82 +478,6 @@ public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile
         }
     }
 
-    public void Save(string path)
-    {
-        using var stream = File.Create(path);
-        Save(stream);
-    }
-
-    public void Save(Stream stream)
-    {
-        using var writer = new BinaryWriter(stream, Encoding.UTF8, true);
-
-        // Write tag
-        writer.Write(ValidHeaderTag);
-
-        // Placeholder for header size (will be filled in later)
-        var headerSizePosition = writer.BaseStream.Position;
-        writer.Write(0u);
-
-        writer.Write(ValidVersion);
-
-        // Placeholders for section sizes (will be filled in later)
-        var languageMapSizePosition = writer.BaseStream.Position;
-        writer.Write(0u); // language map size
-        writer.Write(0u); // sound banks lut size
-        writer.Write(0u); // stm files lut size
-        writer.Write(0u); // external luts size
-
-        // Write language map
-        var stringMap = new StringMap();
-
-        foreach (var (id, name) in Languages)
-        {
-            stringMap.Map[id] = name;
-        }
-
-        var languageMapSize = stringMap.Write(writer);
-
-        // Write LUT headers (without correct StartBlock values yet)
-        var soundBanksLutSize = SoundBanks.CalculateHeaderSize();
-        var stmFilesLutSize = StreamingFiles.CalculateHeaderSize();
-        var externalLutsSize = ExternalFiles.CalculateHeaderSize();
-
-        // Calculate where file data will start
-        var headerSize = (uint) writer.BaseStream.Position + soundBanksLutSize + stmFilesLutSize + externalLutsSize - 8;
-        var dataStartOffset = 8 + headerSize; // 8 = tag (4) + headerSize field (4)
-
-        // Update StartBlock values for all entries
-        var currentDataOffset = dataStartOffset;
-        UpdateStartBlocks(SoundBanks, ref currentDataOffset);
-        UpdateStartBlocks(StreamingFiles, ref currentDataOffset);
-        UpdateStartBlocks(ExternalFiles, ref currentDataOffset);
-
-        // Now write the LUT headers with correct StartBlock values
-        SoundBanks.Write(writer);
-        StreamingFiles.Write(writer);
-        ExternalFiles.Write(writer);
-
-        // Write actual file data
-        WriteFileData(SoundBanks, writer);
-        WriteFileData(StreamingFiles, writer);
-        WriteFileData(ExternalFiles, writer);
-
-        // Go back and fill in the sizes
-        var endPosition = writer.BaseStream.Position;
-
-        writer.BaseStream.Position = headerSizePosition;
-        writer.Write(headerSize);
-
-        writer.BaseStream.Position = languageMapSizePosition;
-        writer.Write(languageMapSize);
-        writer.Write(soundBanksLutSize);
-        writer.Write(stmFilesLutSize);
-        writer.Write(externalLutsSize);
-
-        writer.BaseStream.Position = endPosition;
-    }
-
     /// <summary>
     ///     Compares this FilePackage with another and logs all differences.
     ///     Returns true if the packages are identical (data-wise), false otherwise.
@@ -882,6 +800,103 @@ public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile
             differences.Add($"{lutName}[{i}] (Id: {otherEntries[i].Id:X}): Extra in reloaded package");
         }
     }
+
+#region IPckFile Implementation
+
+    /// <inheritdoc />
+    IReadOnlyDictionary<uint, string> IPckFile.Languages => Languages;
+
+    /// <inheritdoc />
+    ISoundBankCollection IPckFile.SoundBanks => SoundBanks;
+
+    /// <inheritdoc />
+    IStreamingFileCollection IPckFile.StreamingFiles => StreamingFiles;
+
+    /// <inheritdoc />
+    IExternalFileCollection IPckFile.ExternalFiles => ExternalFiles;
+
+    /// <inheritdoc />
+    public int SoundBankCount => SoundBanks.Count;
+
+    /// <inheritdoc />
+    public int StreamingFileCount => StreamingFiles.Count;
+
+    /// <inheritdoc />
+    public int ExternalFileCount => ExternalFiles.Count;
+
+    /// <inheritdoc />
+    public byte[]? FindWem(uint sourceId)
+    {
+        // Check streaming files first
+        var streamingEntry = StreamingFiles[sourceId];
+
+        if (streamingEntry is not null)
+        {
+            return streamingEntry.GetData();
+        }
+
+        // Check embedded media in soundbanks
+        foreach (var bankEntry in SoundBanks)
+        {
+            var bank = bankEntry.Parse();
+
+            if (bank?.Media.Contains(sourceId) == true)
+            {
+                return bank.Media[sourceId];
+            }
+        }
+
+        return null;
+    }
+
+    /// <inheritdoc />
+    public bool ContainsWem(uint sourceId)
+    {
+        // Check streaming files
+        if (StreamingFiles[sourceId] is not null)
+        {
+            return true;
+        }
+
+        // Check embedded media in soundbanks
+        foreach (var bankEntry in SoundBanks)
+        {
+            var bank = bankEntry.Parse();
+
+            if (bank?.Media.Contains(sourceId) == true)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <inheritdoc />
+    void IPckFile.AddSoundBank(ISoundBank soundBank)
+    {
+        AddSoundBank(soundBank.Id, soundBank.ToByteArray(), soundBank.LanguageId);
+    }
+
+    /// <inheritdoc />
+    public bool RemoveSoundBank(uint bankId)
+    {
+        return SoundBanks.Remove(bankId);
+    }
+
+    /// <inheritdoc />
+    void IPckFile.AddStreamingFile(uint sourceId, byte[] data)
+    {
+        AddStreamingFile(sourceId, data);
+    }
+
+    /// <inheritdoc />
+    public bool RemoveStreamingFile(uint sourceId)
+    {
+        return StreamingFiles.Remove(sourceId);
+    }
+
+#endregion
 
 #region WEM Replacement
 

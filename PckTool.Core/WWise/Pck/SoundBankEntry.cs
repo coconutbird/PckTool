@@ -8,61 +8,64 @@ namespace PckTool.Core.WWise.Pck;
 /// </summary>
 public class SoundBankEntry : FileEntry<uint>, ISoundBankEntry
 {
-  /// <summary>
-  ///     Human-readable name of the sound bank (resolved from soundtable.xml).
-  /// </summary>
-  public string? Name { get; set; }
+    /// <summary>
+    ///     Human-readable name of the sound bank (resolved from soundtable.xml).
+    /// </summary>
+    public string? Name { get; set; }
 
-  /// <summary>
-  ///     The language name (resolved from LanguageMap).
-  /// </summary>
-  public string? Language { get; set; }
+    /// <summary>
+    ///     The language name (resolved from LanguageMap).
+    /// </summary>
+    public string? Language { get; set; }
 
-  /// <summary>
-  ///     The parsed SoundBank structure (lazy-loaded on demand).
-  /// </summary>
-  public SoundBank? Parsed { get; set; }
+    /// <summary>
+    ///     The parsed SoundBank structure (lazy-loaded on demand).
+    /// </summary>
+    public SoundBank? Parsed { get; set; }
 
-  /// <inheritdoc />
-  uint ISoundBankEntry.Size => (uint) base.Size;
+    /// <inheritdoc />
+    uint ISoundBankEntry.Size => (uint) base.Size;
 
-  /// <summary>
-  ///     Parses the sound bank data if not already parsed.
-  /// </summary>
-  public SoundBank? Parse()
-  {
-    if (Parsed is not null)
+    /// <inheritdoc />
+    ISoundBank? ISoundBankEntry.Parse()
     {
-      return Parsed;
+        return Parse();
     }
 
-    var data = GetData();
-
-    if (data.Length == 0)
+    /// <inheritdoc />
+    void ISoundBankEntry.ReplaceWith(ISoundBank soundBank)
     {
-      return null;
+        ReplaceWith(soundBank.ToByteArray());
+        Parsed = soundBank as SoundBank;
     }
 
-    Parsed = SoundBank.Parse(data);
+    /// <summary>
+    ///     Parses the sound bank data if not already parsed.
+    /// </summary>
+    public SoundBank? Parse()
+    {
+        if (Parsed is not null)
+        {
+            return Parsed;
+        }
 
-    return Parsed;
-  }
+        var data = GetData();
 
-  /// <inheritdoc />
-  ISoundBank? ISoundBankEntry.Parse() => Parse();
+        if (data.Length == 0)
+        {
+            return null;
+        }
 
-  /// <inheritdoc />
-  void ISoundBankEntry.ReplaceWith(ISoundBank soundBank)
-  {
-    ReplaceWith(soundBank.ToByteArray());
-    Parsed = soundBank as SoundBank;
-  }
+        Parsed = SoundBank.Parse(data);
 
-  public override string ToString()
-  {
-    var name = Name ?? $"0x{Id:X8}";
-    var lang = Language ?? $"Lang:{LanguageId}";
+        return Parsed;
+    }
 
-    return $"{name} ({lang})";
-  }
+    public override string ToString()
+    {
+        var name = Name ?? $"0x{Id:X8}";
+        var lang = Language ?? $"Lang:{LanguageId}";
+
+        return $"{name} ({lang})";
+    }
 }

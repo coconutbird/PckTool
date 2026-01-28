@@ -3,10 +3,11 @@ using System.Globalization;
 
 using Microsoft.Win32;
 
+using PckTool.Abstractions;
 using PckTool.Core.HaloWars;
 using PckTool.Core.Package;
 using PckTool.Core.WWise.Bnk;
-using PckTool.Core.WWise.Pck;
+using PckTool.Services;
 
 namespace PckTool;
 
@@ -162,10 +163,9 @@ public static class Program
         browseCommand.SetAction(parseResult =>
         {
             var gameDir = parseResult.GetValue(gameDirOption);
-            var verbose = parseResult.GetValue(verboseOption);
             var language = parseResult.GetValue(languageOption);
             var bankId = parseResult.GetValue(browseBankOption);
-            RunBrowse(gameDir, verbose, language, bankId);
+            RunBrowse(gameDir, language, bankId);
         });
 
         rootCommand.Subcommands.Add(browseCommand);
@@ -183,9 +183,8 @@ public static class Program
         soundsCommand.SetAction(parseResult =>
         {
             var gameDir = parseResult.GetValue(gameDirOption);
-            var verbose = parseResult.GetValue(verboseOption);
             var bankId = parseResult.GetValue(soundsBankOption)!;
-            RunSounds(gameDir, verbose, bankId);
+            RunSounds(gameDir, bankId);
         });
 
         rootCommand.Subcommands.Add(soundsCommand);
@@ -276,11 +275,15 @@ public static class Program
 
         var soundsPackagePath = GetSoundsPackagePath(gameDir);
 
-        var package = PckFile.Load(soundsPackagePath);
+        IPckFile package;
 
-        if (package is null)
+        try
         {
-            Log.Error("Failed to find sounds file");
+            package = ServiceProvider.PckFileFactory.Load(soundsPackagePath);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Failed to load sounds file: {0}", ex.Message);
 
             return;
         }
@@ -497,7 +500,8 @@ public static class Program
 
                 // Also write the .bnk file to the language directory
                 var bnkFile = Path.Join(outputDir, language, $"{soundbankId:X8}.bnk");
-                var fileEntry = package.SoundBanks.First(e => e.Id == soundbankId && e.LanguageId == languageId);
+                var fileEntry =
+                    package.SoundBanks.Entries.First(e => e.Id == soundbankId && e.LanguageId == languageId);
 
                 File.WriteAllBytes(bnkFile, fileEntry.GetData());
             }
@@ -662,11 +666,15 @@ public static class Program
 
         var soundsPackagePath = GetSoundsPackagePath(gameDir);
 
-        var package = PckFile.Load(soundsPackagePath);
+        IPckFile package;
 
-        if (package is null)
+        try
         {
-            Log.Error("Failed to find sounds file");
+            package = ServiceProvider.PckFileFactory.Load(soundsPackagePath);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Failed to load sounds file: {0}", ex.Message);
 
             return;
         }
@@ -676,6 +684,7 @@ public static class Program
 
         // Group by language for cleaner output
         var banksByLanguage = package.SoundBanks
+                                     .Entries
                                      .GroupBy(e => package.Languages[e.LanguageId])
                                      .OrderBy(g => g.Key);
 
@@ -691,7 +700,7 @@ public static class Program
         }
 
         Log.Info("");
-        Log.Info("Total: {0} sound banks", package.SoundBanks.Count());
+        Log.Info("Total: {0} sound banks", package.SoundBanks.Count);
     }
 
     private static void RunReplace(
@@ -730,11 +739,15 @@ public static class Program
 
         var soundsPackagePath = GetSoundsPackagePath(gameDir);
 
-        var package = PckFile.Load(soundsPackagePath);
+        IPckFile package;
 
-        if (package is null)
+        try
         {
-            Log.Error("Failed to find sounds file");
+            package = ServiceProvider.PckFileFactory.Load(soundsPackagePath);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Failed to load sounds file: {0}", ex.Message);
 
             return;
         }
@@ -845,14 +858,18 @@ public static class Program
                 // Load package to find source WEM
                 var soundsPackagePath = GetSoundsPackagePath(gameDir);
 
-                if (!File.Exists(soundsPackagePath))
+                IPckFile tempPck;
+
+                try
                 {
-                    Log.Error("Sounds.pck not found at: {0}", soundsPackagePath);
+                    tempPck = ServiceProvider.PckFileFactory.Load(soundsPackagePath);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("Failed to load sounds file: {0}", ex.Message);
 
                     return;
                 }
-
-                using var tempPck = PckFile.Load(soundsPackagePath);
 
                 // Try streaming files first
                 var streamingEntry = tempPck.StreamingFiles[sourceWemId];
@@ -871,13 +888,13 @@ public static class Program
                     {
                         var bank = bankEntry.Parse();
 
-                        if (bank is not null && bank.Media.Contains(sourceWemId))
+                        if (bank is not null && bank.ContainsMedia(sourceWemId))
                         {
-                            foundData = bank.Media[sourceWemId];
+                            foundData = bank.GetMedia(sourceWemId);
                             Log.Info(
                                 "Found source WEM in soundbank 0x{0:X8} ({1} bytes)",
                                 bankEntry.Id,
-                                foundData.Length);
+                                foundData?.Length ?? 0);
 
                             break;
                         }
@@ -913,7 +930,18 @@ public static class Program
 
         Log.Info("Loading package: {0}", packagePath);
 
-        using var package = PckFile.Load(packagePath);
+        IPckFile package;
+
+        try
+        {
+            package = ServiceProvider.PckFileFactory.Load(packagePath);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Failed to load sounds file: {0}", ex.Message);
+
+            return;
+        }
 
         // Replace the WEM using the unified API
         Log.Info("Replacing WEM...");
@@ -998,7 +1026,7 @@ public static class Program
         Log.Info("Default Output Directory: dumps");
     }
 
-    private static void RunBrowse(string? gameDirArg, bool verbose, string? languageFilter, string? bankIdFilter)
+    private static void RunBrowse(string? gameDirArg, string? languageFilter, string? bankIdFilter)
     {
         var gameDir = gameDirArg ?? FindHaloWarsGameDirectory();
 
@@ -1132,7 +1160,7 @@ public static class Program
         Log.Info("Total: {0} banks", banks.Count);
     }
 
-    private static void RunSounds(string? gameDirArg, bool verbose, string bankIdArg)
+    private static void RunSounds(string? gameDirArg, string bankIdArg)
     {
         var gameDir = gameDirArg ?? FindHaloWarsGameDirectory();
 

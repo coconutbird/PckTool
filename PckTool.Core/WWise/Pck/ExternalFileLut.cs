@@ -1,11 +1,40 @@
-﻿namespace PckTool.Core.WWise.Pck;
+﻿using PckTool.Abstractions;
+
+namespace PckTool.Core.WWise.Pck;
 
 /// <summary>
 ///     Lookup table for external file entries (uses 64-bit file IDs).
 /// </summary>
-public class ExternalFileLut : FileLut<ulong, ExternalFileEntry>
+public class ExternalFileLut : FileLut<ulong, ExternalFileEntry>, IExternalFileCollection
 {
     protected override int KeySize => 8;
+
+    /// <inheritdoc />
+    IExternalFileEntry? IExternalFileCollection.this[ulong fileId] => this[fileId];
+
+    /// <inheritdoc />
+    IReadOnlyList<IExternalFileEntry> IExternalFileCollection.Entries => Entries.Cast<IExternalFileEntry>().ToList();
+
+    /// <inheritdoc />
+    IEnumerable<ulong> IExternalFileCollection.FileIds => ById.Keys;
+
+    /// <inheritdoc />
+    bool IExternalFileCollection.TryGet(ulong fileId, out IExternalFileEntry? entry)
+    {
+        var result = ById.TryGetValue(fileId, out var externalEntry);
+        entry = externalEntry;
+
+        return result;
+    }
+
+    /// <inheritdoc />
+    IEnumerator<IExternalFileEntry> IEnumerable<IExternalFileEntry>.GetEnumerator()
+    {
+        foreach (var entry in Entries)
+        {
+            yield return entry;
+        }
+    }
 
     protected override ulong ReadKey(BinaryReader reader)
     {

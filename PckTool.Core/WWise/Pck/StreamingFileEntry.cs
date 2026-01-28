@@ -18,6 +18,9 @@ public class StreamingFileEntry : FileEntry<uint>, IStreamingFileEntry
     public string? Language { get; set; }
 
     /// <inheritdoc />
+    uint IStreamingFileEntry.Id => Id;
+
+    /// <inheritdoc />
     uint IStreamingFileEntry.SourceId => Id;
 
     /// <inheritdoc />

@@ -671,6 +671,63 @@ public class HircItemTests
 
 #endregion
 
+#region WEM Replacement Command
+
+    [SkippableFact]
+    public void Command_ReplaceWem_970927665_With_972457947()
+    {
+        Skip.IfNot(File.Exists(SoundsPckPath), $"Sounds.pck not found at {SoundsPckPath}");
+
+        uint targetWemId = 970927665;
+        uint replacementWemId = 972457947;
+        var outputPath = Path.Combine(
+            Path.GetDirectoryName(SoundsPckPath)!,
+            "Sounds_modified.pck");
+
+        // Load PCK
+        using var pck = PckFile.Load(SoundsPckPath);
+        Assert.NotNull(pck);
+
+        // Find replacement WEM data
+        byte[]? replacementData = null;
+
+        var streamingEntry = pck.StreamingFiles[replacementWemId];
+
+        if (streamingEntry is not null)
+        {
+            replacementData = streamingEntry.GetData();
+        }
+        else
+        {
+            foreach (var bankEntry in pck.SoundBanks)
+            {
+                var bank = bankEntry.Parse();
+
+                if (bank != null && bank.Media.Contains(replacementWemId))
+                {
+                    bank.Media.TryGet(replacementWemId, out replacementData);
+
+                    break;
+                }
+            }
+        }
+
+        Assert.NotNull(replacementData);
+
+        // Replace
+        var result = pck.ReplaceWem(targetWemId, replacementData);
+
+        // Save
+        pck.Save(outputPath);
+
+        // Output results
+        Assert.True(
+            result.ReplacedInStreaming || result.EmbeddedBanksModified > 0,
+            $"WEM {targetWemId} was not found. Streaming: {result.ReplacedInStreaming}, Banks: {result.EmbeddedBanksModified}");
+    }
+
+#endregion
+
 #region StateItem Tests
 
     [Fact]
@@ -2269,7 +2326,7 @@ public class HircItemTests
         Assert.True(pck.StreamingFiles.Count > 0, "Should have streaming files");
 
         // Parse all soundbanks to ensure none are corrupted
-        int parsedBanks = 0;
+        var parsedBanks = 0;
         var errors = new List<string>();
 
         foreach (var entry in pck.SoundBanks)
@@ -2290,63 +2347,6 @@ public class HircItemTests
             $"Failed to parse {errors.Count} banks. "
             + $"Parsed {parsedBanks} successfully. "
             + $"Errors:\n{string.Join("\n", errors.Take(10))}");
-    }
-
-#endregion
-
-#region WEM Replacement Command
-
-    [SkippableFact]
-    public void Command_ReplaceWem_970927665_With_972457947()
-    {
-        Skip.IfNot(File.Exists(SoundsPckPath), $"Sounds.pck not found at {SoundsPckPath}");
-
-        uint targetWemId = 970927665;
-        uint replacementWemId = 972457947;
-        var outputPath = Path.Combine(
-            Path.GetDirectoryName(SoundsPckPath)!,
-            "Sounds_modified.pck");
-
-        // Load PCK
-        using var pck = PckFile.Load(SoundsPckPath);
-        Assert.NotNull(pck);
-
-        // Find replacement WEM data
-        byte[]? replacementData = null;
-
-        var streamingEntry = pck.StreamingFiles[replacementWemId];
-
-        if (streamingEntry is not null)
-        {
-            replacementData = streamingEntry.GetData();
-        }
-        else
-        {
-            foreach (var bankEntry in pck.SoundBanks)
-            {
-                var bank = bankEntry.Parse();
-
-                if (bank != null && bank.Media.Contains(replacementWemId))
-                {
-                    bank.Media.TryGet(replacementWemId, out replacementData);
-
-                    break;
-                }
-            }
-        }
-
-        Assert.NotNull(replacementData);
-
-        // Replace
-        var result = pck.ReplaceWem(targetWemId, replacementData);
-
-        // Save
-        pck.Save(outputPath);
-
-        // Output results
-        Assert.True(
-            result.ReplacedInStreaming || result.EmbeddedBanksModified > 0,
-            $"WEM {targetWemId} was not found. Streaming: {result.ReplacedInStreaming}, Banks: {result.EmbeddedBanksModified}");
     }
 
 #endregion

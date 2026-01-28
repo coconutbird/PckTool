@@ -13,25 +13,10 @@ public class StreamingFileLut : FileLut<uint, StreamingFileEntry>, IStreamingFil
     IStreamingFileEntry? IStreamingFileCollection.this[uint sourceId] => this[sourceId];
 
     /// <inheritdoc />
+    IReadOnlyList<IStreamingFileEntry> IStreamingFileCollection.Entries => Entries.Cast<IStreamingFileEntry>().ToList();
+
+    /// <inheritdoc />
     IEnumerable<uint> IStreamingFileCollection.SourceIds => ById.Keys;
-
-    protected override uint ReadKey(BinaryReader reader)
-    {
-        return reader.ReadUInt32();
-    }
-
-    protected override void WriteKey(BinaryWriter writer, uint key)
-    {
-        writer.Write(key);
-    }
-
-    protected override StreamingFileEntry CreateEntry(uint id, uint blockSize, uint startBlock, uint languageId)
-    {
-        return new StreamingFileEntry
-        {
-            Id = id, BlockSize = blockSize, StartBlock = startBlock, LanguageId = languageId
-        };
-    }
 
     /// <inheritdoc />
     bool IStreamingFileCollection.TryGet(uint sourceId, out IStreamingFileEntry? entry)
@@ -49,5 +34,23 @@ public class StreamingFileLut : FileLut<uint, StreamingFileEntry>, IStreamingFil
         {
             yield return entry;
         }
+    }
+
+    protected override uint ReadKey(BinaryReader reader)
+    {
+        return reader.ReadUInt32();
+    }
+
+    protected override void WriteKey(BinaryWriter writer, uint key)
+    {
+        writer.Write(key);
+    }
+
+    protected override StreamingFileEntry CreateEntry(uint id, uint blockSize, uint startBlock, uint languageId)
+    {
+        return new StreamingFileEntry
+        {
+            Id = id, BlockSize = blockSize, StartBlock = startBlock, LanguageId = languageId
+        };
     }
 }

@@ -6,6 +6,23 @@ public class StringMap : IEquatable<StringMap>
 {
     public Dictionary<uint, string> Map { get; } = new();
 
+    /// <summary>
+    ///     Determines whether this StringMap is equal to another StringMap.
+    /// </summary>
+    public bool Equals(StringMap? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+        if (Map.Count != other.Map.Count) return false;
+
+        foreach (var (key, value) in Map)
+        {
+            if (!other.Map.TryGetValue(key, out var otherValue) || value != otherValue) return false;
+        }
+
+        return true;
+    }
+
     public bool Read(BinaryReader reader, uint size)
     {
         Map.Clear();
@@ -113,23 +130,6 @@ public class StringMap : IEquatable<StringMap>
         }
 
         return (uint) (writer.BaseStream.Position - startPosition);
-    }
-
-    /// <summary>
-    ///     Determines whether this StringMap is equal to another StringMap.
-    /// </summary>
-    public bool Equals(StringMap? other)
-    {
-        if (other is null) return false;
-        if (ReferenceEquals(this, other)) return true;
-        if (Map.Count != other.Map.Count) return false;
-
-        foreach (var (key, value) in Map)
-        {
-            if (!other.Map.TryGetValue(key, out var otherValue) || value != otherValue) return false;
-        }
-
-        return true;
     }
 
     public override bool Equals(object? obj)

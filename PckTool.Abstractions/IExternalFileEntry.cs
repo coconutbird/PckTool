@@ -1,19 +1,15 @@
 namespace PckTool.Abstractions;
 
 /// <summary>
-///     Represents a streaming WEM file entry in a PCK package.
+///     Represents an external WEM file entry in a PCK package.
+///     External files use 64-bit IDs (unlike streaming files which use 32-bit).
 /// </summary>
-public interface IStreamingFileEntry
+public interface IExternalFileEntry
 {
     /// <summary>
-    ///     Gets the file ID (same as SourceId, for compatibility).
+    ///     Gets the file ID (64-bit).
     /// </summary>
-    uint Id { get; }
-
-    /// <summary>
-    ///     Gets the Wwise source ID for this WEM file.
-    /// </summary>
-    uint SourceId { get; }
+    ulong Id { get; }
 
     /// <summary>
     ///     Gets the size of the WEM data in bytes.

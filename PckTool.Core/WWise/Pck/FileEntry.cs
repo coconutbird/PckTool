@@ -69,6 +69,21 @@ public abstract class FileEntry<TKey> : INotifyPropertyChanged, IEquatable<FileE
     /// </summary>
     public bool IsValid => GetData().Length > 0;
 
+    /// <summary>
+    ///     Determines whether this entry is equal to another entry.
+    ///     Compares Id, LanguageId, BlockSize, and data content.
+    /// </summary>
+    public bool Equals(FileEntry<TKey>? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+
+        return Id.Equals(other.Id)
+               && LanguageId == other.LanguageId
+               && BlockSize == other.BlockSize
+               && GetData().AsSpan().SequenceEqual(other.GetData());
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     /// <summary>
@@ -136,21 +151,6 @@ public abstract class FileEntry<TKey> : INotifyPropertyChanged, IEquatable<FileE
     internal void SetOriginalData(byte[] data)
     {
         _originalData = data;
-    }
-
-    /// <summary>
-    ///     Determines whether this entry is equal to another entry.
-    ///     Compares Id, LanguageId, BlockSize, and data content.
-    /// </summary>
-    public bool Equals(FileEntry<TKey>? other)
-    {
-        if (other is null) return false;
-        if (ReferenceEquals(this, other)) return true;
-
-        return Id.Equals(other.Id)
-               && LanguageId == other.LanguageId
-               && BlockSize == other.BlockSize
-               && GetData().AsSpan().SequenceEqual(other.GetData());
     }
 
     public override bool Equals(object? obj)

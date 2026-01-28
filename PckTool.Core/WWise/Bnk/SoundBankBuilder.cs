@@ -22,111 +22,111 @@ namespace PckTool.Core.WWise.Bnk;
 /// </example>
 public class SoundBankBuilder : ISoundBankBuilder
 {
-  private uint _id;
-  private uint _version = 0x71; // Default Wwise version
-  private uint _languageId;
-  private readonly List<(uint sourceId, byte[] data)> _mediaEntries = [];
-  private readonly List<HircItem> _hircItems = [];
+    private readonly List<HircItem> _hircItems = [];
+    private readonly List<(uint sourceId, byte[] data)> _mediaEntries = [];
+    private uint _id;
+    private uint _languageId;
+    private uint _version = 0x71; // Default Wwise version
 
-  /// <inheritdoc />
-  public ISoundBankBuilder WithId(uint bankId)
-  {
-    _id = bankId;
-    return this;
-  }
-
-  /// <inheritdoc />
-  public ISoundBankBuilder WithVersion(uint version)
-  {
-    _version = version;
-    return this;
-  }
-
-  /// <inheritdoc />
-  public ISoundBankBuilder WithLanguage(uint languageId)
-  {
-    _languageId = languageId;
-    return this;
-  }
-
-  /// <inheritdoc />
-  public ISoundBankBuilder AddMedia(uint sourceId, byte[] data)
-  {
-    ArgumentNullException.ThrowIfNull(data);
-    _mediaEntries.Add((sourceId, data));
-    return this;
-  }
-
-  /// <inheritdoc />
-  public ISoundBankBuilder AddHircItem(IHircItem hircItem)
-  {
-    ArgumentNullException.ThrowIfNull(hircItem);
-
-    if (hircItem is HircItem concreteItem)
+    /// <inheritdoc />
+    public ISoundBankBuilder WithId(uint bankId)
     {
-      _hircItems.Add(concreteItem);
-    }
-    else
-    {
-      throw new ArgumentException(
-        $"HIRC item must be of type {nameof(HircItem)} from PckTool.Core.",
-        nameof(hircItem));
+        _id = bankId;
+
+        return this;
     }
 
-    return this;
-  }
-
-  /// <summary>
-  ///     Adds a concrete HIRC item to the soundbank.
-  /// </summary>
-  /// <param name="hircItem">The HIRC item to add.</param>
-  /// <returns>This builder for chaining.</returns>
-  public SoundBankBuilder AddHircItem(HircItem hircItem)
-  {
-    ArgumentNullException.ThrowIfNull(hircItem);
-    _hircItems.Add(hircItem);
-    return this;
-  }
-
-  /// <inheritdoc />
-  public ISoundBank Build()
-  {
-    if (_id == 0)
+    /// <inheritdoc />
+    public ISoundBankBuilder WithVersion(uint version)
     {
-      throw new InvalidOperationException("Bank ID must be set before building.");
+        _version = version;
+
+        return this;
     }
 
-    var soundBank = new SoundBank
+    /// <inheritdoc />
+    public ISoundBankBuilder WithLanguage(uint languageId)
     {
-      Id = _id,
-      Version = _version,
-      LanguageId = _languageId
-    };
+        _languageId = languageId;
 
-    // Add media entries
-    foreach (var (sourceId, data) in _mediaEntries)
-    {
-      soundBank.Media.Set(sourceId, data);
+        return this;
     }
 
-    // Add HIRC items
-    foreach (var item in _hircItems)
+    /// <inheritdoc />
+    public ISoundBankBuilder AddMedia(uint sourceId, byte[] data)
     {
-      soundBank.Items.Add(item);
+        ArgumentNullException.ThrowIfNull(data);
+        _mediaEntries.Add((sourceId, data));
+
+        return this;
     }
 
-    return soundBank;
-  }
+    /// <inheritdoc />
+    public ISoundBankBuilder AddHircItem(IHircItem hircItem)
+    {
+        ArgumentNullException.ThrowIfNull(hircItem);
 
-  /// <inheritdoc />
-  public ISoundBankBuilder Reset()
-  {
-    _id = 0;
-    _version = 0x71;
-    _languageId = 0;
-    _mediaEntries.Clear();
-    _hircItems.Clear();
-    return this;
-  }
+        if (hircItem is HircItem concreteItem)
+        {
+            _hircItems.Add(concreteItem);
+        }
+        else
+        {
+            throw new ArgumentException(
+                $"HIRC item must be of type {nameof(HircItem)} from PckTool.Core.",
+                nameof(hircItem));
+        }
+
+        return this;
+    }
+
+    /// <inheritdoc />
+    public ISoundBank Build()
+    {
+        if (_id == 0)
+        {
+            throw new InvalidOperationException("Bank ID must be set before building.");
+        }
+
+        var soundBank = new SoundBank { Id = _id, Version = _version, LanguageId = _languageId };
+
+        // Add media entries
+        foreach (var (sourceId, data) in _mediaEntries)
+        {
+            soundBank.Media.Set(sourceId, data);
+        }
+
+        // Add HIRC items
+        foreach (var item in _hircItems)
+        {
+            soundBank.Items.Add(item);
+        }
+
+        return soundBank;
+    }
+
+    /// <inheritdoc />
+    public ISoundBankBuilder Reset()
+    {
+        _id = 0;
+        _version = 0x71;
+        _languageId = 0;
+        _mediaEntries.Clear();
+        _hircItems.Clear();
+
+        return this;
+    }
+
+    /// <summary>
+    ///     Adds a concrete HIRC item to the soundbank.
+    /// </summary>
+    /// <param name="hircItem">The HIRC item to add.</param>
+    /// <returns>This builder for chaining.</returns>
+    public SoundBankBuilder AddHircItem(HircItem hircItem)
+    {
+        ArgumentNullException.ThrowIfNull(hircItem);
+        _hircItems.Add(hircItem);
+
+        return this;
+    }
 }
-

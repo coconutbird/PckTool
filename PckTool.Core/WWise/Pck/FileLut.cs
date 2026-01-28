@@ -62,6 +62,24 @@ public abstract class FileLut<TKey, TEntry> : IEnumerable<TEntry>, IEquatable<Fi
     }
 
     /// <summary>
+    ///     Determines whether this LUT is equal to another LUT.
+    ///     Compares entry count and all entries in order.
+    /// </summary>
+    public bool Equals(FileLut<TKey, TEntry>? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+        if (TotalCount != other.TotalCount) return false;
+
+        for (var i = 0; i < _orderedEntries.Count; i++)
+        {
+            if (!_orderedEntries[i].Equals(other._orderedEntries[i])) return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
     ///     Adds an entry to the LUT.
     /// </summary>
     public void Add(TEntry entry)
@@ -201,24 +219,6 @@ public abstract class FileLut<TKey, TEntry> : IEnumerable<TEntry>, IEquatable<Fi
     ///     Creates a new entry instance.
     /// </summary>
     protected abstract TEntry CreateEntry(TKey id, uint blockSize, uint startBlock, uint languageId);
-
-    /// <summary>
-    ///     Determines whether this LUT is equal to another LUT.
-    ///     Compares entry count and all entries in order.
-    /// </summary>
-    public bool Equals(FileLut<TKey, TEntry>? other)
-    {
-        if (other is null) return false;
-        if (ReferenceEquals(this, other)) return true;
-        if (TotalCount != other.TotalCount) return false;
-
-        for (var i = 0; i < _orderedEntries.Count; i++)
-        {
-            if (!_orderedEntries[i].Equals(other._orderedEntries[i])) return false;
-        }
-
-        return true;
-    }
 
     public override bool Equals(object? obj)
     {

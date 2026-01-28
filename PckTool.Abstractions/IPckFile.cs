@@ -10,6 +10,36 @@ namespace PckTool.Abstractions;
 public interface IPckFile : IDisposable
 {
     /// <summary>
+    ///     Gets the source file path this package was loaded from, if applicable.
+    /// </summary>
+    string? SourcePath { get; }
+
+    /// <summary>
+    ///     Gets whether any entries have been modified since loading.
+    /// </summary>
+    bool HasModifications { get; }
+
+    /// <summary>
+    ///     Gets the language ID to name mapping.
+    /// </summary>
+    IReadOnlyDictionary<uint, string> Languages { get; }
+
+    /// <summary>
+    ///     Gets the soundbank entries in this package.
+    /// </summary>
+    ISoundBankCollection SoundBanks { get; }
+
+    /// <summary>
+    ///     Gets the streaming file entries in this package.
+    /// </summary>
+    IStreamingFileCollection StreamingFiles { get; }
+
+    /// <summary>
+    ///     Gets the external file entries in this package (64-bit IDs).
+    /// </summary>
+    IExternalFileCollection ExternalFiles { get; }
+
+    /// <summary>
     ///     Gets the number of soundbanks contained in this package.
     /// </summary>
     int SoundBankCount { get; }
@@ -18,6 +48,11 @@ public interface IPckFile : IDisposable
     ///     Gets the number of streaming WEM files in this package.
     /// </summary>
     int StreamingFileCount { get; }
+
+    /// <summary>
+    ///     Gets the number of external WEM files in this package.
+    /// </summary>
+    int ExternalFileCount { get; }
 
     /// <summary>
     ///     Finds a WEM file by its source ID across all storage locations.
