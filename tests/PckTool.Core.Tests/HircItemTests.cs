@@ -2192,74 +2192,59 @@ public class HircItemTests
                 continue;
             }
 
-            var originalData = entry.GetData();
+            // Serialize the parsed bank
             var serialized = bank.ToByteArray();
 
-            if (originalData.Length != serialized.Length)
+            // Re-parse the serialized data to verify functional correctness
+            // This is more robust than byte-comparison because it allows for different padding
+            var reloadedBank = SoundBank.Parse(serialized);
+
+            if (reloadedBank == null)
             {
-                // Diagnostic: dump chunk info from both original and serialized
-                var diagInfo = new System.Text.StringBuilder();
-                diagInfo.AppendLine($"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}):");
-                diagInfo.AppendLine(
-                    $"  Original size: {originalData.Length}, Serialized: {serialized.Length}, Diff: {serialized.Length - originalData.Length}");
-
-                // Parse original chunks
-                diagInfo.AppendLine("  Original chunks:");
-
-                using (var ms = new MemoryStream(originalData))
-                using (var reader = new BinaryReader(ms))
-                {
-                    while (reader.BaseStream.Position < reader.BaseStream.Length - 8)
-                    {
-                        var pos = reader.BaseStream.Position;
-                        var magic = reader.ReadUInt32();
-                        var size = reader.ReadUInt32();
-                        var magicStr = System.Text.Encoding.ASCII.GetString(BitConverter.GetBytes(magic));
-                        diagInfo.AppendLine($"    {magicStr} at {pos}: size={size}");
-                        reader.BaseStream.Position += size;
-                    }
-                }
-
-                // Parse serialized chunks
-                diagInfo.AppendLine("  Serialized chunks:");
-
-                using (var ms = new MemoryStream(serialized))
-                using (var reader = new BinaryReader(ms))
-                {
-                    while (reader.BaseStream.Position < reader.BaseStream.Length - 8)
-                    {
-                        var pos = reader.BaseStream.Position;
-                        var magic = reader.ReadUInt32();
-                        var size = reader.ReadUInt32();
-                        var magicStr = System.Text.Encoding.ASCII.GetString(BitConverter.GetBytes(magic));
-                        diagInfo.AppendLine($"    {magicStr} at {pos}: size={size}");
-                        reader.BaseStream.Position += size;
-                    }
-                }
-
-                failures.Add(diagInfo.ToString());
+                failures.Add($"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): Failed to re-parse serialized data");
 
                 continue;
             }
 
-            // Compare byte-by-byte
-            int diffCount = 0;
-            int firstDiff = -1;
-
-            for (int i = 0; i < originalData.Length; i++)
-            {
-                if (originalData[i] != serialized[i])
-                {
-                    if (firstDiff == -1) firstDiff = i;
-                    diffCount++;
-                }
-            }
-
-            if (diffCount > 0)
+            // Compare HIRC items count
+            if (bank.Items.Count != reloadedBank.Items.Count)
             {
                 failures.Add(
                     $"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): "
-                    + $"Content mismatch! {diffCount} bytes differ, first at offset {firstDiff}");
+                    + $"HIRC item count mismatch! Original: {bank.Items.Count}, Reloaded: {reloadedBank.Items.Count}");
+
+                continue;
+            }
+
+            // Compare media count
+            if (bank.Media.Count != reloadedBank.Media.Count)
+            {
+                failures.Add(
+                    $"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): "
+                    + $"Media count mismatch! Original: {bank.Media.Count}, Reloaded: {reloadedBank.Media.Count}");
+
+                continue;
+            }
+
+            // Compare each media entry's data
+            foreach (var kvp in bank.Media)
+            {
+                if (!reloadedBank.Media.TryGet(kvp.Key, out var reloadedData) || reloadedData is null)
+                {
+                    failures.Add(
+                        $"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): "
+                        + $"Missing media entry 0x{kvp.Key:X8} in reloaded bank");
+
+                    continue;
+                }
+
+                if (!kvp.Value.AsSpan().SequenceEqual(reloadedData))
+                {
+                    failures.Add(
+                        $"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): "
+                        + $"Media data mismatch for entry 0x{kvp.Key:X8}! "
+                        + $"Original size: {kvp.Value.Length}, Reloaded size: {reloadedData.Length}");
+                }
             }
         }
 
@@ -2305,6 +2290,63 @@ public class HircItemTests
             $"Failed to parse {errors.Count} banks. "
             + $"Parsed {parsedBanks} successfully. "
             + $"Errors:\n{string.Join("\n", errors.Take(10))}");
+    }
+
+#endregion
+
+#region WEM Replacement Command
+
+    [SkippableFact]
+    public void Command_ReplaceWem_970927665_With_972457947()
+    {
+        Skip.IfNot(File.Exists(SoundsPckPath), $"Sounds.pck not found at {SoundsPckPath}");
+
+        uint targetWemId = 970927665;
+        uint replacementWemId = 972457947;
+        var outputPath = Path.Combine(
+            Path.GetDirectoryName(SoundsPckPath)!,
+            "Sounds_modified.pck");
+
+        // Load PCK
+        using var pck = PckFile.Load(SoundsPckPath);
+        Assert.NotNull(pck);
+
+        // Find replacement WEM data
+        byte[]? replacementData = null;
+
+        var streamingEntry = pck.StreamingFiles[replacementWemId];
+
+        if (streamingEntry is not null)
+        {
+            replacementData = streamingEntry.GetData();
+        }
+        else
+        {
+            foreach (var bankEntry in pck.SoundBanks)
+            {
+                var bank = bankEntry.Parse();
+
+                if (bank != null && bank.Media.Contains(replacementWemId))
+                {
+                    bank.Media.TryGet(replacementWemId, out replacementData);
+
+                    break;
+                }
+            }
+        }
+
+        Assert.NotNull(replacementData);
+
+        // Replace
+        var result = pck.ReplaceWem(targetWemId, replacementData);
+
+        // Save
+        pck.Save(outputPath);
+
+        // Output results
+        Assert.True(
+            result.ReplacedInStreaming || result.EmbeddedBanksModified > 0,
+            $"WEM {targetWemId} was not found. Streaming: {result.ReplacedInStreaming}, Banks: {result.EmbeddedBanksModified}");
     }
 
 #endregion

@@ -490,16 +490,8 @@ public class SoundBank
     /// </summary>
     private void SyncMediaChunks()
     {
-        // If we already have MediaIndexChunk and DataChunk from parsing, preserve the original
-        // offsets to maintain alignment/padding. Only create new headers if we're building from scratch.
-        if (MediaIndexChunk?.LoadedMedia is not null && DataChunk?.Data is not null)
-        {
-            // Already have parsed chunks - the DataChunk.WriteInternal will use the existing
-            // headers with their original offsets to preserve padding
-            return;
-        }
-
-        // Create new MediaIndexChunk with headers (no existing chunks - building from scratch)
+        // Always recalculate offsets based on actual data sizes.
+        // This ensures offsets are correct even when media data is modified.
         var headers = new List<MediaHeader>();
         var dataEntries = new List<DataChunk.MediaIndexEntry>();
 
@@ -516,11 +508,11 @@ public class SoundBank
             currentOffset += header.Size;
         }
 
-        // Create MediaIndexChunk
+        // Create or update MediaIndexChunk
         MediaIndexChunk ??= new MediaIndexChunk();
         MediaIndexChunk.SetLoadedMedia(headers);
 
-        // Create DataChunk
+        // Create or update DataChunk
         DataChunk ??= new DataChunk();
         DataChunk.SetData(dataEntries);
     }
