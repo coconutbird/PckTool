@@ -1,160 +1,103 @@
-﻿namespace PckTool.Core.WWise.Bnk.Structs;
+﻿using PckTool.Core.WWise.Bnk.Enums;
+
+namespace PckTool.Core.WWise.Bnk.Structs;
 
 public class AdvSettingsParams
 {
-    public byte BitVector { get; set; }
+    public AdvSettingsFlags Flags { get; set; }
 
     public bool KillNewest
     {
-        get => (BitVector & 0x01) != 0;
-        set
-        {
-            if (value)
-            {
-                BitVector |= 0x01;
-            }
-            else
-            {
-                BitVector &= 0xFE;
-            }
-        }
+        get => Flags.HasFlag(AdvSettingsFlags.KillNewest);
+        set => Flags = value ? Flags | AdvSettingsFlags.KillNewest : Flags & ~AdvSettingsFlags.KillNewest;
     }
 
     public bool UseVirtualBehavior
     {
-        get => (BitVector & 0x02) != 0;
-        set
-        {
-            if (value)
-            {
-                BitVector |= 0x02;
-            }
-            else
-            {
-                BitVector &= 0xFD;
-            }
-        }
+        get => Flags.HasFlag(AdvSettingsFlags.UseVirtualBehavior);
+        set =>
+            Flags = value
+                ? Flags | AdvSettingsFlags.UseVirtualBehavior
+                : Flags & ~AdvSettingsFlags.UseVirtualBehavior;
     }
 
     public bool IgnoreParentMaxNumInst
     {
-        get => (BitVector & 0x04) != 0;
-        set
-        {
-            if (value)
-            {
-                BitVector |= 0x04;
-            }
-            else
-            {
-                BitVector &= 0xFB;
-            }
-        }
+        get => Flags.HasFlag(AdvSettingsFlags.IgnoreParentMaxNumInst);
+        set =>
+            Flags = value
+                ? Flags | AdvSettingsFlags.IgnoreParentMaxNumInst
+                : Flags & ~AdvSettingsFlags.IgnoreParentMaxNumInst;
     }
 
     public bool IsVVoicesOptOverrideParent
     {
-        get => (BitVector & 0x08) != 0;
-        set
-        {
-            if (value)
-            {
-                BitVector |= 0x08;
-            }
-            else
-            {
-                BitVector &= 0xF7;
-            }
-        }
+        get => Flags.HasFlag(AdvSettingsFlags.IsVVoicesOptOverrideParent);
+        set =>
+            Flags = value
+                ? Flags | AdvSettingsFlags.IsVVoicesOptOverrideParent
+                : Flags & ~AdvSettingsFlags.IsVVoicesOptOverrideParent;
     }
 
     public byte VirtualQueueBehavior { get; set; }
     public ushort MaxNumberOfInstances { get; set; }
     public ushort BelowThresholdBehavior { get; set; }
 
-    public byte BitVector2 { get; set; }
+    public AdvSettingsFlags2 Flags2 { get; set; }
 
     public bool OverrideHdrEnvelope
     {
-        get => (BitVector2 & 0x01) != 0;
-        set
-        {
-            if (value)
-            {
-                BitVector2 |= 0x01;
-            }
-            else
-            {
-                BitVector2 &= 0xFE;
-            }
-        }
+        get => Flags2.HasFlag(AdvSettingsFlags2.OverrideHdrEnvelope);
+        set =>
+            Flags2 = value
+                ? Flags2 | AdvSettingsFlags2.OverrideHdrEnvelope
+                : Flags2 & ~AdvSettingsFlags2.OverrideHdrEnvelope;
     }
 
     public bool OverrideAnalysis
     {
-        get => (BitVector2 & 0x02) != 0;
-        set
-        {
-            if (value)
-            {
-                BitVector2 |= 0x02;
-            }
-            else
-            {
-                BitVector2 &= 0xFD;
-            }
-        }
+        get => Flags2.HasFlag(AdvSettingsFlags2.OverrideAnalysis);
+        set =>
+            Flags2 = value
+                ? Flags2 | AdvSettingsFlags2.OverrideAnalysis
+                : Flags2 & ~AdvSettingsFlags2.OverrideAnalysis;
     }
 
     public bool NormalizeLoudness
     {
-        get => (BitVector2 & 0x04) != 0;
-        set
-        {
-            if (value)
-            {
-                BitVector2 |= 0x04;
-            }
-            else
-            {
-                BitVector2 &= 0xFB;
-            }
-        }
+        get => Flags2.HasFlag(AdvSettingsFlags2.NormalizeLoudness);
+        set =>
+            Flags2 = value
+                ? Flags2 | AdvSettingsFlags2.NormalizeLoudness
+                : Flags2 & ~AdvSettingsFlags2.NormalizeLoudness;
     }
 
     public bool EnableEnvelope
     {
-        get => (BitVector2 & 0x08) != 0;
-        set
-        {
-            if (value)
-            {
-                BitVector2 |= 0x08;
-            }
-            else
-            {
-                BitVector2 &= 0xF7;
-            }
-        }
+        get => Flags2.HasFlag(AdvSettingsFlags2.EnableEnvelope);
+        set =>
+            Flags2 = value
+                ? Flags2 | AdvSettingsFlags2.EnableEnvelope
+                : Flags2 & ~AdvSettingsFlags2.EnableEnvelope;
     }
 
     public bool Read(BinaryReader reader)
     {
-        BitVector = reader.ReadByte();
+        Flags = (AdvSettingsFlags) reader.ReadByte();
         VirtualQueueBehavior = reader.ReadByte();
         MaxNumberOfInstances = reader.ReadUInt16();
         BelowThresholdBehavior = reader.ReadByte();
-        BitVector2 = reader.ReadByte();
+        Flags2 = (AdvSettingsFlags2) reader.ReadByte();
 
         return true;
     }
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(BitVector);
+        writer.Write((byte) Flags);
         writer.Write(VirtualQueueBehavior);
         writer.Write(MaxNumberOfInstances);
         writer.Write((byte) BelowThresholdBehavior);
-        writer.Write(BitVector2);
+        writer.Write((byte) Flags2);
     }
 }

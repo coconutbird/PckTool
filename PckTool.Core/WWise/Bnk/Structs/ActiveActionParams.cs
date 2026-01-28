@@ -105,23 +105,29 @@ public class ActiveActionParams
 /// </summary>
 public class StopActionSpecificParams
 {
-    public byte BitVector { get; set; }
+    public StopActionFlags Flags { get; set; }
 
     public bool ApplyToStateTransitions
     {
-        get => (BitVector & 0x02) != 0;
-        set => BitVector = value ? (byte) (BitVector | 0x02) : (byte) (BitVector & ~0x02);
+        get => Flags.HasFlag(StopActionFlags.ApplyToStateTransitions);
+        set =>
+            Flags = value
+                ? Flags | StopActionFlags.ApplyToStateTransitions
+                : Flags & ~StopActionFlags.ApplyToStateTransitions;
     }
 
     public bool ApplyToDynamicSequence
     {
-        get => (BitVector & 0x04) != 0;
-        set => BitVector = value ? (byte) (BitVector | 0x04) : (byte) (BitVector & ~0x04);
+        get => Flags.HasFlag(StopActionFlags.ApplyToDynamicSequence);
+        set =>
+            Flags = value
+                ? Flags | StopActionFlags.ApplyToDynamicSequence
+                : Flags & ~StopActionFlags.ApplyToDynamicSequence;
     }
 
     public bool Read(BinaryReader reader)
     {
-        BitVector = reader.ReadByte();
+        Flags = (StopActionFlags) reader.ReadByte();
 
         return true;
     }
@@ -134,35 +140,44 @@ public class StopActionSpecificParams
 /// </summary>
 public class PauseActionSpecificParams
 {
-    public byte BitVector { get; set; }
+    public PauseActionFlags Flags { get; set; }
 
     public bool IncludePendingResume
     {
-        get => (BitVector & 0x01) != 0;
-        set => BitVector = value ? (byte) (BitVector | 0x01) : (byte) (BitVector & ~0x01);
+        get => Flags.HasFlag(PauseActionFlags.IncludePendingResume);
+        set =>
+            Flags = value
+                ? Flags | PauseActionFlags.IncludePendingResume
+                : Flags & ~PauseActionFlags.IncludePendingResume;
     }
 
     public bool ApplyToStateTransitions
     {
-        get => (BitVector & 0x02) != 0;
-        set => BitVector = value ? (byte) (BitVector | 0x02) : (byte) (BitVector & ~0x02);
+        get => Flags.HasFlag(PauseActionFlags.ApplyToStateTransitions);
+        set =>
+            Flags = value
+                ? Flags | PauseActionFlags.ApplyToStateTransitions
+                : Flags & ~PauseActionFlags.ApplyToStateTransitions;
     }
 
     public bool ApplyToDynamicSequence
     {
-        get => (BitVector & 0x04) != 0;
-        set => BitVector = value ? (byte) (BitVector | 0x04) : (byte) (BitVector & ~0x04);
+        get => Flags.HasFlag(PauseActionFlags.ApplyToDynamicSequence);
+        set =>
+            Flags = value
+                ? Flags | PauseActionFlags.ApplyToDynamicSequence
+                : Flags & ~PauseActionFlags.ApplyToDynamicSequence;
     }
 
     public bool Read(BinaryReader reader)
     {
-        BitVector = reader.ReadByte();
+        Flags = (PauseActionFlags) reader.ReadByte();
 
         return true;
     }
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(BitVector);
+        writer.Write((byte) Flags);
     }
 }

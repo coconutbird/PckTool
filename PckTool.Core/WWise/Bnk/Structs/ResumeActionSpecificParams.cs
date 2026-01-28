@@ -1,68 +1,44 @@
-﻿namespace PckTool.Core.WWise.Bnk.Structs;
+﻿using PckTool.Core.WWise.Bnk.Enums;
+
+namespace PckTool.Core.WWise.Bnk.Structs;
 
 public class ResumeActionSpecificParams
 {
-    public byte BitVector { get; set; }
+    public ResumeActionFlags Flags { get; set; }
 
     public bool IsMasterResume
     {
-        get => (BitVector & 0x01) != 0;
-        set
-        {
-            if (value)
-            {
-                BitVector |= 0x01;
-            }
-            else
-            {
-                BitVector &= 0xFE; // 11111110
-            }
-        }
+        get => Flags.HasFlag(ResumeActionFlags.IsMasterResume);
+        set => Flags = value ? Flags | ResumeActionFlags.IsMasterResume : Flags & ~ResumeActionFlags.IsMasterResume;
     }
 
     public bool ApplyToStateTransitions
     {
-        get => (BitVector & 0x02) != 0;
-        set
-        {
-            if (value)
-            {
-                BitVector |= 0x02;
-            }
-            else
-            {
-                BitVector &= 0xFD; // 11111101
-            }
-        }
+        get => Flags.HasFlag(ResumeActionFlags.ApplyToStateTransitions);
+        set =>
+            Flags = value
+                ? Flags | ResumeActionFlags.ApplyToStateTransitions
+                : Flags & ~ResumeActionFlags.ApplyToStateTransitions;
     }
 
     public bool ApplyToDynamicSequence
     {
-        get => (BitVector & 0x04) != 0;
-        set
-        {
-            if (value)
-            {
-                BitVector |= 0x04;
-            }
-            else
-            {
-                BitVector &= 0xFB; // 11111011
-            }
-        }
+        get => Flags.HasFlag(ResumeActionFlags.ApplyToDynamicSequence);
+        set =>
+            Flags = value
+                ? Flags | ResumeActionFlags.ApplyToDynamicSequence
+                : Flags & ~ResumeActionFlags.ApplyToDynamicSequence;
     }
 
     public bool Read(BinaryReader reader)
     {
-        var bitVector = reader.ReadByte();
-
-        BitVector = bitVector;
+        Flags = (ResumeActionFlags) reader.ReadByte();
 
         return true;
     }
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(BitVector);
+        writer.Write((byte) Flags);
     }
 }

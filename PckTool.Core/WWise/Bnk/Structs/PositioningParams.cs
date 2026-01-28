@@ -1,105 +1,80 @@
-﻿namespace PckTool.Core.WWise.Bnk.Structs;
+﻿using PckTool.Core.WWise.Bnk.Enums;
+
+namespace PckTool.Core.WWise.Bnk.Structs;
 
 public class PositioningParams
 {
-    public byte BitVector { get; set; }
+    public PositioningFlags Flags { get; set; }
 
     public bool PositioningInfoOverrideParent
     {
-        get => (BitVector & 0x01) != 0;
-        set
-        {
-            if (value)
-            {
-                BitVector |= 0x01;
-            }
-            else
-            {
-                BitVector &= 0xFE; // 11111110
-            }
-        }
+        get => Flags.HasFlag(PositioningFlags.PositioningInfoOverrideParent);
+        set =>
+            Flags = value
+                ? Flags | PositioningFlags.PositioningInfoOverrideParent
+                : Flags & ~PositioningFlags.PositioningInfoOverrideParent;
     }
 
     public bool Enable2D
     {
-        get => (BitVector & 0x02) != 0;
-        set
-        {
-            if (value)
-            {
-                BitVector |= 0x02;
-            }
-            else
-            {
-                BitVector &= 0xFD; // 11111101
-            }
-        }
+        get => Flags.HasFlag(PositioningFlags.Enable2D);
+        set => Flags = value ? Flags | PositioningFlags.Enable2D : Flags & ~PositioningFlags.Enable2D;
     }
 
     public bool EnableSpatialization
     {
-        get => (BitVector & 0x04) != 0;
-        set
-        {
-            if (value)
-            {
-                BitVector |= 0x04;
-            }
-            else
-            {
-                BitVector &= 0xFB; // 11111011
-            }
-        }
+        get => Flags.HasFlag(PositioningFlags.EnableSpatialization);
+        set =>
+            Flags = value
+                ? Flags | PositioningFlags.EnableSpatialization
+                : Flags & ~PositioningFlags.EnableSpatialization;
     }
 
     public bool Is3DPositioningAvailable
     {
-        get => (BitVector & 0x08) != 0;
-        set
-        {
-            if (value)
-            {
-                BitVector |= 0x08;
-            }
-            else
-            {
-                BitVector &= 0xF7;
-            }
-        }
+        get => Flags.HasFlag(PositioningFlags.Is3DPositioningAvailable);
+        set =>
+            Flags = value
+                ? Flags | PositioningFlags.Is3DPositioningAvailable
+                : Flags & ~PositioningFlags.Is3DPositioningAvailable;
     }
 
-    public byte? Bits3D { get; set; }
+    public Positioning3DFlags? Flags3D { get; set; }
 
     public byte SpatializationMode
     {
-        get => (byte) (Bits3D & 0x01)!; // 1 bit for v113 (v90-v126)
+        get => (byte) ((byte) (Flags3D ?? 0) & 0x01); // 1 bit for v113 (v90-v126)
         set
         {
             Is3DPositioningAvailable = true;
-            Bits3D ??= 0;
-            Bits3D = (byte) ((Bits3D.Value & 0xFE) | (value & 0x01));
+            Flags3D ??= Positioning3DFlags.None;
+            Flags3D = (Positioning3DFlags) (((byte) Flags3D.Value & 0xFE) | (value & 0x01));
         }
     }
 
     public bool HoldEmitterPosAndOrient
     {
-        get => (Bits3D & 0x08) != 0;
+        get => (Flags3D ?? Positioning3DFlags.None).HasFlag(Positioning3DFlags.HoldEmitterPosAndOrient);
         set
         {
             Is3DPositioningAvailable = true;
-            Bits3D ??= 0;
-            Bits3D = (byte) (value ? Bits3D.Value | 0x08 : Bits3D.Value & 0xF7);
+            Flags3D ??= Positioning3DFlags.None;
+            Flags3D = value
+                ? Flags3D.Value | Positioning3DFlags.HoldEmitterPosAndOrient
+                : Flags3D.Value & ~Positioning3DFlags.HoldEmitterPosAndOrient;
         }
     }
 
     public bool HoldListenerOrient
     {
-        get => (Bits3D & 0x10) != 0;
+        get => (Flags3D ?? Positioning3DFlags.None).HasFlag(Positioning3DFlags.HoldListenerOrient);
         set
         {
             Is3DPositioningAvailable = true;
-            Bits3D ??= 0;
-            Bits3D = (byte) (value ? Bits3D.Value | 0x10 : Bits3D.Value & 0xEF);
+            Flags3D ??= Positioning3DFlags.None;
+            Flags3D = value
+                ? Flags3D.Value | Positioning3DFlags.HoldListenerOrient
+                : Flags3D.Value & ~Positioning3DFlags.HoldListenerOrient;
         }
     }
 
@@ -114,18 +89,18 @@ public class PositioningParams
 
     public bool Read(BinaryReader reader)
     {
-        BitVector = reader.ReadByte();
+        Flags = (PositioningFlags) reader.ReadByte();
 
         if (Is3DPositioningAvailable)
         {
-            Bits3D = reader.ReadByte();
+            Flags3D = (Positioning3DFlags) reader.ReadByte();
 
             // TODO: verify if AttenuationId is always present when 3D positioning is available
             AttenuationId = reader.ReadUInt32();
 
             // v113 (v90-v122): has_automation = (e3DPositionType != 1)
-            // e3DPositionType is bits 0-1 of Bits3D
-            var e3DPositionType = Bits3D & 0x03;
+            // e3DPositionType is bits 0-1 of Flags3D
+            var e3DPositionType = (byte) Flags3D & 0x03;
 
             if (e3DPositionType != 1)
             {
@@ -182,15 +157,15 @@ public class PositioningParams
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(BitVector);
+        writer.Write((byte) Flags);
 
         if (Is3DPositioningAvailable)
         {
-            writer.Write(Bits3D!.Value);
+            writer.Write((byte) Flags3D!.Value);
             writer.Write(AttenuationId!.Value);
 
-            // e3DPositionType is bits 0-1 of Bits3D
-            var e3DPositionType = Bits3D & 0x03;
+            // e3DPositionType is bits 0-1 of Flags3D
+            var e3DPositionType = (byte) Flags3D & 0x03;
 
             if (e3DPositionType != 1)
             {

@@ -1,4 +1,6 @@
-﻿namespace PckTool.Core.WWise.Bnk.Structs;
+﻿using PckTool.Core.WWise.Bnk.Enums;
+
+namespace PckTool.Core.WWise.Bnk.Structs;
 
 public class NodeBaseParams
 {
@@ -6,102 +8,60 @@ public class NodeBaseParams
     public byte OverrideAttachmentParams { get; set; }
     public uint OverrideBusId { get; set; }
     public uint DirectParentId { get; set; }
-    public byte ByBitVector { get; set; }
+    public NodeBaseFlags Flags { get; set; }
 
     public bool PriorityOverrideParent
     {
-        get => (ByBitVector & 0x01) != 0;
-        set
-        {
-            if (value)
-            {
-                ByBitVector |= 0x01;
-            }
-            else
-            {
-                ByBitVector &= 0xFE;
-            }
-        }
+        get => Flags.HasFlag(NodeBaseFlags.PriorityOverrideParent);
+        set =>
+            Flags = value
+                ? Flags | NodeBaseFlags.PriorityOverrideParent
+                : Flags & ~NodeBaseFlags.PriorityOverrideParent;
     }
 
     public bool PriorityApplyDistFactor
     {
-        get => (ByBitVector & 0x02) != 0;
-        set
-        {
-            if (value)
-            {
-                ByBitVector |= 0x02;
-            }
-            else
-            {
-                ByBitVector &= 0xFD;
-            }
-        }
+        get => Flags.HasFlag(NodeBaseFlags.PriorityApplyDistFactor);
+        set =>
+            Flags = value
+                ? Flags | NodeBaseFlags.PriorityApplyDistFactor
+                : Flags & ~NodeBaseFlags.PriorityApplyDistFactor;
     }
 
     public bool OverrideMidiEventsBehavior
     {
-        get => (ByBitVector & 0x04) != 0;
-        set
-        {
-            if (value)
-            {
-                ByBitVector |= 0x04;
-            }
-            else
-            {
-                ByBitVector &= 0xFB;
-            }
-        }
+        get => Flags.HasFlag(NodeBaseFlags.OverrideMidiEventsBehavior);
+        set =>
+            Flags = value
+                ? Flags | NodeBaseFlags.OverrideMidiEventsBehavior
+                : Flags & ~NodeBaseFlags.OverrideMidiEventsBehavior;
     }
 
     public bool OverrideMidiNoteTracking
     {
-        get => (ByBitVector & 0x08) != 0;
-        set
-        {
-            if (value)
-            {
-                ByBitVector |= 0x08;
-            }
-            else
-            {
-                ByBitVector &= 0xF7;
-            }
-        }
+        get => Flags.HasFlag(NodeBaseFlags.OverrideMidiNoteTracking);
+        set =>
+            Flags = value
+                ? Flags | NodeBaseFlags.OverrideMidiNoteTracking
+                : Flags & ~NodeBaseFlags.OverrideMidiNoteTracking;
     }
 
     public bool EnableMidiNoteTracking
     {
-        get => (ByBitVector & 0x10) != 0;
-        set
-        {
-            if (value)
-            {
-                ByBitVector |= 0x10;
-            }
-            else
-            {
-                ByBitVector &= 0xEF;
-            }
-        }
+        get => Flags.HasFlag(NodeBaseFlags.EnableMidiNoteTracking);
+        set =>
+            Flags = value
+                ? Flags | NodeBaseFlags.EnableMidiNoteTracking
+                : Flags & ~NodeBaseFlags.EnableMidiNoteTracking;
     }
 
     public bool IsMidiBreakLoopOnNoteOff
     {
-        get => (ByBitVector & 0x20) != 0;
-        set
-        {
-            if (value)
-            {
-                ByBitVector |= 0x20;
-            }
-            else
-            {
-                ByBitVector &= 0xDF;
-            }
-        }
+        get => Flags.HasFlag(NodeBaseFlags.IsMidiBreakLoopOnNoteOff);
+        set =>
+            Flags = value
+                ? Flags | NodeBaseFlags.IsMidiBreakLoopOnNoteOff
+                : Flags & ~NodeBaseFlags.IsMidiBreakLoopOnNoteOff;
     }
 
     public NodeInitialParams NodeInitialParams { get; set; }
@@ -172,7 +132,7 @@ public class NodeBaseParams
         OverrideAttachmentParams = overrideAttachmentParams;
         OverrideBusId = overrideBusId;
         DirectParentId = directParentId;
-        ByBitVector = bitVector;
+        Flags = (NodeBaseFlags) bitVector;
 
         NodeInitialParams = nodeInitialParams;
         PositioningParams = positioningParams;
@@ -190,7 +150,7 @@ public class NodeBaseParams
         writer.Write(OverrideAttachmentParams);
         writer.Write(OverrideBusId);
         writer.Write(DirectParentId);
-        writer.Write(ByBitVector);
+        writer.Write((byte) Flags);
         NodeInitialParams.Write(writer);
         PositioningParams.Write(writer);
         AuxParams.Write(writer);

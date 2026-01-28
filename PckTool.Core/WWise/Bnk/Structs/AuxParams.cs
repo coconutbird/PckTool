@@ -1,62 +1,37 @@
-﻿namespace PckTool.Core.WWise.Bnk.Structs;
+﻿using PckTool.Core.WWise.Bnk.Enums;
+
+namespace PckTool.Core.WWise.Bnk.Structs;
 
 public class AuxParams
 {
-    public byte BitVector { get; set; }
+    public AuxFlags Flags { get; set; }
 
     public bool OverrideUserAuxSends
     {
-        get => (BitVector & 0x04) != 0;
-        set
-        {
-            if (value)
-            {
-                BitVector |= 0x04;
-            }
-            else
-            {
-                BitVector &= 0xFB;
-            }
-        }
+        get => Flags.HasFlag(AuxFlags.OverrideUserAuxSends);
+        set => Flags = value ? Flags | AuxFlags.OverrideUserAuxSends : Flags & ~AuxFlags.OverrideUserAuxSends;
     }
 
     public bool HasAux
     {
-        get => (BitVector & 0x08) != 0;
-        set
-        {
-            if (value)
-            {
-                BitVector |= 0x08;
-            }
-            else
-            {
-                BitVector &= 0xF7;
-            }
-        }
+        get => Flags.HasFlag(AuxFlags.HasAux);
+        set => Flags = value ? Flags | AuxFlags.HasAux : Flags & ~AuxFlags.HasAux;
     }
 
     public bool OverrideReflectionsAuxBus
     {
-        get => (BitVector & 0x10) != 0;
-        set
-        {
-            if (value)
-            {
-                BitVector |= 0x10;
-            }
-            else
-            {
-                BitVector &= 0xEF;
-            }
-        }
+        get => Flags.HasFlag(AuxFlags.OverrideReflectionsAuxBus);
+        set =>
+            Flags = value
+                ? Flags | AuxFlags.OverrideReflectionsAuxBus
+                : Flags & ~AuxFlags.OverrideReflectionsAuxBus;
     }
 
     public uint[]? AuxIds { get; set; }
 
     public bool Read(BinaryReader reader)
     {
-        BitVector = reader.ReadByte();
+        Flags = (AuxFlags) reader.ReadByte();
 
         if (HasAux)
         {
@@ -75,7 +50,7 @@ public class AuxParams
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(BitVector);
+        writer.Write((byte) Flags);
 
         if (HasAux && AuxIds != null)
         {
