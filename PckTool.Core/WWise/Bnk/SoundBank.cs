@@ -199,7 +199,10 @@ public class SoundBank
     /// </summary>
     public byte[] ToByteArray()
     {
-        throw new NotImplementedException("SoundBank serialization is not yet implemented.");
+        using var stream = new MemoryStream();
+        Write(stream);
+
+        return stream.ToArray();
     }
 
     /// <summary>
@@ -207,7 +210,31 @@ public class SoundBank
     /// </summary>
     public void Write(Stream stream)
     {
-        throw new NotImplementedException("SoundBank serialization is not yet implemented.");
+        using var writer = new BinaryWriter(stream, Encoding.UTF8, true);
+
+        // Prepare chunks from current state
+        PrepareChunksForWrite();
+
+        // Write BKHD chunk (always required)
+        BankHeaderChunk?.Write(this, writer);
+
+        // Write DIDX and DATA chunks (only if there's embedded media)
+        if (Media.Count > 0 && MediaIndexChunk is not null && DataChunk is not null)
+        {
+            // DIDX must be written before DATA
+            MediaIndexChunk.Write(this, writer);
+            DataChunk.Write(this, writer);
+        }
+
+        // Write HIRC chunk (only if there are items)
+        if (Items.Count > 0 && HircChunk is not null)
+        {
+            HircChunk.Write(this, writer);
+        }
+
+        // Write optional chunks if they exist
+        EnvSettingsChunk?.Write(this, writer);
+        PlatformChunk?.Write(this, writer);
     }
 
     /// <summary>
@@ -215,7 +242,96 @@ public class SoundBank
     /// </summary>
     public void Save(string path)
     {
-        throw new NotImplementedException("SoundBank serialization is not yet implemented.");
+        using var stream = File.Create(path);
+        Write(stream);
+    }
+
+    /// <summary>
+    ///     Prepares internal chunks from the public collections for writing.
+    /// </summary>
+    private void PrepareChunksForWrite()
+    {
+        // Create or update BankHeaderChunk
+        BankHeaderChunk ??= new BankHeaderChunk();
+        BankHeaderChunk.BankGeneratorVersion = Version;
+        BankHeaderChunk.SoundBankId = Id;
+        BankHeaderChunk.LanguageId = LanguageId;
+        BankHeaderChunk.FeedbackInBank = FeedbackInBank;
+        BankHeaderChunk.ProjectId = ProjectId;
+
+        // Create or update HircChunk from Items collection
+        if (Items.Count > 0)
+        {
+            HircChunk ??= new HircChunk();
+
+            // Use reflection to set the private Items property, or we need to modify HircChunk
+            // For now, we'll create a new approach - sync the Items list
+            SyncHircChunkItems();
+        }
+
+        // Create or update MediaIndexChunk and DataChunk from Media collection
+        if (Media.Count > 0)
+        {
+            SyncMediaChunks();
+        }
+    }
+
+    /// <summary>
+    ///     Synchronizes the HircChunk.Items with the public Items collection.
+    /// </summary>
+    private void SyncHircChunkItems()
+    {
+        // Create a new HircChunk with the current items
+        var hircChunk = new HircChunk();
+
+        // We need to set the Items property - but it's private set
+        // Let's use a different approach: create a method in HircChunk or use the existing chunk
+        // For now, we'll leverage the fact that HircChunk.WriteInternal reads from Items property
+        // We need to make the Items property settable or provide an alternative
+
+        // Workaround: HircChunk stores items internally, so we need to ensure it has the right items
+        // If HircChunk was loaded from parsing, it already has the items
+        // If we're creating from scratch, we need to populate it
+
+        if (HircChunk is null)
+        {
+            HircChunk = hircChunk;
+        }
+
+        // The HircChunk needs to be updated to support setting Items
+        // For now, we'll add a SetItems method to HircChunk
+        HircChunk.SetItems(Items.ToList());
+    }
+
+    /// <summary>
+    ///     Synchronizes the MediaIndexChunk and DataChunk with the public Media collection.
+    /// </summary>
+    private void SyncMediaChunks()
+    {
+        // Create MediaIndexChunk with headers
+        var headers = new List<MediaHeader>();
+        var dataEntries = new List<DataChunk.MediaIndexEntry>();
+
+        uint currentOffset = 0;
+
+        foreach (var kvp in Media)
+        {
+            var header = new MediaHeader { Id = kvp.Key, Offset = currentOffset, Size = (uint) kvp.Value.Length };
+            headers.Add(header);
+
+            var dataEntry = new DataChunk.MediaIndexEntry { Id = kvp.Key, Data = kvp.Value };
+            dataEntries.Add(dataEntry);
+
+            currentOffset += header.Size;
+        }
+
+        // Update or create MediaIndexChunk
+        MediaIndexChunk ??= new MediaIndexChunk();
+        MediaIndexChunk.SetLoadedMedia(headers);
+
+        // Update or create DataChunk
+        DataChunk ??= new DataChunk();
+        DataChunk.SetData(dataEntries);
     }
 
 #endregion

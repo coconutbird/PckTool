@@ -10,6 +10,15 @@ public class DataChunk : BaseChunk
 
     public List<MediaIndexEntry>? Data { get; private set; }
 
+    /// <summary>
+    ///     Sets the data entries. Used for serialization when creating banks from scratch.
+    /// </summary>
+    /// <param name="entries">The media data entries to set.</param>
+    internal void SetData(List<MediaIndexEntry> entries)
+    {
+        Data = entries;
+    }
+
     protected override bool ReadInternal(SoundBank soundBank, BinaryReader reader, uint size, long startPosition)
     {
         var mediaIndexChunk = soundBank.MediaIndexChunk;

@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 
+using PckTool.Core.WWise.Bnk;
 using PckTool.Core.WWise.Util;
 
 namespace PckTool.Core.WWise.Pck;
@@ -66,11 +67,317 @@ public class PckFile : IDisposable
     }
 
     /// <summary>
+    ///     Creates a new empty package file.
+    /// </summary>
+    public static PckFile Create()
+    {
+        return new PckFile();
+    }
+
+    /// <summary>
+    ///     Adds a language mapping to this package.
+    /// </summary>
+    /// <param name="languageId">The language ID.</param>
+    /// <param name="languageName">The language name.</param>
+    public void AddLanguage(uint languageId, string languageName)
+    {
+        Languages[languageId] = languageName;
+    }
+
+    /// <summary>
+    ///     Adds a sound bank entry from raw byte data.
+    /// </summary>
+    /// <param name="id">The sound bank ID.</param>
+    /// <param name="data">The BNK file data.</param>
+    /// <param name="languageId">The language ID (default: 0).</param>
+    /// <param name="blockSize">The block size alignment (default: 16).</param>
+    /// <param name="name">Optional human-readable name for the sound bank.</param>
+    public SoundBankEntry AddSoundBank(
+        uint id,
+        byte[] data,
+        uint languageId = 0,
+        uint blockSize = 16,
+        string? name = null)
+    {
+        var entry = new SoundBankEntry
+        {
+            Id = id,
+            LanguageId = languageId,
+            BlockSize = blockSize,
+            Name = name,
+            Language = GetLanguageName(languageId)
+        };
+
+        entry.SetOriginalData(data);
+
+        SoundBanks.Add(entry);
+
+        return entry;
+    }
+
+    /// <summary>
+    ///     Adds a sound bank entry from a BNK file.
+    /// </summary>
+    /// <param name="id">The sound bank ID.</param>
+    /// <param name="bnkFilePath">Path to the BNK file.</param>
+    /// <param name="languageId">The language ID (default: 0).</param>
+    /// <param name="blockSize">The block size alignment (default: 16).</param>
+    /// <param name="name">Optional human-readable name for the sound bank.</param>
+    public SoundBankEntry AddSoundBank(
+        uint id,
+        string bnkFilePath,
+        uint languageId = 0,
+        uint blockSize = 16,
+        string? name = null)
+    {
+        var data = File.ReadAllBytes(bnkFilePath);
+
+        return AddSoundBank(id, data, languageId, blockSize, name);
+    }
+
+    /// <summary>
+    ///     Adds a sound bank entry from a SoundBank object.
+    /// </summary>
+    /// <param name="soundBank">The SoundBank object to add.</param>
+    /// <param name="blockSize">The block size alignment (default: 16).</param>
+    /// <param name="name">Optional human-readable name for the sound bank.</param>
+    public SoundBankEntry AddSoundBank(SoundBank soundBank, uint blockSize = 16, string? name = null)
+    {
+        var data = soundBank.ToByteArray();
+
+        return AddSoundBank(soundBank.Id, data, soundBank.LanguageId, blockSize, name);
+    }
+
+    /// <summary>
+    ///     Adds a streaming file entry from raw byte data.
+    /// </summary>
+    /// <param name="id">The file ID.</param>
+    /// <param name="data">The WEM file data.</param>
+    /// <param name="languageId">The language ID (default: 0).</param>
+    /// <param name="blockSize">The block size alignment (default: 16).</param>
+    /// <param name="name">Optional human-readable name.</param>
+    public StreamingFileEntry AddStreamingFile(
+        uint id,
+        byte[] data,
+        uint languageId = 0,
+        uint blockSize = 16,
+        string? name = null)
+    {
+        var entry = new StreamingFileEntry
+        {
+            Id = id,
+            LanguageId = languageId,
+            BlockSize = blockSize,
+            Name = name,
+            Language = GetLanguageName(languageId)
+        };
+
+        entry.SetOriginalData(data);
+
+        StreamingFiles.Add(entry);
+
+        return entry;
+    }
+
+    /// <summary>
+    ///     Adds a streaming file entry from a WEM file.
+    /// </summary>
+    /// <param name="id">The file ID.</param>
+    /// <param name="wemFilePath">Path to the WEM file.</param>
+    /// <param name="languageId">The language ID (default: 0).</param>
+    /// <param name="blockSize">The block size alignment (default: 16).</param>
+    /// <param name="name">Optional human-readable name.</param>
+    public StreamingFileEntry AddStreamingFile(
+        uint id,
+        string wemFilePath,
+        uint languageId = 0,
+        uint blockSize = 16,
+        string? name = null)
+    {
+        var data = File.ReadAllBytes(wemFilePath);
+
+        return AddStreamingFile(id, data, languageId, blockSize, name);
+    }
+
+    /// <summary>
+    ///     Adds an external file entry from raw byte data.
+    /// </summary>
+    /// <param name="id">The file ID (64-bit).</param>
+    /// <param name="data">The file data.</param>
+    /// <param name="languageId">The language ID (default: 0).</param>
+    /// <param name="blockSize">The block size alignment (default: 16).</param>
+    /// <param name="name">Optional human-readable name.</param>
+    public ExternalFileEntry AddExternalFile(
+        ulong id,
+        byte[] data,
+        uint languageId = 0,
+        uint blockSize = 16,
+        string? name = null)
+    {
+        var entry = new ExternalFileEntry
+        {
+            Id = id,
+            LanguageId = languageId,
+            BlockSize = blockSize,
+            Name = name,
+            Language = GetLanguageName(languageId)
+        };
+
+        entry.SetOriginalData(data);
+
+        ExternalFiles.Add(entry);
+
+        return entry;
+    }
+
+    /// <summary>
+    ///     Adds an external file entry from a file path.
+    /// </summary>
+    /// <param name="id">The file ID (64-bit).</param>
+    /// <param name="filePath">Path to the file.</param>
+    /// <param name="languageId">The language ID (default: 0).</param>
+    /// <param name="blockSize">The block size alignment (default: 16).</param>
+    /// <param name="name">Optional human-readable name.</param>
+    public ExternalFileEntry AddExternalFile(
+        ulong id,
+        string filePath,
+        uint languageId = 0,
+        uint blockSize = 16,
+        string? name = null)
+    {
+        var data = File.ReadAllBytes(filePath);
+
+        return AddExternalFile(id, data, languageId, blockSize, name);
+    }
+
+    /// <summary>
     ///     Gets the language name for a language ID.
     /// </summary>
     public string? GetLanguageName(uint languageId)
     {
         return Languages.GetValueOrDefault(languageId);
+    }
+
+    /// <summary>
+    ///     Replaces a sound bank entry with data from a file.
+    /// </summary>
+    /// <param name="id">The sound bank ID to replace.</param>
+    /// <param name="bnkFilePath">Path to the replacement BNK file.</param>
+    /// <returns>True if the entry was found and replaced, false if not found.</returns>
+    public bool ReplaceSoundBank(uint id, string bnkFilePath)
+    {
+        var entry = SoundBanks[id];
+
+        if (entry is null)
+        {
+            return false;
+        }
+
+        entry.ReplaceWith(bnkFilePath);
+
+        return true;
+    }
+
+    /// <summary>
+    ///     Replaces a sound bank entry with raw byte data.
+    /// </summary>
+    /// <param name="id">The sound bank ID to replace.</param>
+    /// <param name="data">The replacement BNK data.</param>
+    /// <returns>True if the entry was found and replaced, false if not found.</returns>
+    public bool ReplaceSoundBank(uint id, byte[] data)
+    {
+        var entry = SoundBanks[id];
+
+        if (entry is null)
+        {
+            return false;
+        }
+
+        entry.ReplaceWith(data);
+
+        return true;
+    }
+
+    /// <summary>
+    ///     Replaces a sound bank entry by name with data from a file.
+    /// </summary>
+    /// <param name="name">The sound bank name to find.</param>
+    /// <param name="bnkFilePath">Path to the replacement BNK file.</param>
+    /// <param name="languageId">Optional language ID to match. If null, replaces all language variants.</param>
+    /// <returns>The number of entries replaced.</returns>
+    public int ReplaceSoundBankByName(string name, string bnkFilePath, uint? languageId = null)
+    {
+        var count = 0;
+
+        foreach (var entry in SoundBanks)
+        {
+            if (entry.Name?.Equals(name, StringComparison.OrdinalIgnoreCase) == true)
+            {
+                if (languageId is null || entry.LanguageId == languageId)
+                {
+                    entry.ReplaceWith(bnkFilePath);
+                    count++;
+                }
+            }
+        }
+
+        return count;
+    }
+
+    /// <summary>
+    ///     Replaces a sound bank entry by name with raw byte data.
+    /// </summary>
+    /// <param name="name">The sound bank name to find.</param>
+    /// <param name="data">The replacement BNK data.</param>
+    /// <param name="languageId">Optional language ID to match. If null, replaces all language variants.</param>
+    /// <returns>The number of entries replaced.</returns>
+    public int ReplaceSoundBankByName(string name, byte[] data, uint? languageId = null)
+    {
+        var count = 0;
+
+        foreach (var entry in SoundBanks)
+        {
+            if (entry.Name?.Equals(name, StringComparison.OrdinalIgnoreCase) == true)
+            {
+                if (languageId is null || entry.LanguageId == languageId)
+                {
+                    entry.ReplaceWith(data);
+                    count++;
+                }
+            }
+        }
+
+        return count;
+    }
+
+    /// <summary>
+    ///     Gets a sound bank entry by ID.
+    /// </summary>
+    /// <param name="id">The sound bank ID.</param>
+    /// <returns>The entry, or null if not found.</returns>
+    public SoundBankEntry? GetSoundBank(uint id)
+    {
+        return SoundBanks[id];
+    }
+
+    /// <summary>
+    ///     Gets all sound bank entries matching a name.
+    /// </summary>
+    /// <param name="name">The sound bank name to find.</param>
+    /// <param name="languageId">Optional language ID to filter by.</param>
+    /// <returns>All matching entries.</returns>
+    public IEnumerable<SoundBankEntry> GetSoundBanksByName(string name, uint? languageId = null)
+    {
+        foreach (var entry in SoundBanks)
+        {
+            if (entry.Name?.Equals(name, StringComparison.OrdinalIgnoreCase) == true)
+            {
+                if (languageId is null || entry.LanguageId == languageId)
+                {
+                    yield return entry;
+                }
+            }
+        }
     }
 
     public void Save(string path)

@@ -1,3 +1,5 @@
+using System.Text;
+
 using PckTool.Core.WWise.Bnk.Enums;
 using PckTool.Core.WWise.Bnk.Structs;
 using PckTool.Core.WWise.Pck;
@@ -1835,11 +1837,13 @@ public class HircItemTests
         }
 
         // Output the counts for diagnostic purposes
-        var output = new System.Text.StringBuilder();
+        var output = new StringBuilder();
         output.AppendLine("HIRC Item Types in Sounds.pck:");
 
         foreach (var kvp in typeCounts.OrderBy(x => (int) x.Key))
+        {
             output.AppendLine($"  {kvp.Key} ({(int) kvp.Key}): {kvp.Value}");
+        }
 
         output.AppendLine($"Total: {typeCounts.Values.Sum()} items across {typeCounts.Count} types");
 

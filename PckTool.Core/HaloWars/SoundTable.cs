@@ -24,14 +24,26 @@ public class SoundTable
     private readonly Dictionary<uint, CueEntry> _cueIndexMap = new();
 
     /// <summary>
-    ///     Maps FileId (wem source ID) to the cue name for O(1) lookup.
+    ///     Maps FileId (wem source ID) to a single cue name for backward compatibility.
     /// </summary>
     private readonly Dictionary<uint, string> _fileIdToCueName = new();
+
+    /// <summary>
+    ///     Maps FileId (wem source ID) to all cue references that use it.
+    ///     Supports many-to-many relationship where one WEM file can be used by multiple cues
+    ///     across different soundbanks.
+    /// </summary>
+    private readonly Dictionary<uint, HashSet<CueReference>> _fileIdToCueRefs = new();
 
     /// <summary>
     ///     All registered cue entries.
     /// </summary>
     public IReadOnlyCollection<CueEntry> Cues => _cueIndexMap.Values;
+
+    /// <summary>
+    ///     Number of unique file IDs that have been resolved to cue references.
+    /// </summary>
+    public int ResolvedFileIdCount => _fileIdToCueRefs.Count;
 
     /// <summary>
     ///     Loads cue name definitions from an XML file.
@@ -90,6 +102,15 @@ public class SoundTable
             {
                 cueEntry.AddFileId(fileId);
                 _fileIdToCueName.TryAdd(fileId, cueEntry.CueName);
+
+                // Track full cue references (including source bank) for cross-bank relationships
+                if (!_fileIdToCueRefs.TryGetValue(fileId, out var cueRefs))
+                {
+                    cueRefs = [];
+                    _fileIdToCueRefs[fileId] = cueRefs;
+                }
+
+                cueRefs.Add(new CueReference(cueEntry.CueName, cueEntry.CueIndex, soundbank.Id));
             }
         }
     }
@@ -97,10 +118,28 @@ public class SoundTable
     /// <summary>
     ///     Gets the cue name associated with a file ID (wem source ID).
     ///     Returns null if the file ID is not associated with any known cue.
+    ///     Note: If multiple cues reference this file, only the first one encountered is returned.
+    ///     Use <see cref="GetCueReferencesByFileId" /> to get all cue references.
     /// </summary>
     public string? GetCueNameByFileId(uint fileId)
     {
         return _fileIdToCueName.GetValueOrDefault(fileId);
+    }
+
+    /// <summary>
+    ///     Gets all cue references associated with a file ID (wem source ID).
+    ///     Returns an empty set if the file ID is not associated with any known cue.
+    ///     Supports many-to-many relationship where one WEM file can be used by multiple cues
+    ///     across different soundbanks.
+    /// </summary>
+    public IReadOnlySet<CueReference> GetCueReferencesByFileId(uint fileId)
+    {
+        if (_fileIdToCueRefs.TryGetValue(fileId, out var cueRefs))
+        {
+            return cueRefs;
+        }
+
+        return new HashSet<CueReference>();
     }
 
     /// <summary>
@@ -145,6 +184,27 @@ public class SoundTable
         {
             _fileIds.Add(fileId);
         }
+    }
+
+    /// <summary>
+    ///     Represents a reference from a cue (event) to a WEM file, including the source bank.
+    ///     This captures the cross-bank relationship where an event in one bank can reference
+    ///     audio files in another bank.
+    /// </summary>
+    /// <param name="CueName">The human-readable cue name (event name).</param>
+    /// <param name="CueIndex">The FNV1A-32 hash of the cue name (event ID).</param>
+    /// <param name="SourceBankId">The ID of the soundbank where the event is defined.</param>
+    public sealed record CueReference(string CueName, uint CueIndex, uint SourceBankId)
+    {
+        /// <summary>
+        ///     The cue index in hexadecimal format.
+        /// </summary>
+        public string CueIndexHex => $"{CueIndex:X8}";
+
+        /// <summary>
+        ///     The source bank ID in hexadecimal format.
+        /// </summary>
+        public string SourceBankIdHex => $"{SourceBankId:X8}";
     }
 
 #region Resolution Logic

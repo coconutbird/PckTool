@@ -359,6 +359,7 @@ public static class Program
             return;
         }
 
+        Log.Info("Loaded {0} cue entries from sound table", soundTable.Cues.Count);
         Log.Info("Resolving cue names...");
 
         // Build a global lookup for cross-language bank references (e.g., SFX banks)
@@ -403,7 +404,9 @@ public static class Program
             }
         }
 
-        // Phase 3: Extract WEM files with resolved cue names
+        Log.Info("Resolved {0} file IDs to cue references", soundTable.ResolvedFileIdCount);
+
+        // Phase 3: Extract WEM files with resolved cue names and generate metadata
         Log.Info("Extracting WEM files...");
 
         foreach (var (languageId, languageBanks) in soundbanksByLanguage)
@@ -412,44 +415,53 @@ public static class Program
 
             foreach (var (soundbankId, soundbank) in languageBanks)
             {
-                var path = Path.Join(outputDir, language);
+                var bankDir = Path.Join(outputDir, language, $"{soundbankId:X8}");
 
-                EnsureDirectoryCreated(path);
+                EnsureDirectoryCreated(bankDir + Path.DirectorySeparatorChar);
 
-                var bnkFile = Path.Join(path, $"{soundbankId:X8}.bnk");
-
-                EnsureDirectoryCreated(bnkFile);
-
-                // Track how many times each cue name is used for unique filenames
-                var usedFiles = new Dictionary<string, int>();
+                // Create metadata for this soundbank
+                var metadata = new WemMetadata
+                {
+                    SoundbankId = soundbankId, Language = language, LanguageId = languageId
+                };
 
                 foreach (var (wemId, wemData) in soundbank.Media)
                 {
-                    var cueName = soundTable.GetCueNameByFileId(wemId);
-                    var wemFileName = $"{wemId}";
-
-                    if (cueName is not null)
-                    {
-                        wemFileName += $"_{cueName}";
-
-                        var count = usedFiles.GetValueOrDefault(cueName, 0);
-
-                        wemFileName += $"_{count}";
-                        usedFiles[cueName] = count + 1;
-                    }
-                    else
-                    {
-                        Log.Warn("  No cue name found for {0:X8} ({1})", soundbankId, wemFileName);
-                    }
-
-                    var wemFile = Path.Join(path, $"{soundbankId:X8}", $"{wemFileName}.wem");
-
-                    EnsureDirectoryCreated(wemFile);
+                    // Use simple numeric filename
+                    var wemFile = Path.Join(bankDir, $"{wemId}.wem");
 
                     File.WriteAllBytes(wemFile, wemData);
+
+                    // Get all cue references for this WEM file (many-to-many relationship with cross-bank support)
+                    var cueRefs = soundTable.GetCueReferencesByFileId(wemId);
+
+                    if (cueRefs.Count == 0)
+                    {
+                        Log.Warn("  No cue name found for WEM {0} in soundbank {1:X8}", wemId, soundbankId);
+                    }
+
+                    // Convert to metadata format with full cue information
+                    var cueMetadataList = cueRefs
+                                          .OrderBy(r => r.CueName)
+                                          .ThenBy(r => r.SourceBankId)
+                                          .Select(r => new CueMetadata
+                                          {
+                                              Name = r.CueName,
+                                              EventId = r.CueIndex,
+                                              SourceBankId = r.SourceBankId
+                                          })
+                                          .ToList();
+
+                    // Add to metadata
+                    metadata.Files.Add(new WemFileEntry { Id = wemId, Size = wemData.Length, Cues = cueMetadataList });
                 }
 
-                // Find the original file entry to write the .bnk file
+                // Write metadata file for this soundbank
+                var metadataFile = Path.Join(bankDir, "metadata.json");
+                metadata.Save(metadataFile);
+
+                // Also write the .bnk file to the language directory
+                var bnkFile = Path.Join(outputDir, language, $"{soundbankId:X8}.bnk");
                 var fileEntry = package.SoundBanks.First(e => e.Id == soundbankId && e.LanguageId == languageId);
 
                 File.WriteAllBytes(bnkFile, fileEntry.GetData());

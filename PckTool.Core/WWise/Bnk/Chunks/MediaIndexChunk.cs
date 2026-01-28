@@ -11,6 +11,15 @@ public class MediaIndexChunk : BaseChunk
 
     public List<MediaHeader>? LoadedMedia { get; private set; }
 
+    /// <summary>
+    ///     Sets the loaded media headers. Used for serialization when creating banks from scratch.
+    /// </summary>
+    /// <param name="headers">The media headers to set.</param>
+    internal void SetLoadedMedia(List<MediaHeader> headers)
+    {
+        LoadedMedia = headers;
+    }
+
     protected override bool ReadInternal(SoundBank soundBank, BinaryReader reader, uint size, long startPosition)
     {
         var loadedMedia = new List<MediaHeader>();

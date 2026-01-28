@@ -25,6 +25,16 @@ public class HircChunk : BaseChunk
     public List<HircItem>? Items { get; private set; }
 
     /// <summary>
+    ///     Sets the items in this chunk. Used for serialization when creating banks from scratch.
+    /// </summary>
+    /// <param name="items">The items to set.</param>
+    internal void SetItems(List<HircItem> items)
+    {
+        Items = items;
+        _itemIndex = items.ToDictionary(item => item.Id);
+    }
+
+    /// <summary>
     ///     Gets a HIRC item by its ID.
     ///     Returns null if the item is not found.
     /// </summary>
