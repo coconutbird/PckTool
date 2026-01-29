@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 
+using PckTool.Core.Games;
 using PckTool.Core.Services;
 
 using Spectre.Console;
@@ -24,14 +25,26 @@ public class SoundsCommand : Command<SoundsSettings>
 {
     public override int Execute(CommandContext context, SoundsSettings settings)
     {
-        var gameDir = GameHelpers.ResolveGameDirectory(settings.GameDir);
+        var resolution = GameHelpers.ResolveGame(settings.Game, settings.GameDir);
 
-        if (gameDir is null)
+        if (resolution.Game == SupportedGame.Unknown || resolution.Metadata is null)
         {
-            AnsiConsole.MarkupLine("[red]Failed to find Halo Wars game directory[/]");
+            AnsiConsole.MarkupLine("[red]Game not specified or not supported[/]");
+            AnsiConsole.MarkupLine("[dim]Use --game hwde to specify[/]");
 
             return 1;
         }
+
+        if (resolution.GameDir is null)
+        {
+            AnsiConsole.MarkupLine("[red]Failed to find game directory[/]");
+            AnsiConsole.MarkupLine("[dim]Use --game-dir to specify the game installation path[/]");
+
+            return 1;
+        }
+
+        AnsiConsole.MarkupLine($"[green]Game:[/] {resolution.Game.ToDisplayName()}");
+        AnsiConsole.MarkupLine($"[green]Directory:[/] {resolution.GameDir}");
 
         // Parse bank ID
         if (!uint.TryParse(settings.Bank, NumberStyles.HexNumber, null, out var bankId))
@@ -41,18 +54,32 @@ public class SoundsCommand : Command<SoundsSettings>
             return 1;
         }
 
-        using var browser = new PackageBrowser();
-        var soundsPackagePath = GameHelpers.GetSoundsPackagePath(gameDir);
+        var inputFiles = resolution.Metadata.GetDefaultInputFiles(resolution.GameDir).ToList();
 
-        if (!browser.LoadPackage(soundsPackagePath))
+        if (inputFiles.Count == 0)
         {
-            AnsiConsole.MarkupLine("[red]Failed to load sounds package[/]");
+            AnsiConsole.MarkupLine($"[red]No audio files found for {resolution.Game.ToDisplayName()}[/]");
 
             return 1;
         }
 
+        using var browser = new PackageBrowser();
+
+        // Load each input file
+        foreach (var inputFile in inputFiles)
+        {
+            var absolutePath = Path.Combine(resolution.GameDir, inputFile);
+
+            if (!browser.LoadPackage(absolutePath))
+            {
+                AnsiConsole.MarkupLine($"[red]Failed to load audio file:[/] {inputFile}");
+
+                return 1;
+            }
+        }
+
         // Try to load sound table for cue names
-        var soundTablePath = GameHelpers.FindSoundTableXml(gameDir);
+        var soundTablePath = GameHelpers.FindSoundTableXml(resolution.GameDir);
 
         if (soundTablePath is not null)
         {

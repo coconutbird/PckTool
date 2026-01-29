@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 
+using PckTool.Core.Games;
 using PckTool.Services;
 
 using Spectre.Console;
@@ -31,11 +32,32 @@ public class ReplaceWemCommand : Command<ReplaceWemSettings>
 {
     public override int Execute(CommandContext context, ReplaceWemSettings settings)
     {
-        var gameDir = GameHelpers.ResolveGameDirectory(settings.GameDir);
+        var resolution = GameHelpers.ResolveGame(settings.Game, settings.GameDir);
 
-        if (gameDir is null)
+        if (resolution.Game == SupportedGame.Unknown || resolution.Metadata is null)
         {
-            AnsiConsole.MarkupLine("[red]Could not find Halo Wars game directory. Use --game-dir to specify.[/]");
+            AnsiConsole.MarkupLine("[red]Game not specified or not supported[/]");
+            AnsiConsole.MarkupLine("[dim]Use --game hwde to specify[/]");
+
+            return 1;
+        }
+
+        if (resolution.GameDir is null)
+        {
+            AnsiConsole.MarkupLine("[red]Failed to find game directory[/]");
+            AnsiConsole.MarkupLine("[dim]Use --game-dir to specify the game installation path[/]");
+
+            return 1;
+        }
+
+        AnsiConsole.MarkupLine($"[green]Game:[/] {resolution.Game.ToDisplayName()}");
+        AnsiConsole.MarkupLine($"[green]Directory:[/] {resolution.GameDir}");
+
+        var inputFiles = resolution.Metadata.GetDefaultInputFiles(resolution.GameDir).ToList();
+
+        if (inputFiles.Count == 0)
+        {
+            AnsiConsole.MarkupLine($"[red]No audio files found for {resolution.Game.ToDisplayName()}[/]");
 
             return 1;
         }
@@ -73,7 +95,7 @@ public class ReplaceWemCommand : Command<ReplaceWemSettings>
             }
             else
             {
-                // Parse as WEM ID
+                // Parse as WEM ID - search across all input files
                 uint sourceWemId;
 
                 if (settings.Source.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
@@ -87,23 +109,26 @@ public class ReplaceWemCommand : Command<ReplaceWemSettings>
 
                 AnsiConsole.MarkupLine($"[blue]Source WEM ID:[/] {sourceWemId} (0x{sourceWemId:X8})");
 
-                var soundsPackagePath = GameHelpers.GetSoundsPackagePath(gameDir);
-                var tempPck = ServiceProvider.PckFileFactory.Load(soundsPackagePath);
+                byte[]? foundData = null;
 
-                // Try streaming files first
-                var streamingEntry = tempPck.StreamingFiles[sourceWemId];
+                foreach (var inputFile in inputFiles)
+                {
+                    var absolutePath = Path.Combine(resolution.GameDir, inputFile);
+                    var tempPck = ServiceProvider.PckFileFactory.Load(absolutePath);
 
-                if (streamingEntry is not null)
-                {
-                    replacementData = streamingEntry.GetData();
-                    AnsiConsole.MarkupLine(
-                        $"[green]Found source WEM in streaming files[/] ({replacementData.Length} bytes)");
-                }
-                else
-                {
+                    // Try streaming files first
+                    var streamingEntry = tempPck.StreamingFiles[sourceWemId];
+
+                    if (streamingEntry is not null)
+                    {
+                        foundData = streamingEntry.GetData();
+                        AnsiConsole.MarkupLine(
+                            $"[green]Found source WEM in streaming files[/] ({foundData.Length} bytes)");
+
+                        break;
+                    }
+
                     // Search embedded media
-                    byte[]? foundData = null;
-
                     foreach (var bankEntry in tempPck.SoundBanks)
                     {
                         var bank = bankEntry.Parse();
@@ -118,16 +143,21 @@ public class ReplaceWemCommand : Command<ReplaceWemSettings>
                         }
                     }
 
-                    if (foundData is null)
+                    if (foundData is not null)
                     {
-                        AnsiConsole.MarkupLine(
-                            $"[red]Source WEM {sourceWemId} (0x{sourceWemId:X8}) not found in package[/]");
-
-                        return 1;
+                        break;
                     }
-
-                    replacementData = foundData;
                 }
+
+                if (foundData is null)
+                {
+                    AnsiConsole.MarkupLine(
+                        $"[red]Source WEM {sourceWemId} (0x{sourceWemId:X8}) not found in any input file[/]");
+
+                    return 1;
+                }
+
+                replacementData = foundData;
             }
         }
         else
@@ -137,58 +167,70 @@ public class ReplaceWemCommand : Command<ReplaceWemSettings>
             return 1;
         }
 
-        // Load the package
-        var packagePath = GameHelpers.GetSoundsPackagePath(gameDir);
-
-        if (!File.Exists(packagePath))
-        {
-            AnsiConsole.MarkupLine($"[red]Sounds.pck not found at:[/] {packagePath}");
-
-            return 1;
-        }
-
-        AnsiConsole.MarkupLine($"[blue]Loading package:[/] {packagePath}");
-
         try
         {
-            var package = ServiceProvider.PckFileFactory.Load(packagePath);
-
-            // Replace the WEM using the unified API
-            AnsiConsole.MarkupLine("[blue]Replacing WEM...[/]");
-            var result = package.ReplaceWem(targetWemId, replacementData);
-
-            AnsiConsole.WriteLine();
-            var resultTable = new Table();
-            resultTable.AddColumn("Metric");
-            resultTable.AddColumn("Value");
-            resultTable.AddRow("Replaced in streaming", result.ReplacedInStreaming.ToString());
-            resultTable.AddRow("Embedded banks modified", result.EmbeddedBanksModified.ToString());
-            resultTable.AddRow("HIRC references updated", result.HircReferencesUpdated.ToString());
-            AnsiConsole.Write(resultTable);
-
-            // Determine output path
-            var outputFile = settings.Output;
-
-            if (Directory.Exists(settings.Output))
+            // Process each input file to find and replace the WEM
+            foreach (var inputFile in inputFiles)
             {
-                outputFile = Path.Combine(settings.Output, "Sounds_modified.pck");
+                var absolutePath = Path.Combine(resolution.GameDir, inputFile);
+
+                if (!File.Exists(absolutePath))
+                {
+                    continue;
+                }
+
+                AnsiConsole.MarkupLine($"[blue]Loading:[/] {inputFile}");
+                var package = ServiceProvider.PckFileFactory.Load(absolutePath);
+
+                // Replace the WEM using the unified API
+                AnsiConsole.MarkupLine("[blue]Replacing WEM...[/]");
+                var result = package.ReplaceWem(targetWemId, replacementData);
+
+                if (!result.ReplacedInStreaming && result.EmbeddedBanksModified == 0)
+                {
+                    continue; // WEM not found in this file
+                }
+
+                AnsiConsole.WriteLine();
+                var resultTable = new Table();
+                resultTable.AddColumn("Metric");
+                resultTable.AddColumn("Value");
+                resultTable.AddRow("Replaced in streaming", result.ReplacedInStreaming.ToString());
+                resultTable.AddRow("Embedded banks modified", result.EmbeddedBanksModified.ToString());
+                resultTable.AddRow("HIRC references updated", result.HircReferencesUpdated.ToString());
+                AnsiConsole.Write(resultTable);
+
+                // Determine output path
+                var outputFile = settings.Output;
+
+                if (Directory.Exists(settings.Output))
+                {
+                    var originalFileName = Path.GetFileNameWithoutExtension(inputFile);
+                    var extension = Path.GetExtension(inputFile);
+                    outputFile = Path.Combine(settings.Output, $"{originalFileName}_modified{extension}");
+                }
+                else if (!settings.Output.EndsWith(".pck", StringComparison.OrdinalIgnoreCase)
+                         && !settings.Output.EndsWith(".bnk", StringComparison.OrdinalIgnoreCase))
+                {
+                    outputFile = settings.Output + Path.GetExtension(inputFile);
+                }
+
+                GameHelpers.EnsureDirectoryCreated(outputFile);
+
+                // Save the modified package
+                AnsiConsole.WriteLine();
+                AnsiConsole.MarkupLine($"[blue]Saving modified package to:[/] {outputFile}");
+                package.Save(outputFile);
+
+                AnsiConsole.MarkupLine(
+                    $"[green]Done![/] WEM [blue]{targetWemId} (0x{targetWemId:X8})[/] has been replaced.");
+
+                return 0;
             }
-            else if (!settings.Output.EndsWith(".pck", StringComparison.OrdinalIgnoreCase))
-            {
-                outputFile = settings.Output + ".pck";
-            }
 
-            GameHelpers.EnsureDirectoryCreated(outputFile);
+            AnsiConsole.MarkupLine($"[red]WEM {targetWemId} (0x{targetWemId:X8}) not found in any input file[/]");
 
-            // Save the modified package
-            AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine($"[blue]Saving modified package to:[/] {outputFile}");
-            package.Save(outputFile);
-
-            AnsiConsole.MarkupLine(
-                $"[green]Done![/] WEM [blue]{targetWemId} (0x{targetWemId:X8})[/] has been replaced.");
-
-            return 0;
+            return 1;
         }
         catch (Exception ex)
         {

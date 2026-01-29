@@ -9,7 +9,10 @@ namespace PckTool.Commands;
 /// </summary>
 public class GlobalSettings : CommandSettings
 {
-    [Description("Path to the Halo Wars game directory. If not specified, attempts to find it automatically.")]
+    [Description("Game to use: 'hwde' (Halo Wars DE) or 'hw2' (Halo Wars 2).")] [CommandOption("--game")]
+    public string? Game { get; init; }
+
+    [Description("Path to the game directory. If not specified, attempts to find it automatically.")]
     [CommandOption("-g|--game-dir")]
     public string? GameDir { get; init; }
 

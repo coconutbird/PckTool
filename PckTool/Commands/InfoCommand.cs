@@ -1,3 +1,5 @@
+using PckTool.Core.Games;
+
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -10,27 +12,42 @@ public class InfoCommand : Command<GlobalSettings>
 {
     public override int Execute(CommandContext context, GlobalSettings settings)
     {
-        AnsiConsole.MarkupLine("[bold]=== SoundsUnpack Configuration Info ===[/]");
+        AnsiConsole.MarkupLine("[bold]=== PckTool Configuration Info ===[/]");
         AnsiConsole.WriteLine();
 
-        // Game directory
-        var gameDir = GameHelpers.FindHaloWarsGameDirectory();
+        // Resolve game and directory
+        var resolution = GameHelpers.ResolveGame(settings.Game, settings.GameDir);
 
-        if (gameDir is not null)
+        if (resolution.Game == SupportedGame.Unknown)
         {
-            AnsiConsole.MarkupLine($"[green]Default Game Directory:[/] {gameDir}");
+            AnsiConsole.MarkupLine("[yellow]Game:[/] Not detected");
+            AnsiConsole.MarkupLine("[dim]Use --game hwde or --game hw2 to specify a game[/]");
         }
         else
         {
-            AnsiConsole.MarkupLine("[yellow]Default Game Directory:[/] Not found (use --game-dir to specify)");
+            AnsiConsole.MarkupLine($"[green]Game:[/] {resolution.Game.ToDisplayName()}");
         }
 
         AnsiConsole.WriteLine();
 
-        // Sound table
-        if (gameDir is not null)
+        // Game directory
+        if (resolution.GameDir is not null)
         {
-            var soundTablePath = GameHelpers.FindSoundTableXml(gameDir);
+            AnsiConsole.MarkupLine($"[green]Game Directory:[/] {resolution.GameDir}");
+        }
+        else
+        {
+            AnsiConsole.MarkupLine("[yellow]Game Directory:[/] Not found (use --game-dir to specify)");
+        }
+
+        AnsiConsole.WriteLine();
+
+        // Game-specific info
+        if (resolution.GameDir is not null
+            && resolution.Game != SupportedGame.Unknown
+            && resolution.Metadata is not null)
+        {
+            var soundTablePath = GameHelpers.FindSoundTableXml(resolution.GameDir);
 
             if (soundTablePath is not null)
             {
@@ -41,20 +58,32 @@ public class InfoCommand : Command<GlobalSettings>
                 AnsiConsole.MarkupLine("[yellow]Sound Table File:[/] Not found in game directory");
             }
 
-            // Sounds.pck path
-            var soundsPackagePath = GameHelpers.GetSoundsPackagePath(gameDir);
+            // Input files from game metadata
+            var inputFiles = resolution.Metadata.GetDefaultInputFiles(resolution.GameDir).ToList();
 
-            if (File.Exists(soundsPackagePath))
+            if (inputFiles.Count > 0)
             {
-                AnsiConsole.MarkupLine($"[green]Sounds Package:[/] {soundsPackagePath}");
-                var fileInfo = new FileInfo(soundsPackagePath);
-                AnsiConsole.MarkupLine(
-                    $"  Size: {fileInfo.Length:N0} bytes ({fileInfo.Length / 1024.0 / 1024.0:N2} MB)");
+                AnsiConsole.MarkupLine("[green]Audio Files:[/]");
+
+                foreach (var inputFile in inputFiles)
+                {
+                    var absolutePath = Path.Combine(resolution.GameDir, inputFile);
+
+                    if (File.Exists(absolutePath))
+                    {
+                        var fileInfo = new FileInfo(absolutePath);
+                        AnsiConsole.MarkupLine(
+                            $"  [green]{inputFile}[/] ({fileInfo.Length:N0} bytes, {fileInfo.Length / 1024.0 / 1024.0:N2} MB)");
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine($"  [yellow]{inputFile}[/] (not found)");
+                    }
+                }
             }
             else
             {
-                AnsiConsole.MarkupLine("[yellow]Sounds Package:[/] Not found at expected path");
-                AnsiConsole.MarkupLine($"  Expected: {soundsPackagePath}");
+                AnsiConsole.MarkupLine("[yellow]Audio Files:[/] None found");
             }
         }
 

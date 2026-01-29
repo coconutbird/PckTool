@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Globalization;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Schema;
@@ -146,11 +147,11 @@ public class BatchProjectCreateCommand : Command<BatchProjectCreateSettings>
         else
         {
             // Auto-populate from game metadata (gamePath is only stored if explicitly provided)
-            var gameDir = GameHelpers.ResolveGameDirectory(settings.GamePath);
+            var resolution = GameHelpers.ResolveGame(settings.Game, settings.GamePath);
 
-            if (gameDir is not null && project.GameMetadata is not null)
+            if (resolution.GameDir is not null && project.GameMetadata is not null)
             {
-                var defaultFiles = project.GameMetadata.GetDefaultInputFiles(gameDir);
+                var defaultFiles = project.GameMetadata.GetDefaultInputFiles(resolution.GameDir);
 
                 foreach (var file in defaultFiles)
                 {
@@ -433,7 +434,7 @@ public class BatchProjectAddActionCommand : Command<BatchProjectAddActionSetting
                 $"[yellow]Warning:[/] The '{settings.ActionType}' action type is not yet implemented. "
                 + "Only 'replace' is currently supported.");
 
-            if (!AnsiConsole.Confirm("Add this action anyway?", defaultValue: false))
+            if (!AnsiConsole.Confirm("Add this action anyway?", false))
             {
                 return 0;
             }
@@ -642,8 +643,7 @@ public class BatchProjectSchemaCommand : Command<BatchProjectSchemaSettings>
 
             var outputOptions = new JsonSerializerOptions
             {
-                WriteIndented = true,
-                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             };
 
             var schemaJson = JsonSerializer.Serialize(schemaNode, outputOptions);
