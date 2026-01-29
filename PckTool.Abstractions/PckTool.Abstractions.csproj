@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <NoWarn>$(NoWarn);CS1591</NoWarn>
+        <Description>Abstractions and interfaces for PckTool - a Wwise PCK file manipulation library</Description>
+        <Authors>coconutbird</Authors>
+        <PackageTags>wwise;pck;audio;bnk;soundbank</PackageTags>
+    </PropertyGroup>
+
+</Project>

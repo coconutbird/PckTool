@@ -1,0 +1,37 @@
+using PckTool.Core.WWise.Bnk.Hirc.Params;
+
+namespace PckTool.Core.WWise.Bnk.Hirc.Items;
+
+public class SoundInitialValues
+{
+    public BankSourceData BankSourceData { get; set; }
+    public NodeBaseParams NodeBaseParams { get; set; }
+
+    public bool Read(BinaryReader reader)
+    {
+        var bankSourceData = new BankSourceData();
+
+        if (!bankSourceData.Read(reader))
+        {
+            return false;
+        }
+
+        var nodeBaseParams = new NodeBaseParams();
+
+        if (!nodeBaseParams.Read(reader))
+        {
+            return false;
+        }
+
+        BankSourceData = bankSourceData;
+        NodeBaseParams = nodeBaseParams;
+
+        return true;
+    }
+
+    public void Write(BinaryWriter writer)
+    {
+        BankSourceData.Write(writer);
+        NodeBaseParams.Write(writer);
+    }
+}

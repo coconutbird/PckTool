@@ -1,0 +1,20 @@
+namespace PckTool.Core.WWise.Bnk.Hirc.Params;
+
+public class PluginParam
+{
+    public byte[] ParamBlock { get; set; } = [];
+
+    public bool Read(BinaryReader reader, uint size)
+    {
+        var paramBlock = reader.ReadBytes((int) size);
+
+        ParamBlock = paramBlock;
+
+        return true;
+    }
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(ParamBlock);
+    }
+}
