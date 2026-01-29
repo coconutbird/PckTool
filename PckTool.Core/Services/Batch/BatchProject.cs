@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 
 using PckTool.Abstractions.Batch;
+using PckTool.Core.Games;
 
 namespace PckTool.Core.Services.Batch;
 
@@ -28,12 +29,8 @@ public sealed class BatchProject : IBatchProject
     /// </summary>
     [JsonIgnore] public string? FilePath { get; private set; }
 
-    /// <summary>
-    ///     Gets or sets whether to skip updating HIRC size references when replacing WEM files.
-    ///     Default is false (HIRC sizes are updated automatically).
-    /// </summary>
-    [JsonPropertyName("skipHircSizeUpdates")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public bool SkipHircSizeUpdates { get; set; }
+    /// <inheritdoc />
+    [JsonPropertyName("schemaVersion")] public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
     /// <inheritdoc />
     [JsonPropertyName("name")] public string Name { get; set; } = "Untitled Batch Project";
@@ -42,8 +39,26 @@ public sealed class BatchProject : IBatchProject
     [JsonPropertyName("description")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Description { get; set; }
 
-    /// <inheritdoc />
-    [JsonPropertyName("schemaVersion")] public int SchemaVersion { get; set; } = CurrentSchemaVersion;
+    /// <summary>
+    ///     Gets or sets whether to skip updating HIRC size references when replacing WEM files.
+    ///     Default is false (HIRC sizes are updated automatically).
+    /// </summary>
+    [JsonPropertyName("skipHircSizeUpdates")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool SkipHircSizeUpdates { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the game identifier (e.g., "hw2", "hwde").
+    ///     Stored as a string in JSON for readability and forward compatibility.
+    /// </summary>
+    [JsonPropertyName("game")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Game { get; set; }
+
+    /// <summary>
+    ///     Gets or sets an optional override path to the game installation directory.
+    ///     If null, the tool will attempt to auto-detect the game path.
+    /// </summary>
+    [JsonPropertyName("gamePath")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? GamePath { get; set; }
 
     /// <inheritdoc />
     [JsonPropertyName("inputFiles")] public IList<string> InputFiles { get; set; } = new List<string>();
@@ -55,11 +70,21 @@ public sealed class BatchProject : IBatchProject
     /// <inheritdoc />
     [JsonPropertyName("actions")] public IList<IProjectAction> Actions { get; set; } = new List<IProjectAction>();
 
-    /// <inheritdoc />
-    [JsonPropertyName("createdAt")] public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    /// <summary>
+    ///     Gets or sets custom notes for the project.
+    /// </summary>
+    [JsonPropertyName("notes")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Notes { get; set; }
 
-    /// <inheritdoc />
-    [JsonPropertyName("modifiedAt")] public DateTime ModifiedAt { get; set; } = DateTime.UtcNow;
+    /// <summary>
+    ///     Gets the parsed game enum value from the <see cref="Game" /> string.
+    /// </summary>
+    [JsonIgnore] public SupportedGame ParsedGame => SupportedGameExtensions.ParseGame(Game);
+
+    /// <summary>
+    ///     Gets the game metadata for this project, or null if the game is unknown.
+    /// </summary>
+    [JsonIgnore] public GameMetadata? GameMetadata => GameMetadata.GetMetadata(ParsedGame);
 
     /// <inheritdoc />
     public BatchProjectValidationResult Validate()
@@ -122,7 +147,7 @@ public sealed class BatchProject : IBatchProject
     /// <returns>A new batch project instance.</returns>
     public static BatchProject Create(string name = "Untitled Batch Project")
     {
-        return new BatchProject { Name = name, CreatedAt = DateTime.UtcNow, ModifiedAt = DateTime.UtcNow };
+        return new BatchProject { Name = name };
     }
 
     /// <summary>
@@ -208,7 +233,6 @@ public sealed class BatchProject : IBatchProject
     /// <param name="stream">The stream to write to.</param>
     public void Save(Stream stream)
     {
-        ModifiedAt = DateTime.UtcNow;
         JsonSerializer.Serialize(stream, this, JsonOptions);
     }
 

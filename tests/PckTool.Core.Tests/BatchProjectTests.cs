@@ -25,17 +25,6 @@ public class BatchProjectTests
     }
 
     [Fact]
-    public void Create_ShouldSetCreatedAtAndModifiedAt()
-    {
-        var before = DateTime.UtcNow;
-        var project = BatchProject.Create();
-        var after = DateTime.UtcNow;
-
-        Assert.InRange(project.CreatedAt, before, after);
-        Assert.InRange(project.ModifiedAt, before, after);
-    }
-
-    [Fact]
     public void Create_ShouldSetSchemaVersion()
     {
         var project = BatchProject.Create();
@@ -105,21 +94,6 @@ public class BatchProjectTests
         var result = BatchProject.Load(stream);
 
         Assert.Null(result);
-    }
-
-    [Fact]
-    public void Save_ShouldUpdateModifiedAt()
-    {
-        var project = BatchProject.Create();
-        var originalModifiedAt = project.ModifiedAt;
-
-        // Small delay to ensure timestamp difference
-        Thread.Sleep(10);
-
-        using var stream = new MemoryStream();
-        project.Save(stream);
-
-        Assert.True(project.ModifiedAt >= originalModifiedAt);
     }
 
 #endregion

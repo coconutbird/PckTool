@@ -6,6 +6,11 @@ namespace PckTool.Abstractions.Batch;
 public interface IBatchProject
 {
     /// <summary>
+    ///     Gets or sets the schema version for forward compatibility.
+    /// </summary>
+    int SchemaVersion { get; set; }
+
+    /// <summary>
     ///     Gets or sets the project name.
     /// </summary>
     string Name { get; set; }
@@ -14,11 +19,6 @@ public interface IBatchProject
     ///     Gets or sets an optional description for the project.
     /// </summary>
     string? Description { get; set; }
-
-    /// <summary>
-    ///     Gets or sets the schema version for forward compatibility.
-    /// </summary>
-    int SchemaVersion { get; set; }
 
     /// <summary>
     ///     Gets or sets the list of input file paths (.pck or .bnk files).
@@ -35,16 +35,6 @@ public interface IBatchProject
     ///     Gets the list of actions to perform.
     /// </summary>
     IList<IProjectAction> Actions { get; }
-
-    /// <summary>
-    ///     Gets or sets when the project was created.
-    /// </summary>
-    DateTime CreatedAt { get; set; }
-
-    /// <summary>
-    ///     Gets or sets when the project was last modified.
-    /// </summary>
-    DateTime ModifiedAt { get; set; }
 
     /// <summary>
     ///     Validates the entire project configuration.
