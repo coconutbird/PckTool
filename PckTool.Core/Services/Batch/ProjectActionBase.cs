@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Text.Json.Serialization;
 
 using PckTool.Abstractions.Batch;
@@ -13,7 +14,9 @@ public abstract class ProjectActionBase : IProjectAction
     [JsonPropertyName("action")] public abstract ProjectActionType ActionType { get; }
 
     /// <inheritdoc />
-    [JsonPropertyName("description")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("description")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [Description("Optional description for this action.")]
     public string? Description { get; set; }
 
     /// <inheritdoc />

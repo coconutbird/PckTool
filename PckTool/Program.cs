@@ -53,6 +53,12 @@ public static class Program
 
                     batch.AddCommand<BatchProjectAddActionCommand>("add-action")
                          .WithDescription("Add an action to a batch project.");
+
+                    batch.AddCommand<BatchProjectRemoveActionCommand>("remove-action")
+                         .WithDescription("Remove an action from a batch project by index.");
+
+                    batch.AddCommand<BatchProjectSchemaCommand>("schema")
+                         .WithDescription("Generate JSON schema for batch project files.");
                 });
         });
 

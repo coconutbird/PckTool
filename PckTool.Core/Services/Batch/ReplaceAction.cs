@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Text.Json.Serialization;
 
 using PckTool.Abstractions.Batch;
@@ -10,30 +11,39 @@ namespace PckTool.Core.Services.Batch;
 public sealed class ReplaceAction : ProjectActionBase
 {
     /// <inheritdoc />
-    [JsonPropertyName("action")] public override ProjectActionType ActionType => ProjectActionType.Replace;
+    [JsonPropertyName("action")]
+    [Description("Action type: \"replace\" (implemented), \"add\" and \"remove\" (not yet implemented).")]
+    public override ProjectActionType ActionType => ProjectActionType.Replace;
 
     /// <summary>
     ///     Gets or sets the type of target (WEM or BNK).
     /// </summary>
-    [JsonPropertyName("targetType")] public TargetType TargetType { get; set; } = TargetType.Wem;
+    [JsonPropertyName("targetType")]
+    [Description("Target type: \"wem\" for audio files or \"bnk\" for soundbank files.")]
+    public TargetType TargetType { get; set; } = TargetType.Wem;
 
     /// <summary>
     ///     Gets or sets the target ID to replace.
     /// </summary>
-    [JsonPropertyName("targetId")] public uint TargetId { get; set; }
+    [JsonPropertyName("targetId")] [Description("The ID of the target WEM or BNK to modify.")]
+    public uint TargetId { get; set; }
 
     /// <summary>
     ///     Gets or sets the path to the source file containing replacement data.
     ///     Path is relative to the project file location.
     /// </summary>
-    [JsonPropertyName("sourcePath")] public string? SourcePath { get; set; }
+    [JsonPropertyName("sourcePath")]
+    [Description("Path to the source file for replace/add actions. Relative to the project file location.")]
+    public string? SourcePath { get; set; }
 
     /// <summary>
     ///     Gets or sets an optional target bank ID to limit WEM replacement to a specific soundbank.
     ///     If null, the WEM is replaced in all soundbanks that contain it.
     ///     Only applicable when TargetType is Wem.
     /// </summary>
-    [JsonPropertyName("targetBank")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("targetBank")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [Description("Optional: limit WEM replacement to a specific soundbank ID.")]
     public uint? TargetBank { get; set; }
 
     /// <inheritdoc />

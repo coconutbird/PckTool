@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -30,50 +31,67 @@ public sealed class BatchProject : IBatchProject
     [JsonIgnore] public string? FilePath { get; private set; }
 
     /// <inheritdoc />
-    [JsonPropertyName("schemaVersion")] public int SchemaVersion { get; set; } = CurrentSchemaVersion;
+    [JsonPropertyName("schemaVersion")] [Description("Schema version for batch project files. Current version is 1.")]
+    public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
     /// <inheritdoc />
-    [JsonPropertyName("name")] public string Name { get; set; } = "Untitled Batch Project";
+    [JsonPropertyName("name")] [Description("Name of the batch project.")]
+    public string Name { get; set; } = "Untitled Batch Project";
 
     /// <inheritdoc />
-    [JsonPropertyName("description")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("description")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [Description("Optional description of the project.")]
     public string? Description { get; set; }
 
     /// <summary>
     ///     Gets or sets whether to skip updating HIRC size references when replacing WEM files.
     ///     Default is false (HIRC sizes are updated automatically).
     /// </summary>
-    [JsonPropertyName("skipHircSizeUpdates")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    [JsonPropertyName("skipHircSizeUpdates")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    [Description("Whether to skip updating HIRC size references when replacing WEM files. Default is false.")]
     public bool SkipHircSizeUpdates { get; set; }
 
     /// <summary>
     ///     Gets or sets the game identifier (e.g., "hw2", "hwde").
     ///     Stored as a string in JSON for readability and forward compatibility.
     /// </summary>
-    [JsonPropertyName("game")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("game")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [Description("Game identifier (e.g., \"hwde\" for Halo Wars DE). Used for auto-detecting game paths.")]
     public string? Game { get; set; }
 
     /// <summary>
     ///     Gets or sets an optional override path to the game installation directory.
     ///     If null, the tool will attempt to auto-detect the game path.
     /// </summary>
-    [JsonPropertyName("gamePath")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("gamePath")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [Description("Optional override path to the game installation directory.")]
     public string? GamePath { get; set; }
 
     /// <inheritdoc />
-    [JsonPropertyName("inputFiles")] public IList<string> InputFiles { get; set; } = new List<string>();
+    [JsonPropertyName("inputFiles")]
+    [Description("List of input PCK or BNK files to process. Paths are relative to the game directory.")]
+    public IList<string> InputFiles { get; set; } = new List<string>();
 
     /// <inheritdoc />
-    [JsonPropertyName("outputDirectory")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("outputDirectory")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [Description("Optional output directory for modified files. If not specified, files are modified in-place.")]
     public string? OutputDirectory { get; set; }
 
     /// <inheritdoc />
-    [JsonPropertyName("actions")] public IList<IProjectAction> Actions { get; set; } = new List<IProjectAction>();
+    [JsonPropertyName("actions")] [Description("List of actions to perform on the input files.")]
+    public IList<IProjectAction> Actions { get; set; } = new List<IProjectAction>();
 
     /// <summary>
     ///     Gets or sets custom notes for the project.
     /// </summary>
-    [JsonPropertyName("notes")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("notes")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [Description("Optional notes for the project.")]
     public string? Notes { get; set; }
 
     /// <summary>

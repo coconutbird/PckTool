@@ -1,5 +1,10 @@
 using System.ComponentModel;
 using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Schema;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 using PckTool.Abstractions.Batch;
 using PckTool.Core.Games;
@@ -90,6 +95,27 @@ public class BatchProjectAddActionSettings : CommandSettings
 
     [Description("Optional description for the action.")] [CommandOption("-d|--description")]
     public string? Description { get; init; }
+}
+
+/// <summary>
+///     Settings for removing an action from a batch project.
+/// </summary>
+public class BatchProjectRemoveActionSettings : CommandSettings
+{
+    [Description("Path to the batch project file.")] [CommandArgument(0, "<project>")]
+    public required string Project { get; init; }
+
+    [Description("Index of the action to remove (1-based).")] [CommandArgument(1, "<index>")]
+    public int Index { get; init; }
+}
+
+/// <summary>
+///     Settings for batch project schema command.
+/// </summary>
+public class BatchProjectSchemaSettings : CommandSettings
+{
+    [Description("Output file path. If not specified, outputs to stdout.")] [CommandArgument(0, "[output]")]
+    public string? OutputFile { get; init; }
 }
 
 #endregion
@@ -398,6 +424,21 @@ public class BatchProjectAddActionCommand : Command<BatchProjectAddActionSetting
             return 1;
         }
 
+        // Warn about unsupported action types
+        var actionTypeLower = settings.ActionType.ToLowerInvariant();
+
+        if (actionTypeLower is "add" or "remove")
+        {
+            AnsiConsole.MarkupLine(
+                $"[yellow]Warning:[/] The '{settings.ActionType}' action type is not yet implemented. "
+                + "Only 'replace' is currently supported.");
+
+            if (!AnsiConsole.Confirm("Add this action anyway?", defaultValue: false))
+            {
+                return 0;
+            }
+        }
+
         // Parse target ID
         uint targetId;
 
@@ -419,7 +460,7 @@ public class BatchProjectAddActionCommand : Command<BatchProjectAddActionSetting
         };
 
         // Create action based on type
-        IProjectAction action = settings.ActionType.ToLowerInvariant() switch
+        IProjectAction action = actionTypeLower switch
         {
             "replace" => new ReplaceAction
             {
@@ -455,6 +496,176 @@ public class BatchProjectAddActionCommand : Command<BatchProjectAddActionSetting
         AnsiConsole.MarkupLine("[red]Failed to save project file[/]");
 
         return 1;
+    }
+}
+
+/// <summary>
+///     Remove an action from a batch project.
+/// </summary>
+public class BatchProjectRemoveActionCommand : Command<BatchProjectRemoveActionSettings>
+{
+    public override int Execute(CommandContext context, BatchProjectRemoveActionSettings settings)
+    {
+        var project = BatchProject.Load(settings.Project);
+
+        if (project is null)
+        {
+            AnsiConsole.MarkupLine($"[red]Failed to load batch project:[/] {settings.Project}");
+
+            return 1;
+        }
+
+        // Validate index (1-based)
+        if (settings.Index < 1 || settings.Index > project.Actions.Count)
+        {
+            AnsiConsole.MarkupLine(
+                $"[red]Invalid action index:[/] {settings.Index}. "
+                + $"Project has {project.Actions.Count} action(s). Use 1-{project.Actions.Count}.");
+
+            return 1;
+        }
+
+        var actionIndex = settings.Index - 1;
+        var action = project.Actions[actionIndex];
+        var (targetType, targetId, _) = GetActionDetails(action);
+
+        project.Actions.RemoveAt(actionIndex);
+
+        if (project.Save())
+        {
+            AnsiConsole.MarkupLine(
+                $"[green]Removed action #{settings.Index}:[/] {action.ActionType} {targetType} 0x{targetId:X8}");
+
+            AnsiConsole.MarkupLine($"Project now has {project.Actions.Count} action(s).");
+
+            return 0;
+        }
+
+        AnsiConsole.MarkupLine("[red]Failed to save project file[/]");
+
+        return 1;
+    }
+
+    private static (string targetType, uint targetId, string? source) GetActionDetails(IProjectAction action)
+    {
+        return action switch
+        {
+            ReplaceAction r => (r.TargetType.ToString(), r.TargetId, r.SourcePath),
+            AddAction a => (a.TargetType.ToString(), a.TargetId, a.SourcePath),
+            RemoveAction r => (r.TargetType.ToString(), r.TargetId, null),
+            _ => ("?", 0, null)
+        };
+    }
+}
+
+/// <summary>
+///     Generate JSON schema for batch project files.
+/// </summary>
+public class BatchProjectSchemaCommand : Command<BatchProjectSchemaSettings>
+{
+    public override int Execute(CommandContext context, BatchProjectSchemaSettings settings)
+    {
+        try
+        {
+            var schemaOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+                TypeInfoResolver = new DefaultJsonTypeInfoResolver()
+            };
+
+            var exporterOptions = new JsonSchemaExporterOptions
+            {
+                TreatNullObliviousAsNonNullable = true,
+                TransformSchemaNode = (ctx, node) =>
+                {
+                    // Get description from [Description] attribute
+                    var descAttr = ctx.PropertyInfo
+                                      ?.AttributeProvider
+                                      ?.GetCustomAttributes(typeof(DescriptionAttribute), false)
+                                      .OfType<DescriptionAttribute>()
+                                      .FirstOrDefault();
+
+                    if (descAttr is not null && node is JsonObject obj)
+                    {
+                        obj.Insert(0, "description", descAttr.Description);
+                    }
+
+                    return node;
+                }
+            };
+
+            // Generate schema from BatchProject directly
+            var schemaNode = schemaOptions.GetJsonSchemaAsNode(typeof(BatchProject), exporterOptions);
+
+            // Generate schema for ReplaceAction (used for actions array items)
+            var actionSchemaNode = schemaOptions.GetJsonSchemaAsNode(typeof(ReplaceAction), exporterOptions);
+
+            // Replace the actions property's items schema with ReplaceAction schema
+            if (schemaNode is JsonObject schemaObj && schemaObj["properties"] is JsonObject props)
+            {
+                if (props["actions"] is JsonObject actionsObj)
+                {
+                    actionsObj["items"] = actionSchemaNode.DeepClone();
+                }
+
+                // Add $schema property to the schema (for users to reference in their project files)
+                var schemaPropertyObj = new JsonObject
+                {
+                    ["description"] = "JSON schema reference for IDE validation and autocomplete.",
+                    ["type"] = "string"
+                };
+
+                props.Insert(0, "$schema", schemaPropertyObj);
+            }
+
+            // Add metadata at the top
+            if (schemaNode is JsonObject obj)
+            {
+                var newObj = new JsonObject
+                {
+                    ["$schema"] = "https://json-schema.org/draft/2020-12/schema",
+                    ["$id"] = "https://github.com/coconutbird/PckTool/batch-project-schema.json",
+                    ["title"] = "PckTool Batch Project",
+                    ["description"] =
+                        "Schema for PckTool batch project files that define operations on Wwise audio files."
+                };
+
+                foreach (var prop in obj)
+                {
+                    newObj[prop.Key] = prop.Value?.DeepClone();
+                }
+
+                schemaNode = newObj;
+            }
+
+            var outputOptions = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
+
+            var schemaJson = JsonSerializer.Serialize(schemaNode, outputOptions);
+
+            if (!string.IsNullOrEmpty(settings.OutputFile))
+            {
+                File.WriteAllText(settings.OutputFile, schemaJson);
+                AnsiConsole.MarkupLine($"[green]Schema written to:[/] {settings.OutputFile}");
+            }
+            else
+            {
+                Console.WriteLine(schemaJson);
+            }
+
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Error generating schema:[/] {ex.Message}");
+
+            return 1;
+        }
     }
 }
 
