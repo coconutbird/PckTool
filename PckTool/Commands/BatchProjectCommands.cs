@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 
 using PckTool.Abstractions.Batch;
+using PckTool.Core.Games;
 using PckTool.Core.Services.Batch;
 using PckTool.Services;
 
@@ -31,6 +32,13 @@ public class BatchProjectCreateSettings : CommandSettings
 
     [Description("Output directory for modified files.")] [CommandOption("-o|--output")]
     public string? OutputDirectory { get; init; }
+
+    [Description("Game identifier (e.g., 'hwde' for Halo Wars DE). Used for auto-detecting input files.")]
+    [CommandOption("-g|--game")]
+    public string? Game { get; init; }
+
+    [Description("Override game installation path (if auto-detection fails).")] [CommandOption("--game-path")]
+    public string? GamePath { get; init; }
 }
 
 /// <summary>
@@ -98,12 +106,36 @@ public class BatchProjectCreateCommand : Command<BatchProjectCreateSettings>
         var project = BatchProject.Create(settings.Name);
         project.Description = settings.Description;
         project.OutputDirectory = settings.OutputDirectory;
+        project.Game = settings.Game;
+        project.GamePath = settings.GamePath;
 
-        if (settings.InputFiles is not null)
+        if (settings.InputFiles is not null && settings.InputFiles.Length > 0)
         {
+            // User explicitly specified input files
             foreach (var input in settings.InputFiles)
             {
                 project.InputFiles.Add(input);
+            }
+        }
+        else
+        {
+            // Auto-populate from game metadata (gamePath is only stored if explicitly provided)
+            var gameDir = GameHelpers.ResolveGameDirectory(settings.GamePath);
+
+            if (gameDir is not null && project.GameMetadata is not null)
+            {
+                var defaultFiles = project.GameMetadata.GetDefaultInputFiles(gameDir);
+
+                foreach (var file in defaultFiles)
+                {
+                    project.InputFiles.Add(file);
+                }
+
+                if (project.InputFiles.Count > 0)
+                {
+                    AnsiConsole.MarkupLine(
+                        $"[dim]Auto-detected {project.InputFiles.Count} input file(s) for {project.ParsedGame.ToDisplayName()}[/]");
+                }
             }
         }
 

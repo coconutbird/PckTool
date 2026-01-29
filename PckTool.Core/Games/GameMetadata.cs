@@ -3,12 +3,19 @@ namespace PckTool.Core.Games;
 /// <summary>
 ///     Base metadata for a supported game. Extend for game-specific behavior.
 /// </summary>
-public class GameMetadata
+public abstract class GameMetadata
 {
     /// <summary>
     ///     Gets the game this metadata is for.
     /// </summary>
     public SupportedGame Game { get; protected init; }
+
+    /// <summary>
+    ///     Gets the default input files for this game (relative paths from game directory).
+    /// </summary>
+    /// <param name="gameDirectory">The game installation directory (used to verify files exist).</param>
+    /// <returns>List of input file paths (relative to game directory).</returns>
+    public abstract IEnumerable<string> GetDefaultInputFiles(string gameDirectory);
 
     /// <summary>
     ///     Gets the metadata for a specific game.
@@ -35,38 +42,25 @@ public class HaloWarsMetadata : GameMetadata
     /// </summary>
     public static HaloWarsMetadata Instance { get; } = new();
 
+    /// <summary>
+    ///     Relative path to the Sounds.pck file from the game directory.
+    /// </summary>
+    public static string SoundsPackageRelativePath =>
+        Path.Combine("sound", "wwise_2013", "GeneratedSoundBanks", "Windows", "Sounds.pck");
+
     private HaloWarsMetadata()
     {
         Game = SupportedGame.HaloWars;
     }
 
-    /// <summary>
-    ///     Gets the relative path to the Sounds.pck file.
-    /// </summary>
-    public string SoundsPackageRelativePath =>
-        Path.Combine("sound", "wwise_2013", "GeneratedSoundBanks", "Windows", "Sounds.pck");
-
-    /// <summary>
-    ///     Gets the full path to Sounds.pck given a game directory.
-    /// </summary>
-    public string GetSoundsPackagePath(string gameDirectory)
+    /// <inheritdoc />
+    public override IEnumerable<string> GetDefaultInputFiles(string gameDirectory)
     {
-        return Path.Combine(gameDirectory, SoundsPackageRelativePath);
-    }
+        var absolutePath = Path.Combine(gameDirectory, SoundsPackageRelativePath);
 
-    /// <summary>
-    ///     Finds the sound table XML file in the game directory.
-    /// </summary>
-    public string? FindSoundTablePath(string gameDirectory)
-    {
-        try
+        if (File.Exists(absolutePath))
         {
-            return Directory.GetFiles(gameDirectory, "soundtable.xml", SearchOption.AllDirectories)
-                            .FirstOrDefault();
-        }
-        catch
-        {
-            return null;
+            yield return SoundsPackageRelativePath;
         }
     }
 }
