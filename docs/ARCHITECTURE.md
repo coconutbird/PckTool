@@ -120,8 +120,8 @@ var soundBank = ServiceProvider.CreateSoundBankBuilder()
 
 ```csharp
 var result = pckFile.ReplaceWem(sourceId, newData);
-if (result.IsSuccess)
-    Console.WriteLine($"Replaced {result.ReplacementCount} instances");
+if (result.WasReplaced)
+    Console.WriteLine($"Replaced in {result.EmbeddedBanksModified} bank(s)");
 ```
 
 ## Data Flow
