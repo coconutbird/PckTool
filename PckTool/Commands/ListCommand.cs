@@ -1,3 +1,4 @@
+using PckTool.Core.Games;
 using PckTool.Services;
 
 using Spectre.Console;
@@ -12,56 +13,69 @@ public class ListCommand : Command<GlobalSettings>
 {
     public override int Execute(CommandContext context, GlobalSettings settings)
     {
-        var gameDir = GameHelpers.ResolveGameDirectory(settings.GameDir);
+        var resolution = GameHelpers.ResolveInputFiles(settings);
 
-        if (gameDir is null)
+        if (!resolution.Success)
         {
-            AnsiConsole.MarkupLine("[red]Failed to find Halo Wars game directory[/]");
+            AnsiConsole.MarkupLine($"[red]{resolution.Error}[/]");
 
             return 1;
         }
 
-        AnsiConsole.MarkupLine($"[green]Found Halo Wars game directory:[/] {gameDir}");
-
-        var soundsPackagePath = GameHelpers.GetSoundsPackagePath(gameDir);
+        if (resolution.Game.HasValue)
+        {
+            AnsiConsole.MarkupLine($"[green]Game:[/] {resolution.Game.Value.ToDisplayName()}");
+            AnsiConsole.MarkupLine($"[green]Directory:[/] {resolution.GameDir}");
+        }
 
         try
         {
-            var package = ServiceProvider.PckFileFactory.Load(soundsPackagePath);
-
             // Create a table for output
             var table = new Table();
             table.AddColumn("Bank ID");
             table.AddColumn("Language");
             table.AddColumn("Size");
+            table.AddColumn("File");
 
-            // Group by language for cleaner output
-            var banksByLanguage = package.SoundBanks
-                                         .Entries
-                                         .GroupBy(e => package.Languages[e.LanguageId])
-                                         .OrderBy(g => g.Key);
+            var totalBanks = 0;
 
-            foreach (var languageGroup in banksByLanguage)
+            foreach (var filePath in resolution.Files)
             {
-                foreach (var entry in languageGroup.OrderBy(e => e.Id))
+                AnsiConsole.MarkupLine($"[blue]Loading:[/] {Path.GetFileName(filePath)}");
+
+                var package = ServiceProvider.PckFileFactory.Load(filePath);
+
+                // Group by language for cleaner output
+                var banksByLanguage = package.SoundBanks
+                                             .Entries
+                                             .GroupBy(e => package.Languages[e.LanguageId])
+                                             .OrderBy(g => g.Key);
+
+                foreach (var languageGroup in banksByLanguage)
                 {
-                    table.AddRow(
-                        $"[blue]{entry.Id:X8}[/]",
-                        languageGroup.Key,
-                        $"{entry.Size:N0} bytes");
+                    foreach (var entry in languageGroup.OrderBy(e => e.Id))
+                    {
+                        table.AddRow(
+                            $"[blue]{entry.Id:X8}[/]",
+                            languageGroup.Key,
+                            $"{entry.Size:N0} bytes",
+                            Path.GetFileName(filePath));
+                    }
                 }
+
+                totalBanks += package.SoundBanks.Count;
             }
 
             AnsiConsole.WriteLine();
             AnsiConsole.Write(table);
             AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine($"[bold]Total:[/] {package.SoundBanks.Count} sound banks");
+            AnsiConsole.MarkupLine($"[bold]Total:[/] {totalBanks} sound banks");
 
             return 0;
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine($"[red]Failed to load sounds file:[/] {ex.Message}");
+            AnsiConsole.MarkupLine($"[red]Failed to load audio file:[/] {ex.Message}");
 
             return 1;
         }

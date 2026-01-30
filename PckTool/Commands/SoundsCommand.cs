@@ -1,6 +1,6 @@
 using System.ComponentModel;
-using System.Globalization;
 
+using PckTool.Core.Games;
 using PckTool.Core.Services;
 
 using Spectre.Console;
@@ -13,7 +13,7 @@ namespace PckTool.Commands;
 /// </summary>
 public class SoundsSettings : GlobalSettings
 {
-    [Description("Bank ID (hex) to list sounds from.")] [CommandOption("-b|--bank")]
+    [Description("Bank ID (decimal or hex with 0x prefix) to list sounds from.")] [CommandOption("-b|--bank")]
     public required string Bank { get; init; }
 }
 
@@ -24,52 +24,65 @@ public class SoundsCommand : Command<SoundsSettings>
 {
     public override int Execute(CommandContext context, SoundsSettings settings)
     {
-        var gameDir = GameHelpers.ResolveGameDirectory(settings.GameDir);
+        var resolution = GameHelpers.ResolveInputFiles(settings);
 
-        if (gameDir is null)
+        if (!resolution.Success)
         {
-            AnsiConsole.MarkupLine("[red]Failed to find Halo Wars game directory[/]");
+            AnsiConsole.MarkupLine($"[red]{resolution.Error}[/]");
 
             return 1;
         }
 
-        // Parse bank ID
-        if (!uint.TryParse(settings.Bank, NumberStyles.HexNumber, null, out var bankId))
+        if (resolution.Game.HasValue)
         {
-            AnsiConsole.MarkupLine("[red]Invalid bank ID format. Please use hexadecimal (e.g., 1A2B3C4D)[/]");
+            AnsiConsole.MarkupLine($"[green]Game:[/] {resolution.Game.Value.ToDisplayName()}");
+            AnsiConsole.MarkupLine($"[green]Directory:[/] {resolution.GameDir}");
+        }
+
+        // Parse bank ID using standardized helper
+        if (!GameHelpers.TryParseId(settings.Bank, out var bankId))
+        {
+            AnsiConsole.MarkupLine(
+                "[red]Invalid bank ID format. Use decimal (e.g., 12345) or hex with 0x prefix (e.g., 0x1A2B3C4D)[/]");
 
             return 1;
         }
 
         using var browser = new PackageBrowser();
-        var soundsPackagePath = GameHelpers.GetSoundsPackagePath(gameDir);
 
-        if (!browser.LoadPackage(soundsPackagePath))
+        // Load each input file
+        foreach (var filePath in resolution.Files)
         {
-            AnsiConsole.MarkupLine("[red]Failed to load sounds package[/]");
+            if (!browser.LoadPackage(filePath))
+            {
+                AnsiConsole.MarkupLine($"[red]Failed to load audio file:[/] {Path.GetFileName(filePath)}");
 
-            return 1;
+                return 1;
+            }
         }
 
-        // Try to load sound table for cue names
-        var soundTablePath = GameHelpers.FindSoundTableXml(gameDir);
-
-        if (soundTablePath is not null)
+        // Try to load sound table for cue names if we have a game directory
+        if (resolution.GameDir is not null)
         {
-            browser.LoadSoundTable(soundTablePath);
+            var soundTablePath = GameHelpers.FindSoundTableXml(resolution.GameDir);
+
+            if (soundTablePath is not null)
+            {
+                browser.LoadSoundTable(soundTablePath);
+            }
         }
 
         var sounds = browser.GetSounds(bankId).ToList();
 
         if (sounds.Count == 0)
         {
-            AnsiConsole.MarkupLine($"[yellow]No sounds found in bank {bankId:X8}[/]");
+            AnsiConsole.MarkupLine($"[yellow]No sounds found in bank 0x{bankId:X8}[/]");
 
             return 0;
         }
 
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"[bold]Sounds in bank {bankId:X8}:[/]");
+        AnsiConsole.MarkupLine($"[bold]Sounds in bank 0x{bankId:X8}:[/]");
 
         var table = new Table();
         table.AddColumn("Source ID");

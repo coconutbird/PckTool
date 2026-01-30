@@ -11,18 +11,18 @@ public interface IPckFile : IDisposable
 {
     int SoundBankCount { get; }
     int StreamingFileCount { get; }
-    
+
     byte[]? FindWem(uint sourceId);
     bool ContainsWem(uint sourceId);
-    
+
     void AddSoundBank(ISoundBank soundBank);
     bool RemoveSoundBank(uint bankId);
-    
+
     void AddStreamingFile(uint sourceId, byte[] data);
     bool RemoveStreamingFile(uint sourceId);
-    
+
     WemReplacementResult ReplaceWem(uint sourceId, byte[] data, bool updateHircSizes = true);
-    
+
     void Save(string path);
     void Save(Stream stream);
 }
@@ -53,7 +53,7 @@ public interface ISoundBank
     uint LanguageId { get; }
     int MediaCount { get; }
     int HircItemCount { get; }
-    
+
     bool ContainsMedia(uint sourceId);
     int ReplaceWem(uint sourceId, byte[] data, bool updateHircSizes = true);
     byte[] ToByteArray();
@@ -111,12 +111,15 @@ var newWem = File.ReadAllBytes("replacement.wem");
 // Replace WEM file (updates HIRC sizes automatically)
 var result = pck.ReplaceWem(970927665, newWem);
 
-Console.WriteLine($"Replaced {result.ReplacementCount} instances");
-Console.WriteLine($"Streaming: {result.StreamingFilesModified}");
-Console.WriteLine($"Embedded: {result.SoundBanksModified}");
+Console.WriteLine($"Streaming: {result.ReplacedInStreaming}");
+Console.WriteLine($"Banks modified: {result.EmbeddedBanksModified}");
+Console.WriteLine($"HIRC refs updated: {result.HircReferencesUpdated}");
 
 // Save changes
-pck.Save("sounds_modified.pck");
+if (result.WasReplaced)
+{
+    pck.Save("sounds_modified.pck");
+}
 pck.Dispose();
 ```
 
@@ -148,13 +151,14 @@ pck.Dispose();
 ```csharp
 var result = pck.ReplaceWem(sourceId, newData);
 
-if (result.IsSuccess)
+if (result.WasReplaced)
 {
-    Console.WriteLine($"Success! Modified {result.ReplacementCount} files");
+    Console.WriteLine($"Replaced in {result.EmbeddedBanksModified} bank(s)");
+    Console.WriteLine(result.Summary);
 }
 else
 {
-    Console.WriteLine($"Failed: {result.Message}");
+    Console.WriteLine("WEM not found in package");
 }
 ```
 
@@ -163,16 +167,82 @@ else
 See `PckTool --help` for full command documentation.
 
 ```bash
-# Extract all audio
-PckTool dump --game-dir "C:\Games\HaloWars" --output dumps/
+# Extract all audio (using --game for auto-detection via Steam/registry)
+PckTool dump --game hwde --output dumps/
+
+# Extract all audio (using --game-dir to override auto-detected path)
+PckTool dump --game hwde --game-dir "C:\Games\HaloWars" --output dumps/
 
 # Replace a WEM file
-PckTool replace-wem --target 970927665 --source replacement.wem
+PckTool replace-wem --game hwde --target 970927665 --source replacement.wem --output ./
+
+# Replace multiple WEMs in one command
+PckTool replace-wem --game hwde --target 0x39E3B0F1 --source sound1.wem --target 0x12345678 --source sound2.wem --output ./
+
+# Replace multiple sound banks in one command
+PckTool replace --game hwde --target 0x1A2B3C4D --source bank1.bnk --target 0x5E6F7A8B --source bank2.bnk --output ./
 
 # List sound banks
-PckTool list --verbose
+PckTool list --game hwde --verbose
 
 # Interactive browser
-PckTool browse --language "English(US)"
+PckTool browse --game hwde --language "English(US)"
+
+# Find a WEM ID or cue name
+PckTool find --game hwde --wem 970927665
+PckTool find --game hwde --name "explosion"
 ```
 
+## Batch Projects
+
+Batch projects allow you to define multiple audio replacement operations in a JSON file for reproducible mod builds.
+
+### Project File Format
+
+Batch project files are standard JSON files:
+
+```json
+{
+    "$schema": "./batch-project-schema.json",
+    "schemaVersion": 1,
+    "name": "My Audio Mod",
+    "description": "Custom audio replacements",
+    "game": "hwde",
+    "inputFiles": ["Sounds.pck"],
+    "outputDirectory": "./output",
+    "actions": [
+        {
+            "action": "replace",
+            "targetType": "wem",
+            "targetId": 970927665,
+            "sourcePath": "./audio/custom.wem",
+            "description": "Replace explosion sound"
+        }
+    ]
+}
+```
+
+### Batch CLI Commands
+
+```bash
+# Create a new batch project
+PckTool batch create mymod.json --name "My Mod" --game hwde
+
+# Add actions to the project
+PckTool batch add-action mymod.json --target 0x39E3B0F1 --source custom.wem
+
+# View project information
+PckTool batch info mymod.json
+
+# Validate the project
+PckTool batch validate mymod.json
+
+# Execute the project (dry run first)
+PckTool batch run mymod.json --dry-run
+
+# Execute for real
+PckTool batch run mymod.json
+
+# Generate JSON schema for IDE autocomplete
+PckTool batch schema batch-project-schema.json
+```

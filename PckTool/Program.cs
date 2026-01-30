@@ -35,18 +35,37 @@ public static class Program
             config.AddCommand<SoundsCommand>("sounds")
                   .WithDescription("List all sounds in a specific bank.");
 
-            // config.AddBranch(
-            //     "project",
-            //     project =>
-            //     {
-            //         project.SetDescription("Manage project files.");
-            // 
-            //         project.AddCommand<ProjectCreateCommand>("create")
-            //                .WithDescription("Create a new project file.");
-            // 
-            //         project.AddCommand<ProjectInfoCommand>("info")
-            //                .WithDescription("Show project information.");
-            //     });
+            config.AddCommand<FindCommand>("find")
+                  .WithDescription("Find which bank contains a WEM ID or search by cue name.");
+
+            // Batch project commands
+            config.AddBranch(
+                "batch",
+                batch =>
+                {
+                    batch.SetDescription("Manage batch projects for automated operations.");
+
+                    batch.AddCommand<BatchProjectCreateCommand>("create")
+                         .WithDescription("Create a new batch project file.");
+
+                    batch.AddCommand<BatchProjectInfoCommand>("info")
+                         .WithDescription("Show batch project information.");
+
+                    batch.AddCommand<BatchProjectRunCommand>("run")
+                         .WithDescription("Execute a batch project.");
+
+                    batch.AddCommand<BatchProjectAddActionCommand>("add-action")
+                         .WithDescription("Add an action to a batch project.");
+
+                    batch.AddCommand<BatchProjectRemoveActionCommand>("remove-action")
+                         .WithDescription("Remove an action from a batch project by index.");
+
+                    batch.AddCommand<BatchProjectSchemaCommand>("schema")
+                         .WithDescription("Generate JSON schema for batch project files.");
+
+                    batch.AddCommand<BatchProjectValidateCommand>("validate")
+                         .WithDescription("Validate a batch project file.");
+                });
         });
 
         return app.Run(args);
