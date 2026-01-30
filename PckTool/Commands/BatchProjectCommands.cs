@@ -85,11 +85,11 @@ public class BatchProjectAddActionSettings : CommandSettings
     [Description("Action type (replace, add, remove).")] [CommandOption("-a|--action")] [DefaultValue("replace")]
     public string ActionType { get; init; } = "replace";
 
-    [Description("Target type (wem, bnk).")] [CommandOption("-t|--target-type")] [DefaultValue("wem")]
+    [Description("Target type (wem, bnk).")] [CommandOption("--type")] [DefaultValue("wem")]
     public string TargetType { get; init; } = "wem";
 
-    [Description("Target ID (decimal or hex with 0x prefix).")] [CommandOption("--id")]
-    public required string TargetId { get; init; }
+    [Description("Target ID (decimal or hex with 0x prefix) to modify.")] [CommandOption("-t|--target")]
+    public required string Target { get; init; }
 
     [Description("Source file path for replace/add actions.")] [CommandOption("-s|--source")]
     public string? SourcePath { get; init; }
@@ -149,7 +149,7 @@ public class BatchProjectCreateCommand : Command<BatchProjectCreateSettings>
         project.Description = settings.Description;
         project.OutputDirectory = settings.OutputDirectory;
         project.Game = settings.Game;
-        project.GamePath = settings.GameDir;
+        project.GameDir = settings.GameDir;
 
         if (settings.InputFiles is not null && settings.InputFiles.Length > 0)
         {
@@ -452,13 +452,13 @@ public class BatchProjectAddActionCommand : Command<BatchProjectAddActionSetting
         // Parse target ID
         uint targetId;
 
-        if (settings.TargetId.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+        if (settings.Target.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
         {
-            targetId = uint.Parse(settings.TargetId[2..], NumberStyles.HexNumber);
+            targetId = uint.Parse(settings.Target[2..], NumberStyles.HexNumber);
         }
         else
         {
-            targetId = uint.Parse(settings.TargetId);
+            targetId = uint.Parse(settings.Target);
         }
 
         // Parse target type

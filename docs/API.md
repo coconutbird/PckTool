@@ -229,7 +229,7 @@ Batch project files are standard JSON files:
 PckTool batch create mymod.json --name "My Mod" --game hwde
 
 # Add actions to the project
-PckTool batch add-action mymod.json --id 0x39E3B0F1 --source custom.wem
+PckTool batch add-action mymod.json --target 0x39E3B0F1 --source custom.wem
 
 # View project information
 PckTool batch info mymod.json

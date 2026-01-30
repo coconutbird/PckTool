@@ -57,10 +57,10 @@ public sealed class BatchProject : IBatchProject
     ///     Gets or sets an optional override path to the game installation directory.
     ///     If null, the tool will attempt to auto-detect the game path.
     /// </summary>
-    [JsonPropertyName("gamePath")]
+    [JsonPropertyName("gameDir")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [Description("Optional override path to the game installation directory.")]
-    public string? GamePath { get; set; }
+    public string? GameDir { get; set; }
 
     /// <summary>
     ///     Gets or sets custom notes for the project.

@@ -102,7 +102,7 @@ PckTool find --game hwde --name "explosion"
 PckTool batch create mymod.json --name "My Audio Mod" --game hwde
 
 # Add a WEM replacement action
-PckTool batch add-action mymod.json --action replace --target-type wem --id 0x39E3B0F1 --source custom.wem
+PckTool batch add-action mymod.json --action replace --type wem --target 0x39E3B0F1 --source custom.wem
 
 # Validate the project
 PckTool batch validate mymod.json

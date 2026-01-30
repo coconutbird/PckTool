@@ -138,7 +138,7 @@ PckTool find --game hwde --wem 0x39E3B0F1
 
 # Create and run a batch project
 PckTool batch create mymod.json --name "My Mod" --game hwde
-PckTool batch add-action mymod.json --id 0x39E3B0F1 --source custom.wem
+PckTool batch add-action mymod.json --target 0x39E3B0F1 --source custom.wem
 PckTool batch run mymod.json
 ```
 
