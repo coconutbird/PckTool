@@ -28,14 +28,14 @@ dotnet build
 ### Basic Usage
 
 ```bash
-# Extract all audio from the game
-PckTool dump --output dumps/
+# Extract all audio from the game (auto-detects game path via Steam/registry)
+PckTool dump --game hwde --output dumps/
 
 # Replace a specific WEM file
-PckTool replace-wem --target 970927665 --source replacement.wem
+PckTool replace-wem --game hwde --target 970927665 --source replacement.wem --output ./
 
 # List all sound banks
-PckTool list
+PckTool list --game hwde
 ```
 
 ## Project Structure
@@ -92,8 +92,8 @@ pck.Save("output.pck");
 | Command       | Description                                      |
 | ------------- | ------------------------------------------------ |
 | `dump`        | Extract all sound banks and WEM files            |
-| `replace`     | Replace a sound bank with a .bnk file            |
-| `replace-wem` | Replace a specific WEM file                      |
+| `replace`     | Replace one or more sound banks with .bnk files  |
+| `replace-wem` | Replace one or more WEM files                    |
 | `list`        | List all sound banks in the package              |
 | `browse`      | Interactive browser for audio content            |
 | `info`        | Show configuration information                   |
@@ -116,16 +116,25 @@ pck.Save("output.pck");
 
 ```bash
 # Extract only English audio
-PckTool dump --language "English(US)" --output dumps/english/
+PckTool dump --game hwde --language "English(US)" --output dumps/english/
 
 # Replace WEM with hex ID
-PckTool replace-wem --target 0x39E3B0F1 --source custom.wem
+PckTool replace-wem --game hwde --target 0x39E3B0F1 --source custom.wem --output ./
+
+# Replace multiple WEMs in one command
+PckTool replace-wem --game hwde --target 0x39E3B0F1 --source sound1.wem --target 0x12345678 --source sound2.wem --output ./
+
+# Replace multiple sound banks in one command
+PckTool replace --game hwde --target 0x1A2B3C4D --source bank1.bnk --target 0x5E6F7A8B --source bank2.bnk --output ./
+
+# Or use --game-dir to override the auto-detected game path
+PckTool replace-wem --game hwde --game-dir "C:\Games\HaloWars" --target 0x39E3B0F1 --source custom.wem --output ./
 
 # Browse Japanese audio
-PckTool browse --language Japanese
+PckTool browse --game hwde --language Japanese
 
 # Find which bank contains a WEM ID
-PckTool find --wem 0x39E3B0F1
+PckTool find --game hwde --wem 0x39E3B0F1
 
 # Create and run a batch project
 PckTool batch create mymod.json --name "My Mod" --game hwde

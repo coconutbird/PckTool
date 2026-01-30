@@ -167,21 +167,30 @@ else
 See `PckTool --help` for full command documentation.
 
 ```bash
-# Extract all audio
-PckTool dump --game-dir "C:\Games\HaloWars" --output dumps/
+# Extract all audio (using --game for auto-detection via Steam/registry)
+PckTool dump --game hwde --output dumps/
+
+# Extract all audio (using --game-dir to override auto-detected path)
+PckTool dump --game hwde --game-dir "C:\Games\HaloWars" --output dumps/
 
 # Replace a WEM file
-PckTool replace-wem --target 970927665 --source replacement.wem
+PckTool replace-wem --game hwde --target 970927665 --source replacement.wem --output ./
+
+# Replace multiple WEMs in one command
+PckTool replace-wem --game hwde --target 0x39E3B0F1 --source sound1.wem --target 0x12345678 --source sound2.wem --output ./
+
+# Replace multiple sound banks in one command
+PckTool replace --game hwde --target 0x1A2B3C4D --source bank1.bnk --target 0x5E6F7A8B --source bank2.bnk --output ./
 
 # List sound banks
-PckTool list --verbose
+PckTool list --game hwde --verbose
 
 # Interactive browser
-PckTool browse --language "English(US)"
+PckTool browse --game hwde --language "English(US)"
 
 # Find a WEM ID or cue name
-PckTool find --wem 970927665
-PckTool find --name "explosion"
+PckTool find --game hwde --wem 970927665
+PckTool find --game hwde --name "explosion"
 ```
 
 ## Batch Projects

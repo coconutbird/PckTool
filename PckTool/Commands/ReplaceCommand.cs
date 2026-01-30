@@ -13,15 +13,17 @@ namespace PckTool.Commands;
 /// </summary>
 public class ReplaceSettings : GlobalSettings
 {
-    [Description("Sound bank ID (decimal or hex with 0x prefix) to replace.")] [CommandOption("-s|--soundbank")]
-    public required string SoundBank { get; init; }
+    [Description("Sound bank ID(s) (decimal or hex with 0x prefix) to replace. Can specify multiple times.")]
+    [CommandOption("-t|--target")]
+    public string[] Targets { get; init; } = [];
 
-    [Description("Path to the replacement .bnk file.")] [CommandOption("-i|--input")]
-    public required string Input { get; init; }
+    [Description("Path(s) to the replacement .bnk file(s). Can specify multiple times (paired with --target).")]
+    [CommandOption("-s|--source")]
+    public string[] Sources { get; init; } = [];
 }
 
 /// <summary>
-///     Replace a sound bank in the package file.
+///     Replace one or more sound banks in the package file.
 /// </summary>
 public class ReplaceCommand : Command<ReplaceSettings>
 {
@@ -42,45 +44,109 @@ public class ReplaceCommand : Command<ReplaceSettings>
             AnsiConsole.MarkupLine($"[green]Directory:[/] {resolution.GameDir}");
         }
 
-        // Parse sound bank ID using standardized helper
-        if (!GameHelpers.TryParseId(settings.SoundBank, out var bankId))
+        // Validate inputs
+        if (settings.Targets.Length == 0)
+        {
+            AnsiConsole.MarkupLine("[red]Must specify at least one --target[/]");
+
+            return 1;
+        }
+
+        if (settings.Sources.Length == 0)
+        {
+            AnsiConsole.MarkupLine("[red]Must specify --source for each --target[/]");
+
+            return 1;
+        }
+
+        if (settings.Targets.Length != settings.Sources.Length)
         {
             AnsiConsole.MarkupLine(
-                "[red]Invalid sound bank ID format. Use decimal (e.g., 12345) or hex with 0x prefix (e.g., 0x1A2B3C4D)[/]");
+                $"[red]Mismatch: {settings.Targets.Length} target(s) but {settings.Sources.Length} source(s). Each --target needs a matching --source.[/]");
 
             return 1;
         }
 
-        // Verify input file exists
-        if (!File.Exists(settings.Input))
+        // Build list of replacements
+        var replacements = new List<(uint BankId, string SourcePath, byte[] Data)>();
+
+        for (var i = 0; i < settings.Targets.Length; i++)
         {
-            AnsiConsole.MarkupLine($"[red]Input file not found:[/] {settings.Input}");
+            if (!GameHelpers.TryParseId(settings.Targets[i], out var bankId))
+            {
+                AnsiConsole.MarkupLine(
+                    $"[red]Invalid sound bank ID format at position {i + 1}: {settings.Targets[i]}[/]");
 
-            return 1;
+                return 1;
+            }
+
+            var sourcePath = settings.Sources[i];
+
+            if (!File.Exists(sourcePath))
+            {
+                AnsiConsole.MarkupLine($"[red]Source file not found:[/] {sourcePath}");
+
+                return 1;
+            }
+
+            var data = File.ReadAllBytes(sourcePath);
+            replacements.Add((bankId, sourcePath, data));
         }
+
+        // Display replacement plan
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine($"[bold]Replacement Plan ({replacements.Count} sound bank(s)):[/]");
+        var planTable = new Table();
+        planTable.AddColumn("Sound Bank ID");
+        planTable.AddColumn("Source File");
+        planTable.AddColumn("Size");
+
+        foreach (var (bankId, sourcePath, data) in replacements)
+        {
+            planTable.AddRow($"0x{bankId:X8}", Path.GetFileName(sourcePath), $"{data.Length:N0} bytes");
+        }
+
+        AnsiConsole.Write(planTable);
+        AnsiConsole.WriteLine();
 
         try
         {
-            // Process each input file to find the sound bank
+            // Process each input file
             foreach (var filePath in resolution.Files)
             {
-                var package = ServiceProvider.PckFileFactory.Load(filePath);
-
-                // Find the sound bank entry to replace
-                var entry = package.SoundBanks[bankId];
-
-                if (entry is null)
+                if (!File.Exists(filePath))
                 {
-                    continue; // Try next file
+                    continue;
                 }
 
-                AnsiConsole.MarkupLine($"[blue]Found in:[/] {Path.GetFileName(filePath)}");
-                AnsiConsole.MarkupLine(
-                    $"[green]Found sound bank[/] [blue]0x{bankId:X8}[/] (Language: {package.Languages[entry.LanguageId]}, Size: {entry.Size} bytes)");
+                AnsiConsole.MarkupLine($"[blue]Loading:[/] {Path.GetFileName(filePath)}");
+                var package = ServiceProvider.PckFileFactory.Load(filePath);
 
-                // Read the replacement data
-                var replacementData = File.ReadAllBytes(settings.Input);
-                AnsiConsole.MarkupLine($"[blue]Replacement file size:[/] {replacementData.Length} bytes");
+                // Track replacements made in this file
+                var replacedBanks = new List<uint>();
+
+                // Apply all replacements
+                foreach (var (bankId, _, data) in replacements)
+                {
+                    var entry = package.SoundBanks[bankId];
+
+                    if (entry is null)
+                    {
+                        continue;
+                    }
+
+                    entry.ReplaceWith(data);
+                    replacedBanks.Add(bankId);
+                    AnsiConsole.MarkupLine(
+                        $"[green]Replaced sound bank[/] [blue]0x{bankId:X8}[/] (Language: {package.Languages[entry.LanguageId]})");
+                }
+
+                if (replacedBanks.Count == 0)
+                {
+                    AnsiConsole.MarkupLine("[yellow]No matching sound banks found in this file[/]");
+
+                    continue;
+                }
 
                 // Create backup if requested
                 if (settings.Backup)
@@ -97,8 +163,13 @@ public class ReplaceCommand : Command<ReplaceSettings>
                     }
                 }
 
-                // Replace the data
-                entry.ReplaceWith(replacementData);
+                // Display results
+                AnsiConsole.WriteLine();
+                var resultTable = new Table();
+                resultTable.AddColumn("Metric");
+                resultTable.AddColumn("Value");
+                resultTable.AddRow("Sound banks replaced", replacedBanks.Count.ToString());
+                AnsiConsole.Write(resultTable);
 
                 // Determine output path
                 var outputFile = settings.Output;
@@ -113,15 +184,17 @@ public class ReplaceCommand : Command<ReplaceSettings>
                 GameHelpers.EnsureDirectoryCreated(outputFile);
 
                 // Save the modified package
+                AnsiConsole.WriteLine();
                 AnsiConsole.MarkupLine($"[blue]Saving modified package to:[/] {outputFile}");
                 package.Save(outputFile);
 
-                AnsiConsole.MarkupLine($"[green]Done![/] Sound bank [blue]0x{bankId:X8}[/] has been replaced.");
+                var idsStr = string.Join(", ", replacedBanks.Select(id => $"0x{id:X8}"));
+                AnsiConsole.MarkupLine($"[green]Done![/] Replaced {replacedBanks.Count} sound bank(s): {idsStr}");
 
                 return 0;
             }
 
-            AnsiConsole.MarkupLine($"[red]Sound bank 0x{bankId:X8} not found in any input file[/]");
+            AnsiConsole.MarkupLine("[red]No sound banks were replaced in any input file[/]");
 
             return 1;
         }

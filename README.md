@@ -35,8 +35,8 @@ dotnet run --project PckTool -- --help
 | Command       | Description                                         |
 | ------------- | --------------------------------------------------- |
 | `dump`        | Extract all sound banks and WEM files from the game |
-| `replace`     | Replace a sound bank with a .bnk file               |
-| `replace-wem` | Replace a specific WEM audio file                   |
+| `replace`     | Replace one or more sound banks with .bnk files     |
+| `replace-wem` | Replace one or more WEM audio files                 |
 | `list`        | List all sound banks in the package                 |
 | `browse`      | Interactive browser for audio content               |
 | `sounds`      | List all sounds in a specific bank                  |
@@ -59,31 +59,40 @@ dotnet run --project PckTool -- --help
 
 ```bash
 # Extract all audio to a directory
-PckTool dump --output dumps/
+PckTool dump --game hwde --output dumps/
 
 # Extract only English audio
-PckTool dump --language "English(US)" --output dumps/english/
+PckTool dump --game hwde --language "English(US)" --output dumps/english/
 
 # Extract a specific sound bank (hex ID)
-PckTool dump --soundbank 1A2B3C4D --output dumps/
+PckTool dump --game hwde --bank 0x1A2B3C4D --output dumps/
 
 # Replace a WEM file by ID
-PckTool replace-wem --target 970927665 --source replacement.wem
+PckTool replace-wem --game hwde --target 970927665 --source replacement.wem --output ./
 
 # Replace using hex ID
-PckTool replace-wem --target 0x39E3B0F1 --source custom.wem
+PckTool replace-wem --game hwde --target 0x39E3B0F1 --source custom.wem --output ./
+
+# Replace multiple WEMs in one command
+PckTool replace-wem --game hwde --target 0x39E3B0F1 --source sound1.wem --target 0x12345678 --source sound2.wem --output ./
+
+# Replace multiple sound banks in one command
+PckTool replace --game hwde --target 0x1A2B3C4D --source bank1.bnk --target 0x5E6F7A8B --source bank2.bnk --output ./
+
+# Or use --game-dir to override the auto-detected game path
+PckTool replace-wem --game hwde --game-dir "C:\Games\HaloWars" --target 0x39E3B0F1 --source custom.wem --output ./
 
 # List all sound banks with details
-PckTool list --verbose
+PckTool list --game hwde --verbose
 
 # Browse audio interactively
-PckTool browse
+PckTool browse --game hwde
 
 # Find which bank contains a WEM ID
-PckTool find --wem 970927665
+PckTool find --game hwde --wem 970927665
 
 # Search for sounds by cue name
-PckTool find --name "explosion"
+PckTool find --game hwde --name "explosion"
 ```
 
 ### Batch Project Examples

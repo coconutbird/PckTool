@@ -16,8 +16,8 @@ namespace PckTool.Commands;
 public class DumpSettings : GlobalSettings
 {
     [Description("Specific sound bank ID (decimal or hex with 0x prefix) to extract. If not specified, extracts all.")]
-    [CommandOption("-s|--soundbank")]
-    public string? SoundBank { get; init; }
+    [CommandOption("-b|--bank")]
+    public string? Bank { get; init; }
 
     [Description("Filter by language (e.g., 'English(US)', 'SFX'). If not specified, extracts all languages.")]
     [CommandOption("-l|--language")]
@@ -75,9 +75,9 @@ public class DumpCommand : Command<DumpSettings>
                 // Parse sound bank filter if provided
                 uint? soundBankIdFilter = null;
 
-                if (!string.IsNullOrWhiteSpace(settings.SoundBank))
+                if (!string.IsNullOrWhiteSpace(settings.Bank))
                 {
-                    if (GameHelpers.TryParseId(settings.SoundBank, out var parsedId))
+                    if (GameHelpers.TryParseId(settings.Bank, out var parsedId))
                     {
                         soundBankIdFilter = parsedId;
                         AnsiConsole.MarkupLine($"[blue]Filtering to sound bank:[/] 0x{parsedId:X8}");

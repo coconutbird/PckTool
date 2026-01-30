@@ -13,19 +13,17 @@ namespace PckTool.Commands;
 /// </summary>
 public class ReplaceWemSettings : GlobalSettings
 {
-    [Description("Target WEM ID (decimal or hex with 0x prefix) to replace.")] [CommandOption("-t|--target")]
-    public required string Target { get; init; }
+    [Description("Target WEM ID(s) (decimal or hex with 0x prefix) to replace. Can specify multiple times.")]
+    [CommandOption("-t|--target")]
+    public string[] Targets { get; init; } = [];
 
-    [Description("Source WEM ID or file path. If a file path, uses that file. If an ID, copies from that WEM.")]
+    [Description("Path(s) to the replacement .wem file(s). Can specify multiple times (paired with --target).")]
     [CommandOption("-s|--source")]
-    public string? Source { get; init; }
-
-    [Description("Path to the replacement .wem file. Alternative to --source.")] [CommandOption("-i|--input")]
-    public string? Input { get; init; }
+    public string[] Sources { get; init; } = [];
 }
 
 /// <summary>
-///     Replace a WEM file in the package.
+///     Replace one or more WEM files in the package.
 /// </summary>
 public class ReplaceWemCommand : Command<ReplaceWemSettings>
 {
@@ -46,107 +44,74 @@ public class ReplaceWemCommand : Command<ReplaceWemSettings>
             AnsiConsole.MarkupLine($"[green]Directory:[/] {resolution.GameDir}");
         }
 
-        // Parse target WEM ID using standardized helper
-        if (!GameHelpers.TryParseId(settings.Target, out var targetWemId))
+        // Validate inputs
+        if (settings.Targets.Length == 0)
         {
-            AnsiConsole.MarkupLine(
-                "[red]Invalid target WEM ID format. Use decimal (e.g., 12345) or hex with 0x prefix (e.g., 0x1A2B3C4D)[/]");
+            AnsiConsole.MarkupLine("[red]Must specify at least one --target[/]");
 
             return 1;
         }
 
-        AnsiConsole.MarkupLine($"[blue]Target WEM ID:[/] {targetWemId} (0x{targetWemId:X8})");
-
-        // Get replacement data
-        byte[] replacementData;
-
-        if (settings.Input is not null && File.Exists(settings.Input))
+        if (settings.Sources.Length == 0)
         {
-            replacementData = File.ReadAllBytes(settings.Input);
-            AnsiConsole.MarkupLine(
-                $"[blue]Using replacement file:[/] {settings.Input} ({replacementData.Length} bytes)");
+            AnsiConsole.MarkupLine("[red]Must specify --source for each --target[/]");
+
+            return 1;
         }
-        else if (settings.Source is not null)
+
+        if (settings.Targets.Length != settings.Sources.Length)
         {
-            if (File.Exists(settings.Source))
+            AnsiConsole.MarkupLine(
+                $"[red]Mismatch: {settings.Targets.Length} target(s) but {settings.Sources.Length} source(s). Each --target needs a matching --source.[/]");
+
+            return 1;
+        }
+
+        // Build list of replacements
+        var replacements = new List<(uint TargetId, byte[] Data, string SourcePath)>();
+
+        for (var i = 0; i < settings.Targets.Length; i++)
+        {
+            if (!GameHelpers.TryParseId(settings.Targets[i], out var targetId))
             {
-                replacementData = File.ReadAllBytes(settings.Source);
                 AnsiConsole.MarkupLine(
-                    $"[blue]Using replacement file:[/] {settings.Source} ({replacementData.Length} bytes)");
+                    $"[red]Invalid target WEM ID format at position {i + 1}: {settings.Targets[i]}[/]");
+
+                return 1;
             }
-            else
+
+            var sourcePath = settings.Sources[i];
+
+            if (!File.Exists(sourcePath))
             {
-                // Parse as WEM ID - search across all input files
-                if (!GameHelpers.TryParseId(settings.Source, out var sourceWemId))
-                {
-                    AnsiConsole.MarkupLine(
-                        "[red]Invalid source WEM ID format. Use decimal (e.g., 12345) or hex with 0x prefix (e.g., 0x1A2B3C4D)[/]");
+                AnsiConsole.MarkupLine($"[red]Source file not found:[/] {sourcePath}");
 
-                    return 1;
-                }
-
-                AnsiConsole.MarkupLine($"[blue]Source WEM ID:[/] {sourceWemId} (0x{sourceWemId:X8})");
-
-                byte[]? foundData = null;
-
-                foreach (var filePath in resolution.Files)
-                {
-                    var tempPck = ServiceProvider.PckFileFactory.Load(filePath);
-
-                    // Try streaming files first
-                    var streamingEntry = tempPck.StreamingFiles[sourceWemId];
-
-                    if (streamingEntry is not null)
-                    {
-                        foundData = streamingEntry.GetData();
-                        AnsiConsole.MarkupLine(
-                            $"[green]Found source WEM in streaming files[/] ({foundData.Length} bytes)");
-
-                        break;
-                    }
-
-                    // Search embedded media
-                    foreach (var bankEntry in tempPck.SoundBanks)
-                    {
-                        var bank = bankEntry.Parse();
-
-                        if (bank is not null && bank.ContainsMedia(sourceWemId))
-                        {
-                            foundData = bank.GetMedia(sourceWemId);
-                            AnsiConsole.MarkupLine(
-                                $"[green]Found source WEM in soundbank[/] [blue]0x{bankEntry.Id:X8}[/] ({foundData?.Length ?? 0} bytes)");
-
-                            break;
-                        }
-                    }
-
-                    if (foundData is not null)
-                    {
-                        break;
-                    }
-                }
-
-                if (foundData is null)
-                {
-                    AnsiConsole.MarkupLine(
-                        $"[red]Source WEM {sourceWemId} (0x{sourceWemId:X8}) not found in any input file[/]");
-
-                    return 1;
-                }
-
-                replacementData = foundData;
+                return 1;
             }
-        }
-        else
-        {
-            AnsiConsole.MarkupLine("[red]Must specify either --source or --input for replacement data[/]");
 
-            return 1;
+            var data = File.ReadAllBytes(sourcePath);
+            replacements.Add((targetId, data, sourcePath));
         }
+
+        // Display replacement plan
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine($"[bold]Replacement Plan ({replacements.Count} WEM(s)):[/]");
+        var planTable = new Table();
+        planTable.AddColumn("Target WEM ID");
+        planTable.AddColumn("Source");
+        planTable.AddColumn("Size");
+
+        foreach (var (targetId, data, desc) in replacements)
+        {
+            planTable.AddRow($"0x{targetId:X8}", desc, $"{data.Length:N0} bytes");
+        }
+
+        AnsiConsole.Write(planTable);
+        AnsiConsole.WriteLine();
 
         try
         {
-            // Process each input file to find and replace the WEM
+            // Process each input file
             foreach (var filePath in resolution.Files)
             {
                 if (!File.Exists(filePath))
@@ -157,13 +122,36 @@ public class ReplaceWemCommand : Command<ReplaceWemSettings>
                 AnsiConsole.MarkupLine($"[blue]Loading:[/] {Path.GetFileName(filePath)}");
                 var package = ServiceProvider.PckFileFactory.Load(filePath);
 
-                // Replace the WEM using the unified API
-                AnsiConsole.MarkupLine("[blue]Replacing WEM...[/]");
-                var result = package.ReplaceWem(targetWemId, replacementData);
+                // Track if any replacements were made in this file
+                var totalStreaming = 0;
+                var totalBanks = 0;
+                var totalHirc = 0;
+                var replacedIds = new List<uint>();
 
-                if (!result.ReplacedInStreaming && result.EmbeddedBanksModified == 0)
+                // Apply all replacements
+                foreach (var (targetId, data, _) in replacements)
                 {
-                    continue; // WEM not found in this file
+                    var result = package.ReplaceWem(targetId, data);
+
+                    if (result.WasReplaced)
+                    {
+                        replacedIds.Add(targetId);
+
+                        if (result.ReplacedInStreaming)
+                        {
+                            totalStreaming++;
+                        }
+
+                        totalBanks += result.EmbeddedBanksModified;
+                        totalHirc += result.HircReferencesUpdated;
+                    }
+                }
+
+                if (replacedIds.Count == 0)
+                {
+                    AnsiConsole.MarkupLine("[yellow]No matching WEMs found in this file[/]");
+
+                    continue;
                 }
 
                 // Create backup if requested
@@ -181,13 +169,15 @@ public class ReplaceWemCommand : Command<ReplaceWemSettings>
                     }
                 }
 
+                // Display results
                 AnsiConsole.WriteLine();
                 var resultTable = new Table();
                 resultTable.AddColumn("Metric");
                 resultTable.AddColumn("Value");
-                resultTable.AddRow("Replaced in streaming", result.ReplacedInStreaming.ToString());
-                resultTable.AddRow("Embedded banks modified", result.EmbeddedBanksModified.ToString());
-                resultTable.AddRow("HIRC references updated", result.HircReferencesUpdated.ToString());
+                resultTable.AddRow("WEMs replaced", replacedIds.Count.ToString());
+                resultTable.AddRow("Streaming files modified", totalStreaming.ToString());
+                resultTable.AddRow("Embedded banks modified", totalBanks.ToString());
+                resultTable.AddRow("HIRC references updated", totalHirc.ToString());
                 AnsiConsole.Write(resultTable);
 
                 // Determine output path
@@ -212,13 +202,13 @@ public class ReplaceWemCommand : Command<ReplaceWemSettings>
                 AnsiConsole.MarkupLine($"[blue]Saving modified package to:[/] {outputFile}");
                 package.Save(outputFile);
 
-                AnsiConsole.MarkupLine(
-                    $"[green]Done![/] WEM [blue]{targetWemId} (0x{targetWemId:X8})[/] has been replaced.");
+                var idsStr = string.Join(", ", replacedIds.Select(id => $"0x{id:X8}"));
+                AnsiConsole.MarkupLine($"[green]Done![/] Replaced {replacedIds.Count} WEM(s): {idsStr}");
 
                 return 0;
             }
 
-            AnsiConsole.MarkupLine($"[red]WEM {targetWemId} (0x{targetWemId:X8}) not found in any input file[/]");
+            AnsiConsole.MarkupLine("[red]No WEMs were replaced in any input file[/]");
 
             return 1;
         }
