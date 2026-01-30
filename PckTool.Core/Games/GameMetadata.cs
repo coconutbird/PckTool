@@ -37,6 +37,11 @@ public abstract class GameMetadata
 /// </summary>
 public class HaloWarsMetadata : GameMetadata
 {
+    private HaloWarsMetadata()
+    {
+        Game = SupportedGame.HaloWars;
+    }
+
     /// <summary>
     ///     Singleton instance.
     /// </summary>
@@ -47,11 +52,6 @@ public class HaloWarsMetadata : GameMetadata
     /// </summary>
     public static string SoundsPackageRelativePath =>
         Path.Combine("sound", "wwise_2013", "GeneratedSoundBanks", "Windows", "Sounds.pck");
-
-    private HaloWarsMetadata()
-    {
-        Game = SupportedGame.HaloWars;
-    }
 
     /// <inheritdoc />
     public override IEnumerable<string> GetDefaultInputFiles(string gameDirectory)

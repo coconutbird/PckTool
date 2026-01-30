@@ -13,34 +13,19 @@ public class ListCommand : Command<GlobalSettings>
 {
     public override int Execute(CommandContext context, GlobalSettings settings)
     {
-        var resolution = GameHelpers.ResolveGame(settings.Game, settings.GameDir);
+        var resolution = GameHelpers.ResolveInputFiles(settings);
 
-        if (resolution.Game == SupportedGame.Unknown || resolution.Metadata is null)
+        if (!resolution.Success)
         {
-            AnsiConsole.MarkupLine("[red]Game not specified or not supported[/]");
-            AnsiConsole.MarkupLine("[dim]Use --game hwde to specify[/]");
+            AnsiConsole.MarkupLine($"[red]{resolution.Error}[/]");
 
             return 1;
         }
 
-        if (resolution.GameDir is null)
+        if (resolution.Game.HasValue)
         {
-            AnsiConsole.MarkupLine("[red]Failed to find game directory[/]");
-            AnsiConsole.MarkupLine("[dim]Use --game-dir to specify the game installation path[/]");
-
-            return 1;
-        }
-
-        AnsiConsole.MarkupLine($"[green]Game:[/] {resolution.Game.ToDisplayName()}");
-        AnsiConsole.MarkupLine($"[green]Directory:[/] {resolution.GameDir}");
-
-        var inputFiles = resolution.Metadata.GetDefaultInputFiles(resolution.GameDir).ToList();
-
-        if (inputFiles.Count == 0)
-        {
-            AnsiConsole.MarkupLine($"[red]No audio files found for {resolution.Game.ToDisplayName()}[/]");
-
-            return 1;
+            AnsiConsole.MarkupLine($"[green]Game:[/] {resolution.Game.Value.ToDisplayName()}");
+            AnsiConsole.MarkupLine($"[green]Directory:[/] {resolution.GameDir}");
         }
 
         try
@@ -54,12 +39,11 @@ public class ListCommand : Command<GlobalSettings>
 
             var totalBanks = 0;
 
-            foreach (var inputFile in inputFiles)
+            foreach (var filePath in resolution.Files)
             {
-                var absolutePath = Path.Combine(resolution.GameDir, inputFile);
-                AnsiConsole.MarkupLine($"[blue]Loading:[/] {inputFile}");
+                AnsiConsole.MarkupLine($"[blue]Loading:[/] {Path.GetFileName(filePath)}");
 
-                var package = ServiceProvider.PckFileFactory.Load(absolutePath);
+                var package = ServiceProvider.PckFileFactory.Load(filePath);
 
                 // Group by language for cleaner output
                 var banksByLanguage = package.SoundBanks
@@ -75,7 +59,7 @@ public class ListCommand : Command<GlobalSettings>
                             $"[blue]{entry.Id:X8}[/]",
                             languageGroup.Key,
                             $"{entry.Size:N0} bytes",
-                            inputFile);
+                            Path.GetFileName(filePath));
                     }
                 }
 

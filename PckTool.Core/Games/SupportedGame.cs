@@ -18,7 +18,7 @@ public enum SupportedGame
     /// <summary>
     ///     Halo Wars 2 (Steam/Windows Store).
     /// </summary>
-    HaloWars2,
+    HaloWars2
 }
 
 /// <summary>
@@ -85,4 +85,3 @@ public static class SupportedGameExtensions
         return ["hw2", "hwde"];
     }
 }
-

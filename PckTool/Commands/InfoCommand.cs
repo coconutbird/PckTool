@@ -15,13 +15,36 @@ public class InfoCommand : Command<GlobalSettings>
         AnsiConsole.MarkupLine("[bold]=== PckTool Configuration Info ===[/]");
         AnsiConsole.WriteLine();
 
+        // Check for direct file mode
+        if (!string.IsNullOrWhiteSpace(settings.File))
+        {
+            AnsiConsole.MarkupLine("[green]Mode:[/] Direct file");
+            AnsiConsole.MarkupLine($"[green]File:[/] {settings.File}");
+
+            if (File.Exists(settings.File))
+            {
+                var fileInfo = new FileInfo(settings.File);
+                AnsiConsole.MarkupLine(
+                    $"[green]Size:[/] {fileInfo.Length:N0} bytes ({fileInfo.Length / 1024.0 / 1024.0:N2} MB)");
+            }
+            else
+            {
+                AnsiConsole.MarkupLine("[red]Status:[/] File not found");
+            }
+
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("[blue]Default Output Directory:[/] dumps");
+
+            return 0;
+        }
+
         // Resolve game and directory
         var resolution = GameHelpers.ResolveGame(settings.Game, settings.GameDir);
 
         if (resolution.Game == SupportedGame.Unknown)
         {
             AnsiConsole.MarkupLine("[yellow]Game:[/] Not detected");
-            AnsiConsole.MarkupLine("[dim]Use --game hwde or --game hw2 to specify a game[/]");
+            AnsiConsole.MarkupLine("[dim]Use --game hwde or --file <path> to specify[/]");
         }
         else
         {

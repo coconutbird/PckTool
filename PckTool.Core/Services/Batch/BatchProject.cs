@@ -17,6 +17,11 @@ public sealed class BatchProject : IBatchProject
     /// </summary>
     public const int CurrentSchemaVersion = 1;
 
+    /// <summary>
+    ///     Required file extension for batch project files.
+    /// </summary>
+    public const string FileExtension = ".json";
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -29,20 +34,6 @@ public sealed class BatchProject : IBatchProject
     ///     Gets or sets the project file path (set when loaded/saved).
     /// </summary>
     [JsonIgnore] public string? FilePath { get; private set; }
-
-    /// <inheritdoc />
-    [JsonPropertyName("schemaVersion")] [Description("Schema version for batch project files. Current version is 1.")]
-    public int SchemaVersion { get; set; } = CurrentSchemaVersion;
-
-    /// <inheritdoc />
-    [JsonPropertyName("name")] [Description("Name of the batch project.")]
-    public string Name { get; set; } = "Untitled Batch Project";
-
-    /// <inheritdoc />
-    [JsonPropertyName("description")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    [Description("Optional description of the project.")]
-    public string? Description { get; set; }
 
     /// <summary>
     ///     Gets or sets whether to skip updating HIRC size references when replacing WEM files.
@@ -71,21 +62,6 @@ public sealed class BatchProject : IBatchProject
     [Description("Optional override path to the game installation directory.")]
     public string? GamePath { get; set; }
 
-    /// <inheritdoc />
-    [JsonPropertyName("inputFiles")]
-    [Description("List of input PCK or BNK files to process. Paths are relative to the game directory.")]
-    public IList<string> InputFiles { get; set; } = new List<string>();
-
-    /// <inheritdoc />
-    [JsonPropertyName("outputDirectory")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    [Description("Optional output directory for modified files. If not specified, files are modified in-place.")]
-    public string? OutputDirectory { get; set; }
-
-    /// <inheritdoc />
-    [JsonPropertyName("actions")] [Description("List of actions to perform on the input files.")]
-    public IList<IProjectAction> Actions { get; set; } = new List<IProjectAction>();
-
     /// <summary>
     ///     Gets or sets custom notes for the project.
     /// </summary>
@@ -103,6 +79,35 @@ public sealed class BatchProject : IBatchProject
     ///     Gets the game metadata for this project, or null if the game is unknown.
     /// </summary>
     [JsonIgnore] public GameMetadata? GameMetadata => GameMetadata.GetMetadata(ParsedGame);
+
+    /// <inheritdoc />
+    [JsonPropertyName("schemaVersion")] [Description("Schema version for batch project files. Current version is 1.")]
+    public int SchemaVersion { get; set; } = CurrentSchemaVersion;
+
+    /// <inheritdoc />
+    [JsonPropertyName("name")] [Description("Name of the batch project.")]
+    public string Name { get; set; } = "Untitled Batch Project";
+
+    /// <inheritdoc />
+    [JsonPropertyName("description")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [Description("Optional description of the project.")]
+    public string? Description { get; set; }
+
+    /// <inheritdoc />
+    [JsonPropertyName("inputFiles")]
+    [Description("List of input PCK or BNK files to process. Paths are relative to the game directory.")]
+    public IList<string> InputFiles { get; set; } = new List<string>();
+
+    /// <inheritdoc />
+    [JsonPropertyName("outputDirectory")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [Description("Optional output directory for modified files. If not specified, files are modified in-place.")]
+    public string? OutputDirectory { get; set; }
+
+    /// <inheritdoc />
+    [JsonPropertyName("actions")] [Description("List of actions to perform on the input files.")]
+    public IList<IProjectAction> Actions { get; set; } = new List<IProjectAction>();
 
     /// <inheritdoc />
     public BatchProjectValidationResult Validate()
@@ -166,6 +171,26 @@ public sealed class BatchProject : IBatchProject
     public static BatchProject Create(string name = "Untitled Batch Project")
     {
         return new BatchProject { Name = name };
+    }
+
+    /// <summary>
+    ///     Checks if the given path has a valid batch project file extension.
+    /// </summary>
+    /// <param name="path">The file path to check.</param>
+    /// <returns>True if the path has the correct extension, false otherwise.</returns>
+    public static bool HasValidExtension(string path)
+    {
+        return path.EndsWith(FileExtension, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    ///     Ensures the given path has the correct file extension, appending it if necessary.
+    /// </summary>
+    /// <param name="path">The file path to normalize.</param>
+    /// <returns>The path with the correct extension.</returns>
+    public static string EnsureExtension(string path)
+    {
+        return HasValidExtension(path) ? path : path + FileExtension;
     }
 
     /// <summary>

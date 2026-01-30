@@ -5,6 +5,29 @@ namespace PckTool.Core.Tests;
 
 public class BatchProjectTests
 {
+#region GetBasePath Tests
+
+    [Fact]
+    public void GetBasePath_WithoutFilePath_ShouldReturnCurrentDirectory()
+    {
+        var project = BatchProject.Create();
+
+        var basePath = project.GetBasePath();
+
+        Assert.Equal(Environment.CurrentDirectory, basePath);
+    }
+
+#endregion
+
+    private static MemoryStream SaveToMemoryStream(BatchProject project)
+    {
+        var stream = new MemoryStream();
+        project.Save(stream);
+        stream.Position = 0;
+
+        return stream;
+    }
+
 #region Create Tests
 
     [Fact]
@@ -308,28 +331,4 @@ public class BatchProjectTests
     }
 
 #endregion
-
-#region GetBasePath Tests
-
-    [Fact]
-    public void GetBasePath_WithoutFilePath_ShouldReturnCurrentDirectory()
-    {
-        var project = BatchProject.Create();
-
-        var basePath = project.GetBasePath();
-
-        Assert.Equal(Environment.CurrentDirectory, basePath);
-    }
-
-#endregion
-
-    private static MemoryStream SaveToMemoryStream(BatchProject project)
-    {
-        var stream = new MemoryStream();
-        project.Save(stream);
-        stream.Position = 0;
-
-        return stream;
-    }
 }
-

@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Globalization;
 
 using PckTool.Core.Games;
 using PckTool.Core.Services;
@@ -14,7 +13,7 @@ namespace PckTool.Commands;
 /// </summary>
 public class BrowseSettings : GlobalSettings
 {
-    [Description("Specific bank ID (hex) to show details for.")] [CommandOption("-b|--bank")]
+    [Description("Specific bank ID (decimal or hex with 0x prefix) to show details for.")] [CommandOption("-b|--bank")]
     public string? Bank { get; init; }
 
     [Description("Filter by language (e.g., 'English(US)', 'SFX').")] [CommandOption("-l|--language")]
@@ -28,57 +27,40 @@ public class BrowseCommand : Command<BrowseSettings>
 {
     public override int Execute(CommandContext context, BrowseSettings settings)
     {
-        var resolution = GameHelpers.ResolveGame(settings.Game, settings.GameDir);
+        var resolution = GameHelpers.ResolveInputFiles(settings);
 
-        if (resolution.Game == SupportedGame.Unknown || resolution.Metadata is null)
+        if (!resolution.Success)
         {
-            AnsiConsole.MarkupLine("[red]Game not specified or not supported[/]");
-            AnsiConsole.MarkupLine("[dim]Use --game hwde to specify[/]");
+            AnsiConsole.MarkupLine($"[red]{resolution.Error}[/]");
 
             return 1;
         }
 
-        if (resolution.GameDir is null)
+        if (resolution.Game.HasValue)
         {
-            AnsiConsole.MarkupLine("[red]Failed to find game directory[/]");
-            AnsiConsole.MarkupLine("[dim]Use --game-dir to specify the game installation path[/]");
-
-            return 1;
-        }
-
-        AnsiConsole.MarkupLine($"[green]Game:[/] {resolution.Game.ToDisplayName()}");
-        AnsiConsole.MarkupLine($"[green]Directory:[/] {resolution.GameDir}");
-
-        var inputFiles = resolution.Metadata.GetDefaultInputFiles(resolution.GameDir).ToList();
-
-        if (inputFiles.Count == 0)
-        {
-            AnsiConsole.MarkupLine($"[red]No audio files found for {resolution.Game.ToDisplayName()}[/]");
-
-            return 1;
+            AnsiConsole.MarkupLine($"[green]Game:[/] {resolution.Game.Value.ToDisplayName()}");
+            AnsiConsole.MarkupLine($"[green]Directory:[/] {resolution.GameDir}");
         }
 
         using var browser = new PackageBrowser();
 
         // Load each input file
-        foreach (var inputFile in inputFiles)
+        foreach (var filePath in resolution.Files)
         {
-            var absolutePath = Path.Combine(resolution.GameDir, inputFile);
-
-            if (!browser.LoadPackage(absolutePath))
+            if (!browser.LoadPackage(filePath))
             {
-                AnsiConsole.MarkupLine($"[red]Failed to load audio file:[/] {inputFile}");
+                AnsiConsole.MarkupLine($"[red]Failed to load audio file:[/] {Path.GetFileName(filePath)}");
 
                 return 1;
             }
         }
 
-        // Try to load sound table for cue names
-        var soundTablePath = GameHelpers.FindSoundTableXml(resolution.GameDir);
-
-        if (soundTablePath is not null)
+        // Try to load sound table for cue names if we have a game directory
+        if (resolution.GameDir is not null)
         {
-            if (browser.LoadSoundTable(soundTablePath))
+            var soundTablePath = GameHelpers.FindSoundTableXml(resolution.GameDir);
+
+            if (soundTablePath is not null && browser.LoadSoundTable(soundTablePath))
             {
                 AnsiConsole.MarkupLine("[blue]Sound table loaded[/]");
             }
@@ -89,13 +71,14 @@ public class BrowseCommand : Command<BrowseSettings>
 
         if (!string.IsNullOrWhiteSpace(settings.Bank))
         {
-            if (uint.TryParse(settings.Bank, NumberStyles.HexNumber, null, out var parsedId))
+            if (GameHelpers.TryParseId(settings.Bank, out var parsedId))
             {
                 bankId = parsedId;
             }
             else
             {
-                AnsiConsole.MarkupLine("[red]Invalid bank ID format. Please use hexadecimal (e.g., 1A2B3C4D)[/]");
+                AnsiConsole.MarkupLine(
+                    "[red]Invalid bank ID format. Use decimal (e.g., 12345) or hex with 0x prefix (e.g., 0x1A2B3C4D)[/]");
 
                 return 1;
             }

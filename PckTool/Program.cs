@@ -35,6 +35,9 @@ public static class Program
             config.AddCommand<SoundsCommand>("sounds")
                   .WithDescription("List all sounds in a specific bank.");
 
+            config.AddCommand<FindCommand>("find")
+                  .WithDescription("Find which bank contains a WEM ID or search by cue name.");
+
             // Batch project commands
             config.AddBranch(
                 "batch",
@@ -59,6 +62,9 @@ public static class Program
 
                     batch.AddCommand<BatchProjectSchemaCommand>("schema")
                          .WithDescription("Generate JSON schema for batch project files.");
+
+                    batch.AddCommand<BatchProjectValidateCommand>("validate")
+                         .WithDescription("Validate a batch project file.");
                 });
         });
 

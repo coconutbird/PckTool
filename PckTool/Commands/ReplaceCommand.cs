@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Globalization;
 
 using PckTool.Core.Games;
 using PckTool.Services;
@@ -14,7 +13,7 @@ namespace PckTool.Commands;
 /// </summary>
 public class ReplaceSettings : GlobalSettings
 {
-    [Description("Sound bank ID (hex) to replace.")] [CommandOption("-s|--soundbank")]
+    [Description("Sound bank ID (decimal or hex with 0x prefix) to replace.")] [CommandOption("-s|--soundbank")]
     public required string SoundBank { get; init; }
 
     [Description("Path to the replacement .bnk file.")] [CommandOption("-i|--input")]
@@ -28,31 +27,26 @@ public class ReplaceCommand : Command<ReplaceSettings>
 {
     public override int Execute(CommandContext context, ReplaceSettings settings)
     {
-        var resolution = GameHelpers.ResolveGame(settings.Game, settings.GameDir);
+        var resolution = GameHelpers.ResolveInputFiles(settings);
 
-        if (resolution.Game == SupportedGame.Unknown || resolution.Metadata is null)
+        if (!resolution.Success)
         {
-            AnsiConsole.MarkupLine("[red]Game not specified or not supported[/]");
-            AnsiConsole.MarkupLine("[dim]Use --game hwde to specify[/]");
+            AnsiConsole.MarkupLine($"[red]{resolution.Error}[/]");
 
             return 1;
         }
 
-        if (resolution.GameDir is null)
+        if (resolution.Game.HasValue)
         {
-            AnsiConsole.MarkupLine("[red]Failed to find game directory[/]");
-            AnsiConsole.MarkupLine("[dim]Use --game-dir to specify the game installation path[/]");
-
-            return 1;
+            AnsiConsole.MarkupLine($"[green]Game:[/] {resolution.Game.Value.ToDisplayName()}");
+            AnsiConsole.MarkupLine($"[green]Directory:[/] {resolution.GameDir}");
         }
 
-        AnsiConsole.MarkupLine($"[green]Game:[/] {resolution.Game.ToDisplayName()}");
-        AnsiConsole.MarkupLine($"[green]Directory:[/] {resolution.GameDir}");
-
-        // Parse sound bank ID
-        if (!uint.TryParse(settings.SoundBank, NumberStyles.HexNumber, null, out var bankId))
+        // Parse sound bank ID using standardized helper
+        if (!GameHelpers.TryParseId(settings.SoundBank, out var bankId))
         {
-            AnsiConsole.MarkupLine("[red]Invalid sound bank ID format. Please use hexadecimal (e.g., 1A2B3C4D)[/]");
+            AnsiConsole.MarkupLine(
+                "[red]Invalid sound bank ID format. Use decimal (e.g., 12345) or hex with 0x prefix (e.g., 0x1A2B3C4D)[/]");
 
             return 1;
         }
@@ -65,22 +59,12 @@ public class ReplaceCommand : Command<ReplaceSettings>
             return 1;
         }
 
-        var inputFiles = resolution.Metadata.GetDefaultInputFiles(resolution.GameDir).ToList();
-
-        if (inputFiles.Count == 0)
-        {
-            AnsiConsole.MarkupLine($"[red]No audio files found for {resolution.Game.ToDisplayName()}[/]");
-
-            return 1;
-        }
-
         try
         {
             // Process each input file to find the sound bank
-            foreach (var inputFile in inputFiles)
+            foreach (var filePath in resolution.Files)
             {
-                var absolutePath = Path.Combine(resolution.GameDir, inputFile);
-                var package = ServiceProvider.PckFileFactory.Load(absolutePath);
+                var package = ServiceProvider.PckFileFactory.Load(filePath);
 
                 // Find the sound bank entry to replace
                 var entry = package.SoundBanks[bankId];
@@ -90,13 +74,28 @@ public class ReplaceCommand : Command<ReplaceSettings>
                     continue; // Try next file
                 }
 
-                AnsiConsole.MarkupLine($"[blue]Found in:[/] {inputFile}");
+                AnsiConsole.MarkupLine($"[blue]Found in:[/] {Path.GetFileName(filePath)}");
                 AnsiConsole.MarkupLine(
-                    $"[green]Found sound bank[/] [blue]{bankId:X8}[/] (Language: {package.Languages[entry.LanguageId]}, Size: {entry.Size} bytes)");
+                    $"[green]Found sound bank[/] [blue]0x{bankId:X8}[/] (Language: {package.Languages[entry.LanguageId]}, Size: {entry.Size} bytes)");
 
                 // Read the replacement data
                 var replacementData = File.ReadAllBytes(settings.Input);
                 AnsiConsole.MarkupLine($"[blue]Replacement file size:[/] {replacementData.Length} bytes");
+
+                // Create backup if requested
+                if (settings.Backup)
+                {
+                    var backupPath = GameHelpers.CreateBackup(filePath);
+
+                    if (backupPath is not null)
+                    {
+                        AnsiConsole.MarkupLine($"[blue]Backup created:[/] {backupPath}");
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine("[yellow]Warning:[/] Failed to create backup");
+                    }
+                }
 
                 // Replace the data
                 entry.ReplaceWith(replacementData);
@@ -106,8 +105,8 @@ public class ReplaceCommand : Command<ReplaceSettings>
 
                 if (Directory.Exists(settings.Output))
                 {
-                    var originalFileName = Path.GetFileNameWithoutExtension(inputFile);
-                    var extension = Path.GetExtension(inputFile);
+                    var originalFileName = Path.GetFileNameWithoutExtension(filePath);
+                    var extension = Path.GetExtension(filePath);
                     outputFile = Path.Join(settings.Output, $"{originalFileName}_modified{extension}");
                 }
 
@@ -117,12 +116,12 @@ public class ReplaceCommand : Command<ReplaceSettings>
                 AnsiConsole.MarkupLine($"[blue]Saving modified package to:[/] {outputFile}");
                 package.Save(outputFile);
 
-                AnsiConsole.MarkupLine($"[green]Done![/] Sound bank [blue]{bankId:X8}[/] has been replaced.");
+                AnsiConsole.MarkupLine($"[green]Done![/] Sound bank [blue]0x{bankId:X8}[/] has been replaced.");
 
                 return 0;
             }
 
-            AnsiConsole.MarkupLine($"[red]Sound bank {bankId:X8} not found in any input file[/]");
+            AnsiConsole.MarkupLine($"[red]Sound bank 0x{bankId:X8} not found in any input file[/]");
 
             return 1;
         }

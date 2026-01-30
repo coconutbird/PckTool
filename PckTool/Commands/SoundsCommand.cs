@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Globalization;
 
 using PckTool.Core.Games;
 using PckTool.Core.Services;
@@ -14,7 +13,7 @@ namespace PckTool.Commands;
 /// </summary>
 public class SoundsSettings : GlobalSettings
 {
-    [Description("Bank ID (hex) to list sounds from.")] [CommandOption("-b|--bank")]
+    [Description("Bank ID (decimal or hex with 0x prefix) to list sounds from.")] [CommandOption("-b|--bank")]
     public required string Bank { get; init; }
 }
 
@@ -25,40 +24,26 @@ public class SoundsCommand : Command<SoundsSettings>
 {
     public override int Execute(CommandContext context, SoundsSettings settings)
     {
-        var resolution = GameHelpers.ResolveGame(settings.Game, settings.GameDir);
+        var resolution = GameHelpers.ResolveInputFiles(settings);
 
-        if (resolution.Game == SupportedGame.Unknown || resolution.Metadata is null)
+        if (!resolution.Success)
         {
-            AnsiConsole.MarkupLine("[red]Game not specified or not supported[/]");
-            AnsiConsole.MarkupLine("[dim]Use --game hwde to specify[/]");
+            AnsiConsole.MarkupLine($"[red]{resolution.Error}[/]");
 
             return 1;
         }
 
-        if (resolution.GameDir is null)
+        if (resolution.Game.HasValue)
         {
-            AnsiConsole.MarkupLine("[red]Failed to find game directory[/]");
-            AnsiConsole.MarkupLine("[dim]Use --game-dir to specify the game installation path[/]");
-
-            return 1;
+            AnsiConsole.MarkupLine($"[green]Game:[/] {resolution.Game.Value.ToDisplayName()}");
+            AnsiConsole.MarkupLine($"[green]Directory:[/] {resolution.GameDir}");
         }
 
-        AnsiConsole.MarkupLine($"[green]Game:[/] {resolution.Game.ToDisplayName()}");
-        AnsiConsole.MarkupLine($"[green]Directory:[/] {resolution.GameDir}");
-
-        // Parse bank ID
-        if (!uint.TryParse(settings.Bank, NumberStyles.HexNumber, null, out var bankId))
+        // Parse bank ID using standardized helper
+        if (!GameHelpers.TryParseId(settings.Bank, out var bankId))
         {
-            AnsiConsole.MarkupLine("[red]Invalid bank ID format. Please use hexadecimal (e.g., 1A2B3C4D)[/]");
-
-            return 1;
-        }
-
-        var inputFiles = resolution.Metadata.GetDefaultInputFiles(resolution.GameDir).ToList();
-
-        if (inputFiles.Count == 0)
-        {
-            AnsiConsole.MarkupLine($"[red]No audio files found for {resolution.Game.ToDisplayName()}[/]");
+            AnsiConsole.MarkupLine(
+                "[red]Invalid bank ID format. Use decimal (e.g., 12345) or hex with 0x prefix (e.g., 0x1A2B3C4D)[/]");
 
             return 1;
         }
@@ -66,37 +51,38 @@ public class SoundsCommand : Command<SoundsSettings>
         using var browser = new PackageBrowser();
 
         // Load each input file
-        foreach (var inputFile in inputFiles)
+        foreach (var filePath in resolution.Files)
         {
-            var absolutePath = Path.Combine(resolution.GameDir, inputFile);
-
-            if (!browser.LoadPackage(absolutePath))
+            if (!browser.LoadPackage(filePath))
             {
-                AnsiConsole.MarkupLine($"[red]Failed to load audio file:[/] {inputFile}");
+                AnsiConsole.MarkupLine($"[red]Failed to load audio file:[/] {Path.GetFileName(filePath)}");
 
                 return 1;
             }
         }
 
-        // Try to load sound table for cue names
-        var soundTablePath = GameHelpers.FindSoundTableXml(resolution.GameDir);
-
-        if (soundTablePath is not null)
+        // Try to load sound table for cue names if we have a game directory
+        if (resolution.GameDir is not null)
         {
-            browser.LoadSoundTable(soundTablePath);
+            var soundTablePath = GameHelpers.FindSoundTableXml(resolution.GameDir);
+
+            if (soundTablePath is not null)
+            {
+                browser.LoadSoundTable(soundTablePath);
+            }
         }
 
         var sounds = browser.GetSounds(bankId).ToList();
 
         if (sounds.Count == 0)
         {
-            AnsiConsole.MarkupLine($"[yellow]No sounds found in bank {bankId:X8}[/]");
+            AnsiConsole.MarkupLine($"[yellow]No sounds found in bank 0x{bankId:X8}[/]");
 
             return 0;
         }
 
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"[bold]Sounds in bank {bankId:X8}:[/]");
+        AnsiConsole.MarkupLine($"[bold]Sounds in bank 0x{bankId:X8}:[/]");
 
         var table = new Table();
         table.AddColumn("Source ID");

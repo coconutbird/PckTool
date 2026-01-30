@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Globalization;
 
 using PckTool.Core.Games;
 using PckTool.Core.Games.HaloWars;
@@ -16,7 +15,7 @@ namespace PckTool.Commands;
 /// </summary>
 public class DumpSettings : GlobalSettings
 {
-    [Description("Specific sound bank ID (hex) to extract. If not specified, extracts all sound banks.")]
+    [Description("Specific sound bank ID (decimal or hex with 0x prefix) to extract. If not specified, extracts all.")]
     [CommandOption("-s|--soundbank")]
     public string? SoundBank { get; init; }
 
@@ -32,52 +31,43 @@ public class DumpCommand : Command<DumpSettings>
 {
     public override int Execute(CommandContext context, DumpSettings settings)
     {
-        var resolution = GameHelpers.ResolveGame(settings.Game, settings.GameDir);
+        var resolution = GameHelpers.ResolveInputFiles(settings);
 
-        if (resolution.Game == SupportedGame.Unknown || resolution.Metadata is null)
+        if (!resolution.Success)
         {
-            AnsiConsole.MarkupLine("[red]Game not specified or not supported[/]");
-            AnsiConsole.MarkupLine("[dim]Use --game hwde to specify[/]");
+            AnsiConsole.MarkupLine($"[red]{resolution.Error}[/]");
 
             return 1;
         }
 
-        if (resolution.GameDir is null)
+        if (resolution.Game.HasValue)
         {
-            AnsiConsole.MarkupLine("[red]Failed to find game directory[/]");
-            AnsiConsole.MarkupLine("[dim]Use --game-dir to specify the game installation path[/]");
-
-            return 1;
+            AnsiConsole.MarkupLine($"[green]Game:[/] {resolution.Game.Value.ToDisplayName()}");
+            AnsiConsole.MarkupLine($"[green]Directory:[/] {resolution.GameDir}");
         }
 
-        AnsiConsole.MarkupLine($"[green]Game:[/] {resolution.Game.ToDisplayName()}");
-        AnsiConsole.MarkupLine($"[green]Directory:[/] {resolution.GameDir}");
+        // Try to load sound table for cue names if we have a game directory
+        string? soundTablePath = null;
 
-        var soundTablePath = GameHelpers.FindSoundTableXml(resolution.GameDir);
-
-        if (soundTablePath is null)
+        if (resolution.GameDir is not null)
         {
-            AnsiConsole.MarkupLine("[yellow]Warning:[/] Failed to find sound table, cue names will not be resolved!");
-        }
+            soundTablePath = GameHelpers.FindSoundTableXml(resolution.GameDir);
 
-        var inputFiles = resolution.Metadata.GetDefaultInputFiles(resolution.GameDir).ToList();
-
-        if (inputFiles.Count == 0)
-        {
-            AnsiConsole.MarkupLine($"[red]No audio files found for {resolution.Game.ToDisplayName()}[/]");
-
-            return 1;
+            if (soundTablePath is null)
+            {
+                AnsiConsole.MarkupLine(
+                    "[yellow]Warning:[/] Failed to find sound table, cue names will not be resolved!");
+            }
         }
 
         try
         {
             // Process each input file
-            foreach (var inputFile in inputFiles)
+            foreach (var filePath in resolution.Files)
             {
-                var absolutePath = Path.Combine(resolution.GameDir, inputFile);
-                AnsiConsole.MarkupLine($"[blue]Processing:[/] {inputFile}");
+                AnsiConsole.MarkupLine($"[blue]Processing:[/] {Path.GetFileName(filePath)}");
 
-                var package = ServiceProvider.PckFileFactory.Load(absolutePath);
+                var package = ServiceProvider.PckFileFactory.Load(filePath);
 
                 // Phase 1: Load all soundbanks
                 var soundbanksByLanguage = new Dictionary<uint, Dictionary<uint, SoundBank>>();
@@ -87,15 +77,15 @@ public class DumpCommand : Command<DumpSettings>
 
                 if (!string.IsNullOrWhiteSpace(settings.SoundBank))
                 {
-                    if (uint.TryParse(settings.SoundBank, NumberStyles.HexNumber, null, out var parsedId))
+                    if (GameHelpers.TryParseId(settings.SoundBank, out var parsedId))
                     {
                         soundBankIdFilter = parsedId;
-                        AnsiConsole.MarkupLine($"[blue]Filtering to sound bank:[/] {parsedId:X8}");
+                        AnsiConsole.MarkupLine($"[blue]Filtering to sound bank:[/] 0x{parsedId:X8}");
                     }
                     else
                     {
                         AnsiConsole.MarkupLine(
-                            "[red]Invalid sound bank ID format. Please use hexadecimal (e.g., 1A2B3C4D)[/]");
+                            "[red]Invalid sound bank ID format. Use decimal (e.g., 12345) or hex with 0x prefix (e.g., 0x1A2B3C4D)[/]");
 
                         return 1;
                     }

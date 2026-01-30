@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Globalization;
 
 using PckTool.Core.Games;
 using PckTool.Services;
@@ -32,46 +31,28 @@ public class ReplaceWemCommand : Command<ReplaceWemSettings>
 {
     public override int Execute(CommandContext context, ReplaceWemSettings settings)
     {
-        var resolution = GameHelpers.ResolveGame(settings.Game, settings.GameDir);
+        var resolution = GameHelpers.ResolveInputFiles(settings);
 
-        if (resolution.Game == SupportedGame.Unknown || resolution.Metadata is null)
+        if (!resolution.Success)
         {
-            AnsiConsole.MarkupLine("[red]Game not specified or not supported[/]");
-            AnsiConsole.MarkupLine("[dim]Use --game hwde to specify[/]");
+            AnsiConsole.MarkupLine($"[red]{resolution.Error}[/]");
 
             return 1;
         }
 
-        if (resolution.GameDir is null)
+        if (resolution.Game.HasValue)
         {
-            AnsiConsole.MarkupLine("[red]Failed to find game directory[/]");
-            AnsiConsole.MarkupLine("[dim]Use --game-dir to specify the game installation path[/]");
+            AnsiConsole.MarkupLine($"[green]Game:[/] {resolution.Game.Value.ToDisplayName()}");
+            AnsiConsole.MarkupLine($"[green]Directory:[/] {resolution.GameDir}");
+        }
+
+        // Parse target WEM ID using standardized helper
+        if (!GameHelpers.TryParseId(settings.Target, out var targetWemId))
+        {
+            AnsiConsole.MarkupLine(
+                "[red]Invalid target WEM ID format. Use decimal (e.g., 12345) or hex with 0x prefix (e.g., 0x1A2B3C4D)[/]");
 
             return 1;
-        }
-
-        AnsiConsole.MarkupLine($"[green]Game:[/] {resolution.Game.ToDisplayName()}");
-        AnsiConsole.MarkupLine($"[green]Directory:[/] {resolution.GameDir}");
-
-        var inputFiles = resolution.Metadata.GetDefaultInputFiles(resolution.GameDir).ToList();
-
-        if (inputFiles.Count == 0)
-        {
-            AnsiConsole.MarkupLine($"[red]No audio files found for {resolution.Game.ToDisplayName()}[/]");
-
-            return 1;
-        }
-
-        // Parse target WEM ID
-        uint targetWemId;
-
-        if (settings.Target.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
-        {
-            targetWemId = uint.Parse(settings.Target[2..], NumberStyles.HexNumber);
-        }
-        else
-        {
-            targetWemId = uint.Parse(settings.Target);
         }
 
         AnsiConsole.MarkupLine($"[blue]Target WEM ID:[/] {targetWemId} (0x{targetWemId:X8})");
@@ -96,25 +77,21 @@ public class ReplaceWemCommand : Command<ReplaceWemSettings>
             else
             {
                 // Parse as WEM ID - search across all input files
-                uint sourceWemId;
+                if (!GameHelpers.TryParseId(settings.Source, out var sourceWemId))
+                {
+                    AnsiConsole.MarkupLine(
+                        "[red]Invalid source WEM ID format. Use decimal (e.g., 12345) or hex with 0x prefix (e.g., 0x1A2B3C4D)[/]");
 
-                if (settings.Source.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
-                {
-                    sourceWemId = uint.Parse(settings.Source[2..], NumberStyles.HexNumber);
-                }
-                else
-                {
-                    sourceWemId = uint.Parse(settings.Source);
+                    return 1;
                 }
 
                 AnsiConsole.MarkupLine($"[blue]Source WEM ID:[/] {sourceWemId} (0x{sourceWemId:X8})");
 
                 byte[]? foundData = null;
 
-                foreach (var inputFile in inputFiles)
+                foreach (var filePath in resolution.Files)
                 {
-                    var absolutePath = Path.Combine(resolution.GameDir, inputFile);
-                    var tempPck = ServiceProvider.PckFileFactory.Load(absolutePath);
+                    var tempPck = ServiceProvider.PckFileFactory.Load(filePath);
 
                     // Try streaming files first
                     var streamingEntry = tempPck.StreamingFiles[sourceWemId];
@@ -170,17 +147,15 @@ public class ReplaceWemCommand : Command<ReplaceWemSettings>
         try
         {
             // Process each input file to find and replace the WEM
-            foreach (var inputFile in inputFiles)
+            foreach (var filePath in resolution.Files)
             {
-                var absolutePath = Path.Combine(resolution.GameDir, inputFile);
-
-                if (!File.Exists(absolutePath))
+                if (!File.Exists(filePath))
                 {
                     continue;
                 }
 
-                AnsiConsole.MarkupLine($"[blue]Loading:[/] {inputFile}");
-                var package = ServiceProvider.PckFileFactory.Load(absolutePath);
+                AnsiConsole.MarkupLine($"[blue]Loading:[/] {Path.GetFileName(filePath)}");
+                var package = ServiceProvider.PckFileFactory.Load(filePath);
 
                 // Replace the WEM using the unified API
                 AnsiConsole.MarkupLine("[blue]Replacing WEM...[/]");
@@ -189,6 +164,21 @@ public class ReplaceWemCommand : Command<ReplaceWemSettings>
                 if (!result.ReplacedInStreaming && result.EmbeddedBanksModified == 0)
                 {
                     continue; // WEM not found in this file
+                }
+
+                // Create backup if requested
+                if (settings.Backup)
+                {
+                    var backupPath = GameHelpers.CreateBackup(filePath);
+
+                    if (backupPath is not null)
+                    {
+                        AnsiConsole.MarkupLine($"[blue]Backup created:[/] {backupPath}");
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine("[yellow]Warning:[/] Failed to create backup");
+                    }
                 }
 
                 AnsiConsole.WriteLine();
@@ -205,14 +195,14 @@ public class ReplaceWemCommand : Command<ReplaceWemSettings>
 
                 if (Directory.Exists(settings.Output))
                 {
-                    var originalFileName = Path.GetFileNameWithoutExtension(inputFile);
-                    var extension = Path.GetExtension(inputFile);
+                    var originalFileName = Path.GetFileNameWithoutExtension(filePath);
+                    var extension = Path.GetExtension(filePath);
                     outputFile = Path.Combine(settings.Output, $"{originalFileName}_modified{extension}");
                 }
                 else if (!settings.Output.EndsWith(".pck", StringComparison.OrdinalIgnoreCase)
                          && !settings.Output.EndsWith(".bnk", StringComparison.OrdinalIgnoreCase))
                 {
-                    outputFile = settings.Output + Path.GetExtension(inputFile);
+                    outputFile = settings.Output + Path.GetExtension(filePath);
                 }
 
                 GameHelpers.EnsureDirectoryCreated(outputFile);
