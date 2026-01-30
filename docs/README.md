@@ -9,6 +9,8 @@ A .NET library and CLI tool for manipulating Wwise PCK audio packages, specifica
 - **Create** new PCK packages and sound banks from scratch
 - **Query** package contents and sound bank information
 - **Browse** audio interactively by language and bank
+- **Search** for WEM IDs or cue names across all sound banks
+- **Batch Projects** for reproducible multi-file audio replacement workflows
 
 ## Quick Start
 
@@ -61,9 +63,10 @@ var pck = PckFile.Load("sounds.pck");
 
 // Replace a WEM file
 var result = pck.ReplaceWem(sourceId, newWemData);
-
-// Save changes
-pck.Save("sounds_modified.pck");
+if (result.WasReplaced)
+{
+    pck.Save("sounds_modified.pck");
+}
 ```
 
 ### Using the Factory Pattern
@@ -86,16 +89,28 @@ pck.Save("output.pck");
 
 ## CLI Commands
 
-| Command | Description |
-|---------|-------------|
-| `dump` | Extract all sound banks and WEM files |
-| `replace` | Replace a sound bank with a .bnk file |
-| `replace-wem` | Replace a specific WEM file |
-| `list` | List all sound banks in the package |
-| `browse` | Interactive browser for audio content |
-| `info` | Show configuration information |
-| `sounds` | List sounds in a specific bank |
-| `project` | Project management commands |
+| Command       | Description                                      |
+| ------------- | ------------------------------------------------ |
+| `dump`        | Extract all sound banks and WEM files            |
+| `replace`     | Replace a sound bank with a .bnk file            |
+| `replace-wem` | Replace a specific WEM file                      |
+| `list`        | List all sound banks in the package              |
+| `browse`      | Interactive browser for audio content            |
+| `info`        | Show configuration information                   |
+| `sounds`      | List sounds in a specific bank                   |
+| `find`        | Search for WEM IDs or cue names across all banks |
+
+### Batch Commands
+
+| Command            | Description                             |
+| ------------------ | --------------------------------------- |
+| `batch create`     | Create a new batch project file         |
+| `batch run`        | Execute a batch project                 |
+| `batch info`       | Show batch project information          |
+| `batch add-action` | Add an action to a batch project        |
+| `batch rm-action`  | Remove an action from a batch project   |
+| `batch validate`   | Validate a batch project configuration  |
+| `batch schema`     | Generate JSON schema for batch projects |
 
 ### Examples
 
@@ -108,6 +123,14 @@ PckTool replace-wem --target 0x39E3B0F1 --source custom.wem
 
 # Browse Japanese audio
 PckTool browse --language Japanese
+
+# Find which bank contains a WEM ID
+PckTool find --wem 0x39E3B0F1
+
+# Create and run a batch project
+PckTool batch create mymod.json --name "My Mod" --game hwde
+PckTool batch add-action mymod.json --id 0x39E3B0F1 --source custom.wem
+PckTool batch run mymod.json
 ```
 
 ## Documentation
@@ -118,12 +141,15 @@ PckTool browse --language Japanese
 ## File Formats
 
 ### PCK Package Files
+
 Wwise package files containing sound banks and streaming audio.
 
 ### BNK Sound Bank Files
+
 Wwise sound bank files containing embedded audio and HIRC metadata.
 
 ### WEM Audio Files
+
 Wwise Encoded Media - the actual audio data (Vorbis-encoded).
 
 ## Requirements
@@ -139,4 +165,3 @@ MIT License
 
 - Audiokinetic for the Wwise audio middleware
 - The Halo Wars modding community
-

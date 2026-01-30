@@ -7,8 +7,9 @@ A .NET library and CLI tool for manipulating Wwise PCK audio packages, specifica
 - **Extract** sound banks and WEM audio files from PCK packages
 - **Replace** WEM audio files with custom audio
 - **Browse** audio content interactively by language and sound bank
+- **Search** for WEM IDs or cue names across all sound banks
 - **List** and inspect package contents and sound bank information
-  <!-- - **Project Management** for organizing modding workflows -->
+- **Batch Projects** for reproducible multi-file audio replacement workflows
 
 ## Requirements
 
@@ -39,12 +40,20 @@ dotnet run --project PckTool -- --help
 | `list`        | List all sound banks in the package                 |
 | `browse`      | Interactive browser for audio content               |
 | `sounds`      | List all sounds in a specific bank                  |
+| `find`        | Search for WEM IDs or cue names across all banks    |
 | `info`        | Show configuration and path information             |
 
-<!-- Project commands (coming soon):
-| `project create` | Create a new modding project file |
-| `project info`   | Show project information          |
--->
+### Batch Commands
+
+| Command            | Description                             |
+| ------------------ | --------------------------------------- |
+| `batch create`     | Create a new batch project file         |
+| `batch run`        | Execute a batch project                 |
+| `batch info`       | Show batch project information          |
+| `batch add-action` | Add an action to a batch project        |
+| `batch rm-action`  | Remove an action from a batch project   |
+| `batch validate`   | Validate a batch project configuration  |
+| `batch schema`     | Generate JSON schema for batch projects |
 
 ## Usage Examples
 
@@ -69,6 +78,31 @@ PckTool list --verbose
 
 # Browse audio interactively
 PckTool browse
+
+# Find which bank contains a WEM ID
+PckTool find --wem 970927665
+
+# Search for sounds by cue name
+PckTool find --name "explosion"
+```
+
+### Batch Project Examples
+
+```bash
+# Create a new batch project
+PckTool batch create mymod.json --name "My Audio Mod" --game hwde
+
+# Add a WEM replacement action
+PckTool batch add-action mymod.json --action replace --target-type wem --id 0x39E3B0F1 --source custom.wem
+
+# Validate the project
+PckTool batch validate mymod.json
+
+# Execute the batch project
+PckTool batch run mymod.json
+
+# Dry run to see what would be modified
+PckTool batch run mymod.json --dry-run
 ```
 
 ## Project Structure
@@ -102,15 +136,15 @@ using PckTool.Core.WWise.Bnk;
 var pck = PckFile.Load("Sounds.pck");
 
 // Iterate sound banks
-foreach (var entry in pck.SoundBanks.Entries)
+foreach (var entry in pck.SoundBanks)
 {
-    var soundbank = SoundBank.Parse(entry.GetData());
+    var soundbank = entry.Parse();
     Console.WriteLine($"Bank: {soundbank.Id:X8}, Media: {soundbank.Media.Count}");
 }
 
 // Replace a WEM file
 var result = pck.ReplaceWem(targetWemId, newWemData);
-if (result.Success)
+if (result.WasReplaced)
 {
     pck.Save("Sounds_modified.pck");
 }

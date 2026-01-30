@@ -21,6 +21,7 @@ SoundsUnpack/
 **Purpose**: Define contracts and interfaces with zero external dependencies.
 
 **Key Interfaces**:
+
 - `IPckFile` - Core PCK file operations (load, save, query, modify)
 - `IPckFileFactory` - Factory for creating/loading PCK files
 - `ISoundBank` - Wwise soundbank operations
@@ -30,6 +31,7 @@ SoundsUnpack/
 - `IHircItem` - HIRC hierarchy items
 
 **Patterns**:
+
 - `Result<T>` / `Result` - Error handling without exceptions
 - `WemReplacementResult` - Result type for WEM replacement operations
 
@@ -40,6 +42,7 @@ SoundsUnpack/
 **Key Components**:
 
 #### WWise/Pck/ - Package File Handling
+
 - `PckFile` - Main PCK file class (implements `IPckFile`)
 - `PckFileFactory` - Factory implementation (implements `IPckFileFactory`)
 - `SoundBankLut` - Sound bank lookup table
@@ -47,12 +50,14 @@ SoundsUnpack/
 - `StringMap` - Language name mapping
 
 #### WWise/Bnk/ - Sound Bank Handling
+
 - `SoundBank` - BNK file parsing and serialization (implements `ISoundBank`)
 - `SoundBankBuilder` - Fluent builder (implements `ISoundBankBuilder`)
 - `MediaCollection` - Embedded WEM audio
 - `HircCollection` - HIRC items collection
 
 #### WWise/Bnk/Chunks/ - BNK Chunk Types
+
 - `BkhdChunk` - Bank header
 - `DidxChunk` - Data index
 - `DataChunk` - Audio data
@@ -64,20 +69,34 @@ SoundsUnpack/
 **Purpose**: Command-line interface for end users.
 
 **Commands**:
+
 - `dump` - Extract sound banks and WEM files
 - `replace` - Replace a sound bank
 - `replace-wem` - Replace a WEM file
 - `list` - List sound banks
 - `browse` - Interactive browser
+- `sounds` - List sounds in a specific bank
+- `find` - Search for WEM IDs or cue names
 - `info` - Show configuration info
-- `project create` / `project info` - Project management
+
+**Batch Commands**:
+
+- `batch create` - Create a new batch project file
+- `batch run` - Execute a batch project
+- `batch info` - Show batch project information
+- `batch add-action` - Add an action to a batch project
+- `batch rm-action` - Remove an action from a batch project
+- `batch validate` - Validate a batch project configuration
+- `batch schema` - Generate JSON schema for batch projects
 
 **Services**:
+
 - `ServiceProvider` - Lightweight service locator for testability
 
 ## Design Patterns
 
 ### Factory Pattern
+
 ```csharp
 // Create empty PCK file
 var pck = ServiceProvider.PckFileFactory.Create();
@@ -87,6 +106,7 @@ var pck = ServiceProvider.PckFileFactory.Load("path/to/sounds.pck");
 ```
 
 ### Builder Pattern
+
 ```csharp
 var soundBank = ServiceProvider.CreateSoundBankBuilder()
     .WithId(0x12345678)
@@ -97,6 +117,7 @@ var soundBank = ServiceProvider.CreateSoundBankBuilder()
 ```
 
 ### Result Pattern
+
 ```csharp
 var result = pckFile.ReplaceWem(sourceId, newData);
 if (result.IsSuccess)
@@ -119,6 +140,7 @@ User Input → CLI → Core → File System
 ## Wwise File Format
 
 ### PCK Package Structure
+
 ```
 AKPK Header
 ├── Languages (StringMap)
@@ -129,6 +151,7 @@ AKPK Header
 ```
 
 ### BNK SoundBank Structure
+
 ```
 BNK File
 ├── BKHD (Bank Header)
@@ -142,8 +165,8 @@ BNK File
 ## Testing
 
 Tests are located in `tests/PckTool.Core.Tests/` and cover:
+
 - Serialization round-trips
 - Equality comparisons
 - WEM replacement functionality
 - HIRC item parsing
-
