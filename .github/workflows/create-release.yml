@@ -1,0 +1,39 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  create-tag:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate tag
+        id: tag
+        run: |
+          $date = Get-Date -Format "yyyy.MM.dd"
+          $baseTag = "v$date"
+          $counter = 0
+          $tag = $baseTag
+
+          while (git tag -l $tag) {
+            $counter++
+            $tag = "$baseTag.$counter"
+          }
+
+          echo "tag=$tag" >> $env:GITHUB_OUTPUT
+          echo "Generated tag: $tag"
+
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag ${{ steps.tag.outputs.tag }}
+          git push origin ${{ steps.tag.outputs.tag }}
