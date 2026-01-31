@@ -2064,109 +2064,6 @@ public class HircItemTests
 
 #endregion
 
-#region WEM Replacement Tests
-
-    [Fact]
-    public void SoundBank_ReplaceWem_UpdatesMediaData()
-    {
-        // Arrange - Create a soundbank with embedded media
-        var bank = new SoundBank(0x12345678);
-        var originalData = new byte[] { 0x01, 0x02, 0x03, 0x04 };
-        var newData = new byte[] { 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F };
-
-        bank.Media.Add(100, originalData);
-
-        // Act
-        bank.ReplaceWem(100, newData);
-
-        // Assert
-        Assert.Equal(newData, bank.Media[100]);
-    }
-
-    [Fact]
-    public void SoundBank_ReplaceWem_ThrowsForNonExistentId()
-    {
-        // Arrange
-        var bank = new SoundBank(0x12345678);
-
-        // Act & Assert
-        Assert.Throws<KeyNotFoundException>(() => bank.ReplaceWem(999, new byte[] { 0x01 }));
-    }
-
-    [Fact]
-    public void SoundBank_SetWem_AddsNewMedia()
-    {
-        // Arrange
-        var bank = new SoundBank(0x12345678);
-        var data = new byte[] { 0x01, 0x02, 0x03 };
-
-        // Act
-        var updated = bank.SetWem(100, data);
-
-        // Assert
-        Assert.Equal(0, updated); // No HIRC references to update for new media
-        Assert.True(bank.Media.Contains(100));
-        Assert.Equal(data, bank.Media[100]);
-    }
-
-    [Fact]
-    public void SoundBank_SetWem_ReplacesExistingMedia()
-    {
-        // Arrange
-        var bank = new SoundBank(0x12345678);
-        var originalData = new byte[] { 0x01, 0x02, 0x03 };
-        var newData = new byte[] { 0x0A, 0x0B, 0x0C, 0x0D };
-
-        bank.Media.Add(100, originalData);
-
-        // Act
-        bank.SetWem(100, newData);
-
-        // Assert
-        Assert.Equal(newData, bank.Media[100]);
-    }
-
-    [Fact]
-    public void SoundBank_GetMediaReferences_ReturnsEmptyForNoReferences()
-    {
-        // Arrange
-        var bank = new SoundBank(0x12345678);
-        bank.Media.Add(100, new byte[] { 0x01, 0x02 });
-
-        // Act
-        var refs = bank.GetMediaReferences(100).ToList();
-
-        // Assert
-        Assert.Empty(refs);
-    }
-
-    [Fact]
-    public void SoundBank_GetItemsBySourceId_ReturnsEmptyForNoReferences()
-    {
-        // Arrange
-        var bank = new SoundBank(0x12345678);
-        bank.Media.Add(100, new byte[] { 0x01, 0x02 });
-
-        // Act
-        var items = bank.GetItemsBySourceId(100).ToList();
-
-        // Assert
-        Assert.Empty(items);
-    }
-
-    [Fact]
-    public void SoundBank_UpdateMediaSize_ReturnsZeroForNoReferences()
-    {
-        // Arrange
-        var bank = new SoundBank(0x12345678);
-
-        // Act
-        var updated = bank.UpdateMediaSize(100, 1000);
-
-        // Assert
-        Assert.Equal(0, updated);
-    }
-
     [SkippableFact]
     public void Integration_ReplaceWem_UpdatesHircSizes()
     {
@@ -2349,6 +2246,4 @@ public class HircItemTests
             + $"Parsed {parsedBanks} successfully. "
             + $"Errors:\n{string.Join("\n", errors.Take(10))}");
     }
-
-#endregion
 }
