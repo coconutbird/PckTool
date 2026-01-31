@@ -1,30 +1,46 @@
+using PckTool.Abstractions;
 using PckTool.Core.Games.HaloWars;
+using PckTool.Core.WWise;
 using PckTool.Core.WWise.Bnk;
 using PckTool.Core.WWise.Bnk.Enums;
-using PckTool.Core.WWise.Pck;
 
 namespace PckTool.Core.Services;
 
 /// <summary>
-///     Provides a unified API for browsing PCK files, banks, and sounds.
+///     Provides a unified API for browsing PCK and BNK files, banks, and sounds.
 ///     Can be used by both CLI and UI applications.
 /// </summary>
 public class PackageBrowser : IDisposable
 {
+    private readonly IAudioFileFactory _audioFileFactory;
+    private IAudioFile? _audioFile;
     private bool _fileIdsResolved;
-    private PckFile? _package;
     private Dictionary<uint, SoundBank>? _parsedBanks;
     private SoundTable? _soundTable;
 
     /// <summary>
-    ///     The currently loaded package file path.
+    ///     Initializes a new instance of the <see cref="PackageBrowser" /> class.
     /// </summary>
-    public string? PackagePath => _package?.SourcePath;
+    public PackageBrowser() : this(new AudioFileFactory()) { }
 
     /// <summary>
-    ///     Whether a package is currently loaded.
+    ///     Initializes a new instance of the <see cref="PackageBrowser" /> class.
     /// </summary>
-    public bool IsPackageLoaded => _package is not null;
+    /// <param name="audioFileFactory">The factory for loading audio files.</param>
+    public PackageBrowser(IAudioFileFactory audioFileFactory)
+    {
+        _audioFileFactory = audioFileFactory ?? throw new ArgumentNullException(nameof(audioFileFactory));
+    }
+
+    /// <summary>
+    ///     The currently loaded audio file path.
+    /// </summary>
+    public string? PackagePath => _audioFile?.SourcePath;
+
+    /// <summary>
+    ///     Whether an audio file is currently loaded.
+    /// </summary>
+    public bool IsPackageLoaded => _audioFile is not null;
 
     /// <summary>
     ///     Whether a sound table is loaded.
@@ -32,33 +48,40 @@ public class PackageBrowser : IDisposable
     public bool IsSoundTableLoaded => _soundTable is not null;
 
     /// <summary>
-    ///     All available languages in the loaded package.
+    ///     All available languages in the loaded audio file.
     /// </summary>
-    public IReadOnlyDictionary<uint, string> Languages => _package?.Languages ?? new Dictionary<uint, string>();
+    public IReadOnlyDictionary<uint, string> Languages => _audioFile?.Languages ?? new Dictionary<uint, string>();
 
     public void Dispose()
     {
-        _package?.Dispose();
-        _package = null;
+        _audioFile?.Dispose();
+        _audioFile = null;
         _parsedBanks = null;
         _soundTable = null;
     }
 
     /// <summary>
-    ///     Loads a PCK package file.
+    ///     Loads an audio file (PCK or BNK).
     /// </summary>
-    /// <param name="path">Path to the .pck file.</param>
+    /// <param name="path">Path to the .pck or .bnk file.</param>
     /// <returns>True if loaded successfully.</returns>
     public bool LoadPackage(string path)
     {
-        _package?.Dispose();
-        _package = null;
+        _audioFile?.Dispose();
+        _audioFile = null;
         _parsedBanks = null;
         _fileIdsResolved = false;
 
-        _package = PckFile.Load(path);
+        try
+        {
+            _audioFile = _audioFileFactory.Load(path);
+        }
+        catch
+        {
+            return false;
+        }
 
-        if (_package is null)
+        if (_audioFile is null)
         {
             return false;
         }
@@ -66,13 +89,13 @@ public class PackageBrowser : IDisposable
         // Pre-parse all banks for efficient access
         _parsedBanks = new Dictionary<uint, SoundBank>();
 
-        foreach (var entry in _package.SoundBanks.Entries)
+        foreach (var entry in _audioFile.SoundBanks.Entries)
         {
             var parsed = entry.Parse();
 
-            if (parsed is not null)
+            if (parsed is SoundBank soundBank)
             {
-                _parsedBanks[entry.Id] = parsed;
+                _parsedBanks[entry.Id] = soundBank;
             }
         }
 
@@ -102,8 +125,8 @@ public class PackageBrowser : IDisposable
             return false;
         }
 
-        // If package is already loaded, resolve file IDs
-        if (_package is not null && _parsedBanks is not null)
+        // If audio file is already loaded, resolve file IDs
+        if (_audioFile is not null && _parsedBanks is not null)
         {
             ResolveFileIds();
         }
@@ -112,18 +135,18 @@ public class PackageBrowser : IDisposable
     }
 
     /// <summary>
-    ///     Gets all banks in the package.
+    ///     Gets all banks in the audio file.
     /// </summary>
     /// <param name="languageId">Optional language filter.</param>
     /// <returns>Enumerable of bank information.</returns>
     public IEnumerable<BankInfo> GetBanks(uint? languageId = null)
     {
-        if (_package is null)
+        if (_audioFile is null)
         {
             yield break;
         }
 
-        foreach (var entry in _package.SoundBanks.Entries)
+        foreach (var entry in _audioFile.SoundBanks.Entries)
         {
             if (languageId.HasValue && entry.LanguageId != languageId.Value)
             {
@@ -137,10 +160,9 @@ public class PackageBrowser : IDisposable
             {
                 Id = entry.Id,
                 LanguageId = entry.LanguageId,
-                Language = entry.Language
-                           ?? _package.Languages.GetValueOrDefault(
-                               entry.LanguageId,
-                               $"Unknown ({entry.LanguageId})"),
+                Language = _audioFile.Languages.GetValueOrDefault(
+                    entry.LanguageId,
+                    $"Unknown ({entry.LanguageId})"),
                 Size = entry.Size,
                 SoundCount = soundCount,
                 IsValid = parsed?.IsValid ?? false
@@ -200,12 +222,12 @@ public class PackageBrowser : IDisposable
     /// <returns>Bank details, or null if not found.</returns>
     public BankDetails? GetBankDetails(uint bankId)
     {
-        if (_package is null)
+        if (_audioFile is null)
         {
             return null;
         }
 
-        var entry = _package.SoundBanks[bankId];
+        var entry = _audioFile.SoundBanks[bankId];
 
         if (entry is null)
         {
@@ -218,8 +240,7 @@ public class PackageBrowser : IDisposable
         {
             Id = entry.Id,
             LanguageId = entry.LanguageId,
-            Language = entry.Language
-                       ?? _package.Languages.GetValueOrDefault(entry.LanguageId, $"Unknown ({entry.LanguageId})"),
+            Language = _audioFile.Languages.GetValueOrDefault(entry.LanguageId, $"Unknown ({entry.LanguageId})"),
             Size = entry.Size,
             Version = parsed?.Version ?? 0,
             ProjectId = parsed?.ProjectId ?? 0,

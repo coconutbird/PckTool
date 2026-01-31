@@ -390,7 +390,7 @@ public class BatchProjectRunCommand : Command<BatchProjectRunSettings>
         }
 
         // Create executor
-        var executor = new BatchProjectExecutor(ServiceProvider.PckFileFactory);
+        var executor = new BatchProjectExecutor(ServiceProvider.AudioFileFactory);
 
         // Subscribe to events for progress reporting
         executor.ActionStarted += (_, e) =>

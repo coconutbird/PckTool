@@ -3,7 +3,7 @@ using System.Collections.Specialized;
 
 using PckTool.Core.WWise.Bnk.Hirc.Items;
 
-namespace PckTool.Core.WWise.Bnk;
+namespace PckTool.Core.WWise.Bnk.Collections;
 
 /// <summary>
 ///     Observable dictionary-backed collection for HIRC items.
