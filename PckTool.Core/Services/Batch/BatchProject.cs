@@ -112,6 +112,19 @@ public sealed class BatchProject : IBatchProject
     /// <inheritdoc />
     public BatchProjectValidationResult Validate()
     {
+        return Validate(null);
+    }
+
+    /// <summary>
+    ///     Validates the batch project configuration with an optional resolved game directory.
+    /// </summary>
+    /// <param name="resolvedGameDirectory">
+    ///     The resolved game directory for input file validation.
+    ///     If null, uses <see cref="GameDir" /> or skips input file existence checks.
+    /// </param>
+    /// <returns>A validation result indicating success or failure with error messages.</returns>
+    public BatchProjectValidationResult Validate(string? resolvedGameDirectory)
+    {
         var errors = new List<string>();
 
         if (string.IsNullOrWhiteSpace(Name))
@@ -125,18 +138,22 @@ public sealed class BatchProject : IBatchProject
         }
         else
         {
-            var basePath = GetBasePath();
+            // Input files are relative to the game directory
+            var gameDir = resolvedGameDirectory ?? GameDir;
 
-            for (var i = 0; i < InputFiles.Count; i++)
+            if (gameDir is not null)
             {
-                var inputFile = InputFiles[i];
-                var fullPath = Path.IsPathRooted(inputFile)
-                    ? inputFile
-                    : Path.Combine(basePath, inputFile);
-
-                if (!File.Exists(fullPath))
+                for (var i = 0; i < InputFiles.Count; i++)
                 {
-                    errors.Add($"Input file not found: {inputFile}");
+                    var inputFile = InputFiles[i];
+                    var fullPath = Path.IsPathRooted(inputFile)
+                        ? inputFile
+                        : Path.Combine(gameDir, inputFile);
+
+                    if (!File.Exists(fullPath))
+                    {
+                        errors.Add($"Input file not found: {inputFile}");
+                    }
                 }
             }
         }
@@ -147,13 +164,27 @@ public sealed class BatchProject : IBatchProject
         }
         else
         {
+            // Action source paths are relative to the project file directory
+            var basePath = GetBasePath();
+
             for (var i = 0; i < Actions.Count; i++)
             {
-                var result = Actions[i].Validate();
+                var action = Actions[i];
+                var result = action.Validate();
 
                 if (!result.IsValid)
                 {
                     errors.Add($"Action {i + 1}: {result.ErrorMessage}");
+                }
+                else if (action is ReplaceAction replaceAction)
+                {
+                    // Also validate that the source file exists
+                    var sourceResult = replaceAction.ValidateWithBasePath(basePath);
+
+                    if (!sourceResult.IsValid)
+                    {
+                        errors.Add($"Action {i + 1}: {sourceResult.ErrorMessage}");
+                    }
                 }
             }
         }
@@ -207,7 +238,7 @@ public sealed class BatchProject : IBatchProject
 
             if (project is not null)
             {
-                project.FilePath = path;
+                project.FilePath = Path.GetFullPath(path);
             }
 
             return project;
@@ -260,7 +291,9 @@ public sealed class BatchProject : IBatchProject
 
             using var stream = File.Create(path);
             Save(stream);
-            FilePath = path;
+
+            // Convert to absolute path to ensure relative paths in the project resolve correctly
+            FilePath = Path.GetFullPath(path);
 
             return true;
         }

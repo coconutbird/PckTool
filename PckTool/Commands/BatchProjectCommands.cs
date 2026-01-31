@@ -60,6 +60,10 @@ public class BatchProjectRunSettings : CommandSettings
 
     [Description("Enable verbose output.")] [CommandOption("-v|--verbose")] [DefaultValue(false)]
     public bool Verbose { get; init; }
+
+    [Description("Override game installation path (if auto-detection fails or differs from project).")]
+    [CommandOption("--game-dir")]
+    public string? GameDir { get; init; }
 }
 
 /// <summary>
@@ -129,6 +133,10 @@ public class BatchProjectValidateSettings : CommandSettings
 
     [Description("Check that source files exist.")] [CommandOption("--check-files")] [DefaultValue(true)]
     public bool CheckFiles { get; init; } = true;
+
+    [Description("Override game installation path (if auto-detection fails or differs from project).")]
+    [CommandOption("--game-dir")]
+    public string? GameDir { get; init; }
 }
 
 #endregion
@@ -345,8 +353,29 @@ public class BatchProjectRunCommand : Command<BatchProjectRunSettings>
 
         AnsiConsole.WriteLine();
 
-        // Validate first
-        var validation = project.Validate();
+        // Resolve game directory: command line > project file > auto-detect
+        var gameDir = settings.GameDir ?? project.GameDir;
+
+        if (gameDir is null && project.Game is not null)
+        {
+            // Try to auto-detect from game identifier
+            var resolution = GameHelpers.ResolveGame(project.Game, null);
+            gameDir = resolution.GameDir;
+        }
+
+        if (gameDir is null)
+        {
+            AnsiConsole.MarkupLine(
+                "[red]Game directory is required.[/] Use --game-dir or set gameDir/game in the project file.");
+
+            return 1;
+        }
+
+        AnsiConsole.MarkupLine($"[dim]Game directory: {gameDir}[/]");
+        AnsiConsole.WriteLine();
+
+        // Validate with resolved game directory
+        var validation = project.Validate(gameDir);
 
         if (!validation.IsValid)
         {
@@ -392,10 +421,10 @@ public class BatchProjectRunCommand : Command<BatchProjectRunSettings>
             }
         };
 
-        // Execute
+        // Execute with resolved game directory
         try
         {
-            var result = executor.Execute(project, settings.DryRun);
+            var result = executor.Execute(project, gameDir, settings.DryRun);
 
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine($"[bold]{result.Summary}[/]");
@@ -693,43 +722,36 @@ public class BatchProjectValidateCommand : Command<BatchProjectValidateSettings>
         AnsiConsole.MarkupLine($"[bold]Validating:[/] {project.Name}");
         AnsiConsole.WriteLine();
 
+        // Resolve game directory: command line > project file > auto-detect
+        var gameDir = settings.GameDir ?? project.GameDir;
+
+        if (gameDir is null && project.Game is not null)
+        {
+            var resolution = GameHelpers.ResolveGame(project.Game, null);
+            gameDir = resolution.GameDir;
+        }
+
+        if (gameDir is not null)
+        {
+            AnsiConsole.MarkupLine($"[dim]Game directory: {gameDir}[/]");
+            AnsiConsole.WriteLine();
+        }
+
         var errors = new List<string>();
         var warnings = new List<string>();
 
-        // Basic validation
-        var validation = project.Validate();
+        // Basic validation with resolved game directory
+        var validation = project.Validate(gameDir);
 
         if (!validation.IsValid)
         {
             errors.AddRange(validation.Errors);
         }
 
-        // Check source files exist
-        if (settings.CheckFiles)
+        // Additional file checks (source paths are relative to project file)
+        if (settings.CheckFiles && gameDir is null)
         {
-            foreach (var action in project.Actions)
-            {
-                var sourcePath = action switch
-                {
-                    ReplaceAction r => r.SourcePath,
-                    AddAction a => a.SourcePath,
-                    _ => null
-                };
-
-                if (sourcePath is not null && !File.Exists(sourcePath))
-                {
-                    errors.Add($"Source file not found: {sourcePath}");
-                }
-            }
-
-            // Check input files
-            foreach (var inputFile in project.InputFiles)
-            {
-                if (!File.Exists(inputFile))
-                {
-                    warnings.Add($"Input file not found: {inputFile}");
-                }
-            }
+            warnings.Add("Game directory not resolved - cannot validate input file paths.");
         }
 
         // Display results

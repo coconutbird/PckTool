@@ -37,10 +37,33 @@ public sealed class BatchProjectExecutor
     /// <returns>The execution result.</returns>
     public BatchExecutionResult Execute(BatchProject project, bool dryRun = false)
     {
+        return Execute(project, null, dryRun);
+    }
+
+    /// <summary>
+    ///     Executes all actions in the batch project with a resolved game directory.
+    /// </summary>
+    /// <param name="project">The batch project to execute.</param>
+    /// <param name="resolvedGameDirectory">
+    ///     The resolved game directory for input files.
+    ///     If null, uses <see cref="BatchProject.GameDir" /> from the project.
+    /// </param>
+    /// <param name="dryRun">If true, validates without making changes.</param>
+    /// <returns>The execution result.</returns>
+    public BatchExecutionResult Execute(BatchProject project, string? resolvedGameDirectory, bool dryRun = false)
+    {
         var results = new List<ActionExecutionResult>();
+
+        // Base path is the project file directory (for action source paths)
         var basePath = project.GetBasePath();
 
-        // Load all input files
+        // Game directory is for input files (relative to game installation)
+        var gameDir = resolvedGameDirectory
+                      ?? project.GameDir
+                      ?? throw new InvalidOperationException(
+                          "Game directory is required. Either set GameDir in the project or pass resolvedGameDirectory.");
+
+        // Load all input files (relative to game directory)
         var loadedFiles = new Dictionary<string, IPckFile>();
 
         try
@@ -49,13 +72,13 @@ public sealed class BatchProjectExecutor
             {
                 var fullPath = Path.IsPathRooted(inputFile)
                     ? inputFile
-                    : Path.Combine(basePath, inputFile);
+                    : Path.Combine(gameDir, inputFile);
 
                 var pck = _pckFileFactory.Load(fullPath);
                 loadedFiles[inputFile] = pck;
             }
 
-            // Execute each action
+            // Execute each action (source paths are relative to project file directory)
             for (var i = 0; i < project.Actions.Count; i++)
             {
                 var action = project.Actions[i];
@@ -70,7 +93,7 @@ public sealed class BatchProjectExecutor
             // Save modified files if not dry run
             if (!dryRun)
             {
-                SaveModifiedFiles(project, loadedFiles, basePath);
+                SaveModifiedFiles(project, loadedFiles, gameDir, basePath);
             }
         }
         finally
@@ -224,6 +247,7 @@ public sealed class BatchProjectExecutor
     private static void SaveModifiedFiles(
         BatchProject project,
         Dictionary<string, IPckFile> loadedFiles,
+        string gameDir,
         string basePath)
     {
         var outputDir = project.OutputDirectory;
@@ -239,6 +263,7 @@ public sealed class BatchProjectExecutor
 
             if (!string.IsNullOrEmpty(outputDir))
             {
+                // Output directory is relative to project file directory
                 var outputDirFull = Path.IsPathRooted(outputDir)
                     ? outputDir
                     : Path.Combine(basePath, outputDir);
@@ -253,12 +278,12 @@ public sealed class BatchProjectExecutor
             }
             else
             {
-                // Save to same location with _modified suffix
+                // Save to same location with _modified suffix (input files are relative to game dir)
                 var inputPath = Path.IsPathRooted(inputFile)
                     ? inputFile
-                    : Path.Combine(basePath, inputFile);
+                    : Path.Combine(gameDir, inputFile);
 
-                var dir = Path.GetDirectoryName(inputPath) ?? basePath;
+                var dir = Path.GetDirectoryName(inputPath) ?? gameDir;
                 var name = Path.GetFileNameWithoutExtension(inputPath);
                 var ext = Path.GetExtension(inputPath);
                 outputPath = Path.Combine(dir, $"{name}_modified{ext}");
