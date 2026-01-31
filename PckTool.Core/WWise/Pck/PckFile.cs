@@ -680,7 +680,16 @@ public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile, IAudioFile
                 currentOffset += entry.BlockSize - currentOffset % entry.BlockSize;
             }
 
-            entry.StartBlock = currentOffset;
+            // Store StartBlock as a block index when BlockSize > 1
+            if (entry.BlockSize > 1)
+            {
+                entry.StartBlock = currentOffset / entry.BlockSize;
+            }
+            else
+            {
+                entry.StartBlock = currentOffset;
+            }
+
             currentOffset += (uint) entry.Size;
         }
     }
@@ -691,7 +700,10 @@ public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile, IAudioFile
     {
         foreach (var entry in lut)
         {
-            writer.BaseStream.Position = entry.StartBlock;
+            // Calculate actual byte offset from StartBlock
+            // If BlockSize > 1, StartBlock is a block index
+            var byteOffset = (long) entry.StartBlock * entry.BlockSize;
+            writer.BaseStream.Position = byteOffset;
             writer.Write(entry.GetData());
         }
     }
