@@ -67,7 +67,7 @@ public class BnkFile : IAudioFile
     /// <inheritdoc />
     public byte[]? FindWem(uint sourceId)
     {
-        return SoundBank.GetMedia(sourceId);
+        return SoundBank.ContainsMedia(sourceId) ? SoundBank.GetMedia(sourceId) : null;
     }
 
     /// <inheritdoc />
