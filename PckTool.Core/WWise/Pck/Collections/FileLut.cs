@@ -150,9 +150,6 @@ public abstract class FileLut<TKey, TEntry> : IEnumerable<TEntry>, IEquatable<Fi
                     + $"LUT size={size}, KeySize={KeySize}");
             }
 
-            // Calculate actual byte offset: startBlock is a block index, multiply by blockSize
-            // For HWDE, blockSize=1 so this is effectively the byte offset
-            // For HW2, blockSize=4096 so startBlock is a block number
             var actualOffset = (long) startBlock * blockSize;
 
             // Read the actual file data
