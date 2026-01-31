@@ -49,9 +49,9 @@ internal class BnkFileSoundBankEntry : ISoundBankEntry
             throw new InvalidDataException("Failed to parse replacement BNK data.");
         }
 
-        // Copy properties from new bank to existing bank
-        // Note: This is a simplified approach - in practice you might want to
-        // replace the entire soundbank reference
+        // Only copy content (Media and Items), not identity metadata (Id, LanguageId, etc.)
+        // This is intentional - we're replacing the soundbank's content while preserving
+        // its identity so it remains in the same slot within the parent file.
         _soundBank.Media.Clear();
 
         foreach (var kvp in newBank.Media)
