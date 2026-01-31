@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 
 using PckTool.Core.Games;
 using PckTool.Core.Services;
@@ -11,6 +12,7 @@ namespace PckTool.Commands;
 /// <summary>
 ///     Settings for the browse command.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BrowseSettings : GlobalSettings
 {
     [Description("Specific bank ID (decimal or hex with 0x prefix) to show details for.")] [CommandOption("-b|--bank")]
@@ -23,6 +25,7 @@ public class BrowseSettings : GlobalSettings
 /// <summary>
 ///     Browse sound banks in the package file.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BrowseCommand : Command<BrowseSettings>
 {
     public override int Execute(CommandContext context, BrowseSettings settings)

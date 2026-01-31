@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 using PckTool.Core.Games;
 
 using Spectre.Console;
@@ -8,6 +10,7 @@ namespace PckTool.Commands;
 /// <summary>
 ///     Show default paths and configuration information.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class InfoCommand : Command<GlobalSettings>
 {
     public override int Execute(CommandContext context, GlobalSettings settings)

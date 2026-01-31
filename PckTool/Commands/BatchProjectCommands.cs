@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -22,6 +23,7 @@ namespace PckTool.Commands;
 /// <summary>
 ///     Settings for batch project create command.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectCreateSettings : CommandSettings
 {
     [Description("Project name.")] [CommandOption("-n|--name")] [DefaultValue("Untitled Batch Project")]
@@ -50,6 +52,7 @@ public class BatchProjectCreateSettings : CommandSettings
 /// <summary>
 ///     Settings for batch project run command.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectRunSettings : CommandSettings
 {
     [Description("Path to the batch project file.")] [CommandArgument(0, "<project>")]
@@ -60,11 +63,16 @@ public class BatchProjectRunSettings : CommandSettings
 
     [Description("Enable verbose output.")] [CommandOption("-v|--verbose")] [DefaultValue(false)]
     public bool Verbose { get; init; }
+
+    [Description("Override game installation path (if auto-detection fails or differs from project).")]
+    [CommandOption("--game-dir")]
+    public string? GameDir { get; init; }
 }
 
 /// <summary>
 ///     Settings for batch project info command.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectInfoSettings : CommandSettings
 {
     [Description("Path to the batch project file.")] [CommandArgument(0, "<project>")]
@@ -77,6 +85,7 @@ public class BatchProjectInfoSettings : CommandSettings
 /// <summary>
 ///     Settings for adding an action to a batch project.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectAddActionSettings : CommandSettings
 {
     [Description("Path to the batch project file.")] [CommandArgument(0, "<project>")]
@@ -101,6 +110,7 @@ public class BatchProjectAddActionSettings : CommandSettings
 /// <summary>
 ///     Settings for removing an action from a batch project.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectRemoveActionSettings : CommandSettings
 {
     [Description("Path to the batch project file.")] [CommandArgument(0, "<project>")]
@@ -113,6 +123,7 @@ public class BatchProjectRemoveActionSettings : CommandSettings
 /// <summary>
 ///     Settings for batch project schema command.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectSchemaSettings : CommandSettings
 {
     [Description("Output file path. If not specified, outputs to stdout.")] [CommandArgument(0, "[output]")]
@@ -122,6 +133,7 @@ public class BatchProjectSchemaSettings : CommandSettings
 /// <summary>
 ///     Settings for batch project validate command.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectValidateSettings : CommandSettings
 {
     [Description("Path to the batch project file.")] [CommandArgument(0, "<project>")]
@@ -129,6 +141,10 @@ public class BatchProjectValidateSettings : CommandSettings
 
     [Description("Check that source files exist.")] [CommandOption("--check-files")] [DefaultValue(true)]
     public bool CheckFiles { get; init; } = true;
+
+    [Description("Override game installation path (if auto-detection fails or differs from project).")]
+    [CommandOption("--game-dir")]
+    public string? GameDir { get; init; }
 }
 
 #endregion
@@ -138,6 +154,7 @@ public class BatchProjectValidateSettings : CommandSettings
 /// <summary>
 ///     Create a new batch project file.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectCreateCommand : Command<BatchProjectCreateSettings>
 {
     public override int Execute(CommandContext context, BatchProjectCreateSettings settings)
@@ -217,6 +234,7 @@ public class BatchProjectCreateCommand : Command<BatchProjectCreateSettings>
 /// <summary>
 ///     Show batch project information.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectInfoCommand : Command<BatchProjectInfoSettings>
 {
     public override int Execute(CommandContext context, BatchProjectInfoSettings settings)
@@ -325,6 +343,7 @@ public class BatchProjectInfoCommand : Command<BatchProjectInfoSettings>
 /// <summary>
 ///     Execute a batch project.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectRunCommand : Command<BatchProjectRunSettings>
 {
     public override int Execute(CommandContext context, BatchProjectRunSettings settings)
@@ -345,8 +364,29 @@ public class BatchProjectRunCommand : Command<BatchProjectRunSettings>
 
         AnsiConsole.WriteLine();
 
-        // Validate first
-        var validation = project.Validate();
+        // Resolve game directory: command line > project file > auto-detect
+        var gameDir = settings.GameDir ?? project.GameDir;
+
+        if (gameDir is null && project.Game is not null)
+        {
+            // Try to auto-detect from game identifier
+            var resolution = GameHelpers.ResolveGame(project.Game, null);
+            gameDir = resolution.GameDir;
+        }
+
+        if (gameDir is null)
+        {
+            AnsiConsole.MarkupLine(
+                "[red]Game directory is required.[/] Use --game-dir or set gameDir/game in the project file.");
+
+            return 1;
+        }
+
+        AnsiConsole.MarkupLine($"[dim]Game directory: {gameDir}[/]");
+        AnsiConsole.WriteLine();
+
+        // Validate with resolved game directory
+        var validation = project.Validate(gameDir);
 
         if (!validation.IsValid)
         {
@@ -361,7 +401,7 @@ public class BatchProjectRunCommand : Command<BatchProjectRunSettings>
         }
 
         // Create executor
-        var executor = new BatchProjectExecutor(ServiceProvider.PckFileFactory);
+        var executor = new BatchProjectExecutor(ServiceProvider.AudioFileFactory);
 
         // Subscribe to events for progress reporting
         executor.ActionStarted += (_, e) =>
@@ -392,10 +432,10 @@ public class BatchProjectRunCommand : Command<BatchProjectRunSettings>
             }
         };
 
-        // Execute
+        // Execute with resolved game directory
         try
         {
-            var result = executor.Execute(project, settings.DryRun);
+            var result = executor.Execute(project, gameDir, settings.DryRun);
 
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine($"[bold]{result.Summary}[/]");
@@ -423,6 +463,7 @@ public class BatchProjectRunCommand : Command<BatchProjectRunSettings>
 /// <summary>
 ///     Add an action to a batch project.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectAddActionCommand : Command<BatchProjectAddActionSettings>
 {
     public override int Execute(CommandContext context, BatchProjectAddActionSettings settings)
@@ -512,6 +553,7 @@ public class BatchProjectAddActionCommand : Command<BatchProjectAddActionSetting
 /// <summary>
 ///     Remove an action from a batch project.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectRemoveActionCommand : Command<BatchProjectRemoveActionSettings>
 {
     public override int Execute(CommandContext context, BatchProjectRemoveActionSettings settings)
@@ -569,6 +611,7 @@ public class BatchProjectRemoveActionCommand : Command<BatchProjectRemoveActionS
 /// <summary>
 ///     Generate JSON schema for batch project files.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectSchemaCommand : Command<BatchProjectSchemaSettings>
 {
     public override int Execute(CommandContext context, BatchProjectSchemaSettings settings)
@@ -679,6 +722,7 @@ public class BatchProjectSchemaCommand : Command<BatchProjectSchemaSettings>
 /// <summary>
 ///     Validate a batch project configuration.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectValidateCommand : Command<BatchProjectValidateSettings>
 {
     public override int Execute(CommandContext context, BatchProjectValidateSettings settings)
@@ -693,43 +737,36 @@ public class BatchProjectValidateCommand : Command<BatchProjectValidateSettings>
         AnsiConsole.MarkupLine($"[bold]Validating:[/] {project.Name}");
         AnsiConsole.WriteLine();
 
+        // Resolve game directory: command line > project file > auto-detect
+        var gameDir = settings.GameDir ?? project.GameDir;
+
+        if (gameDir is null && project.Game is not null)
+        {
+            var resolution = GameHelpers.ResolveGame(project.Game, null);
+            gameDir = resolution.GameDir;
+        }
+
+        if (gameDir is not null)
+        {
+            AnsiConsole.MarkupLine($"[dim]Game directory: {gameDir}[/]");
+            AnsiConsole.WriteLine();
+        }
+
         var errors = new List<string>();
         var warnings = new List<string>();
 
-        // Basic validation
-        var validation = project.Validate();
+        // Basic validation with resolved game directory
+        var validation = project.Validate(gameDir);
 
         if (!validation.IsValid)
         {
             errors.AddRange(validation.Errors);
         }
 
-        // Check source files exist
-        if (settings.CheckFiles)
+        // Additional file checks (source paths are relative to project file)
+        if (settings.CheckFiles && gameDir is null)
         {
-            foreach (var action in project.Actions)
-            {
-                var sourcePath = action switch
-                {
-                    ReplaceAction r => r.SourcePath,
-                    AddAction a => a.SourcePath,
-                    _ => null
-                };
-
-                if (sourcePath is not null && !File.Exists(sourcePath))
-                {
-                    errors.Add($"Source file not found: {sourcePath}");
-                }
-            }
-
-            // Check input files
-            foreach (var inputFile in project.InputFiles)
-            {
-                if (!File.Exists(inputFile))
-                {
-                    warnings.Add($"Input file not found: {inputFile}");
-                }
-            }
+            warnings.Add("Game directory not resolved - cannot validate input file paths.");
         }
 
         // Display results

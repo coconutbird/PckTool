@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 
 using Spectre.Console.Cli;
 
@@ -7,6 +8,7 @@ namespace PckTool.Commands;
 /// <summary>
 ///     Global settings shared across all commands.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class GlobalSettings : CommandSettings
 {
     [Description("Game to use: 'hwde' (Halo Wars DE) or 'hw2' (Halo Wars 2).")] [CommandOption("--game")]

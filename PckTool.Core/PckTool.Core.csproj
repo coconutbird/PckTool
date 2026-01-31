@@ -9,6 +9,7 @@
         <Description>Wwise PCK file manipulation library for Halo Wars DE</Description>
         <Authors>coconutbird</Authors>
         <PackageTags>wwise;pck;audio;bnk;soundbank;halo-wars</PackageTags>
+        <LangVersion>default</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>

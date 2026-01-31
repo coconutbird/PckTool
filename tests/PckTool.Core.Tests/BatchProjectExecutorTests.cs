@@ -9,18 +9,18 @@ namespace PckTool.Core.Tests;
 public class BatchProjectExecutorTests
 {
     private readonly BatchProjectExecutor _executor;
-    private readonly IPckFileFactory _mockFactory;
-    private readonly IPckFile _mockPckFile;
+    private readonly IAudioFile _mockAudioFile;
+    private readonly IAudioFileFactory _mockFactory;
     private readonly ISoundBankCollection _mockSoundBanks;
 
     public BatchProjectExecutorTests()
     {
-        _mockFactory = Substitute.For<IPckFileFactory>();
-        _mockPckFile = Substitute.For<IPckFile>();
+        _mockFactory = Substitute.For<IAudioFileFactory>();
+        _mockAudioFile = Substitute.For<IAudioFile>();
         _mockSoundBanks = Substitute.For<ISoundBankCollection>();
 
-        _mockPckFile.SoundBanks.Returns(_mockSoundBanks);
-        _mockPckFile.HasModifications.Returns(false);
+        _mockAudioFile.SoundBanks.Returns(_mockSoundBanks);
+        _mockAudioFile.HasModifications.Returns(false);
 
         _executor = new BatchProjectExecutor(_mockFactory);
     }
@@ -48,7 +48,7 @@ public class BatchProjectExecutorTests
             var project = CreateProjectWithTempFile(tempFile);
             project.AddReplaceWem(0x12345678, Path.GetFileName(tempFile));
 
-            _mockFactory.Load(Arg.Any<string>()).Returns(_mockPckFile);
+            _mockFactory.Load(Arg.Any<string>()).Returns(_mockAudioFile);
 
             // Act
             var result = _executor.Execute(project, true);
@@ -57,7 +57,7 @@ public class BatchProjectExecutorTests
             Assert.Single(result.ActionResults);
             Assert.True(result.ActionResults[0].Success);
             Assert.Contains("[DRY RUN]", result.ActionResults[0].Message);
-            _mockPckFile.DidNotReceive().ReplaceWem(Arg.Any<uint>(), Arg.Any<byte[]>(), Arg.Any<bool>());
+            _mockAudioFile.DidNotReceive().ReplaceWem(Arg.Any<uint>(), Arg.Any<byte[]>(), Arg.Any<bool>());
         }
         finally
         {
@@ -72,9 +72,10 @@ public class BatchProjectExecutorTests
     /// </summary>
     private static BatchProject CreateProjectWithTempFile(string tempFile)
     {
-        var projectPath = tempFile + ".batchproj";
+        var projectPath = tempFile + ".json";
         var project = BatchProject.Create("Test");
         project.InputFiles.Add(Path.GetFileName(tempFile)); // Use relative path
+        project.GameDir = Path.GetDirectoryName(tempFile);  // Set game dir for input file resolution
         project.Save(projectPath);
 
         return project;
@@ -95,7 +96,7 @@ public class BatchProjectExecutorTests
             File.Delete(tempFile);
         }
 
-        var projectPath = tempFile + ".batchproj";
+        var projectPath = tempFile + ".json";
 
         if (File.Exists(projectPath))
         {
@@ -116,7 +117,7 @@ public class BatchProjectExecutorTests
             var project = CreateProjectWithTempFile(tempFile);
             project.AddReplaceWem(0x12345678, Path.GetFileName(tempFile));
 
-            _mockFactory.Load(Arg.Any<string>()).Returns(_mockPckFile);
+            _mockFactory.Load(Arg.Any<string>()).Returns(_mockAudioFile);
 
             var startedCount = 0;
             _executor.ActionStarted += (_, _) => startedCount++;
@@ -144,7 +145,7 @@ public class BatchProjectExecutorTests
             var project = CreateProjectWithTempFile(tempFile);
             project.AddReplaceWem(0x12345678, Path.GetFileName(tempFile));
 
-            _mockFactory.Load(Arg.Any<string>()).Returns(_mockPckFile);
+            _mockFactory.Load(Arg.Any<string>()).Returns(_mockAudioFile);
 
             var completedCount = 0;
             ActionExecutionResult? capturedResult = null;
@@ -183,15 +184,15 @@ public class BatchProjectExecutorTests
             var project = CreateProjectWithTempFile(tempFile);
             project.AddReplaceWem(0x12345678, Path.GetFileName(tempFile));
 
-            _mockFactory.Load(Arg.Any<string>()).Returns(_mockPckFile);
-            _mockPckFile.ReplaceWem(Arg.Any<uint>(), Arg.Any<byte[]>(), Arg.Any<bool>())
-                        .Returns(new WemReplacementResult { EmbeddedBanksModified = 1 });
+            _mockFactory.Load(Arg.Any<string>()).Returns(_mockAudioFile);
+            _mockAudioFile.ReplaceWem(Arg.Any<uint>(), Arg.Any<byte[]>(), Arg.Any<bool>())
+                          .Returns(new WemReplacementResult { EmbeddedBanksModified = 1 });
 
             // Act
             _executor.Execute(project);
 
             // Assert
-            _mockPckFile.Received(1).ReplaceWem(0x12345678, Arg.Any<byte[]>());
+            _mockAudioFile.Received(1).ReplaceWem(0x12345678, Arg.Any<byte[]>());
         }
         finally
         {
@@ -211,15 +212,15 @@ public class BatchProjectExecutorTests
             project.AddReplaceWem(0x12345678, Path.GetFileName(tempFile));
             project.SkipHircSizeUpdates = true;
 
-            _mockFactory.Load(Arg.Any<string>()).Returns(_mockPckFile);
-            _mockPckFile.ReplaceWem(Arg.Any<uint>(), Arg.Any<byte[]>(), Arg.Any<bool>())
-                        .Returns(new WemReplacementResult { EmbeddedBanksModified = 1 });
+            _mockFactory.Load(Arg.Any<string>()).Returns(_mockAudioFile);
+            _mockAudioFile.ReplaceWem(Arg.Any<uint>(), Arg.Any<byte[]>(), Arg.Any<bool>())
+                          .Returns(new WemReplacementResult { EmbeddedBanksModified = 1 });
 
             // Act
             _executor.Execute(project);
 
             // Assert - should pass false for updateHircSizes when SkipHircSizeUpdates is true
-            _mockPckFile.Received(1).ReplaceWem(0x12345678, Arg.Any<byte[]>(), false);
+            _mockAudioFile.Received(1).ReplaceWem(0x12345678, Arg.Any<byte[]>(), false);
         }
         finally
         {
@@ -238,9 +239,9 @@ public class BatchProjectExecutorTests
             var project = CreateProjectWithTempFile(tempFile);
             project.AddReplaceWem(0x12345678, Path.GetFileName(tempFile));
 
-            _mockFactory.Load(Arg.Any<string>()).Returns(_mockPckFile);
-            _mockPckFile.ReplaceWem(Arg.Any<uint>(), Arg.Any<byte[]>(), Arg.Any<bool>())
-                        .Returns(new WemReplacementResult()); // WasReplaced will be false
+            _mockFactory.Load(Arg.Any<string>()).Returns(_mockAudioFile);
+            _mockAudioFile.ReplaceWem(Arg.Any<uint>(), Arg.Any<byte[]>(), Arg.Any<bool>())
+                          .Returns(new WemReplacementResult()); // WasReplaced will be false
 
             // Act
             var result = _executor.Execute(project);
@@ -268,7 +269,7 @@ public class BatchProjectExecutorTests
             project.AddReplaceBnk(0xABCDEF00, Path.GetFileName(tempFile));
 
             var mockEntry = Substitute.For<ISoundBankEntry>();
-            _mockFactory.Load(Arg.Any<string>()).Returns(_mockPckFile);
+            _mockFactory.Load(Arg.Any<string>()).Returns(_mockAudioFile);
             _mockSoundBanks[0xABCDEF00].Returns(mockEntry);
 
             // Act
@@ -294,13 +295,13 @@ public class BatchProjectExecutorTests
             var project = CreateProjectWithTempFile(tempFile);
             project.AddReplaceWem(0x12345678, Path.GetFileName(tempFile));
 
-            _mockFactory.Load(Arg.Any<string>()).Returns(_mockPckFile);
+            _mockFactory.Load(Arg.Any<string>()).Returns(_mockAudioFile);
 
             // Act
             _executor.Execute(project, true);
 
             // Assert
-            _mockPckFile.Received(1).Dispose();
+            _mockAudioFile.Received(1).Dispose();
         }
         finally
         {
@@ -323,7 +324,7 @@ public class BatchProjectExecutorTests
                     TargetType = TargetType.Wem, TargetId = 0x12345678, SourcePath = Path.GetFileName(tempFile)
                 });
 
-            _mockFactory.Load(Arg.Any<string>()).Returns(_mockPckFile);
+            _mockFactory.Load(Arg.Any<string>()).Returns(_mockAudioFile);
 
             // Act
             var result = _executor.Execute(project);
@@ -350,7 +351,7 @@ public class BatchProjectExecutorTests
             var project = CreateProjectWithTempFile(tempFile);
             project.Actions.Add(new RemoveAction { TargetType = TargetType.Wem, TargetId = 0x12345678 });
 
-            _mockFactory.Load(Arg.Any<string>()).Returns(_mockPckFile);
+            _mockFactory.Load(Arg.Any<string>()).Returns(_mockAudioFile);
 
             // Act
             var result = _executor.Execute(project);

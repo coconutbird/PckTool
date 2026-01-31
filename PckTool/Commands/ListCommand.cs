@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 using PckTool.Core.Games;
 using PckTool.Services;
 
@@ -9,6 +11,7 @@ namespace PckTool.Commands;
 /// <summary>
 ///     List all sound banks in the package file.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class ListCommand : Command<GlobalSettings>
 {
     public override int Execute(CommandContext context, GlobalSettings settings)
@@ -43,13 +46,15 @@ public class ListCommand : Command<GlobalSettings>
             {
                 AnsiConsole.MarkupLine($"[blue]Loading:[/] {Path.GetFileName(filePath)}");
 
-                var package = ServiceProvider.PckFileFactory.Load(filePath);
+                using var audioFile = ServiceProvider.AudioFileFactory.Load(filePath);
 
                 // Group by language for cleaner output
-                var banksByLanguage = package.SoundBanks
-                                             .Entries
-                                             .GroupBy(e => package.Languages[e.LanguageId])
-                                             .OrderBy(g => g.Key);
+                var banksByLanguage = audioFile.SoundBanks
+                                               .Entries
+                                               .GroupBy(e => audioFile.Languages.GetValueOrDefault(
+                                                            e.LanguageId,
+                                                            $"Lang:{e.LanguageId}"))
+                                               .OrderBy(g => g.Key);
 
                 foreach (var languageGroup in banksByLanguage)
                 {
@@ -63,7 +68,7 @@ public class ListCommand : Command<GlobalSettings>
                     }
                 }
 
-                totalBanks += package.SoundBanks.Count;
+                totalBanks += audioFile.SoundBanks.Count;
             }
 
             AnsiConsole.WriteLine();

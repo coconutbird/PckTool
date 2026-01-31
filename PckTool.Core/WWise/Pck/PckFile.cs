@@ -12,7 +12,7 @@ namespace PckTool.Core.WWise.Pck;
 /// <summary>
 ///     Represents a Wwise PCK package file containing soundbanks and streaming audio.
 /// </summary>
-public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile
+public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile, IAudioFile
 {
     private const uint ValidVersion = 0x1;
     private static readonly uint ValidHeaderTag = Hash.AkmmioFourcc('A', 'K', 'P', 'K');
@@ -38,6 +38,9 @@ public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile
     ///     External file entries.
     /// </summary>
     public ExternalFileLut ExternalFiles { get; private set; } = new();
+
+    /// <inheritdoc />
+    public AudioFileType FileType => AudioFileType.Pck;
 
     public void Dispose()
     {
@@ -897,6 +900,22 @@ public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile
     {
         return StreamingFiles.Remove(sourceId);
     }
+
+#endregion
+
+#region IAudioFile Implementation
+
+    /// <inheritdoc />
+    IReadOnlyDictionary<uint, string> IAudioFile.Languages => Languages;
+
+    /// <inheritdoc />
+    ISoundBankCollection IAudioFile.SoundBanks => SoundBanks;
+
+    /// <inheritdoc />
+    IStreamingFileCollection IAudioFile.StreamingFiles => StreamingFiles;
+
+    /// <inheritdoc />
+    IExternalFileCollection IAudioFile.ExternalFiles => ExternalFiles;
 
 #endregion
 

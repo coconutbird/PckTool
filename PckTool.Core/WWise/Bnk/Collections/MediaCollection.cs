@@ -3,7 +3,7 @@ using System.Collections.Specialized;
 
 using PckTool.Abstractions;
 
-namespace PckTool.Core.WWise.Bnk;
+namespace PckTool.Core.WWise.Bnk.Collections;
 
 /// <summary>
 ///     Dictionary-backed collection for embedded media (sourceId -> byte[]).

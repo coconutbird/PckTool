@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 
 using PckTool.Core.Games;
 using PckTool.Services;
@@ -11,6 +12,7 @@ namespace PckTool.Commands;
 /// <summary>
 ///     Settings for the replace-wem command.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class ReplaceWemSettings : GlobalSettings
 {
     [Description("Target WEM ID(s) (decimal or hex with 0x prefix) to replace. Can specify multiple times.")]
@@ -25,6 +27,7 @@ public class ReplaceWemSettings : GlobalSettings
 /// <summary>
 ///     Replace one or more WEM files in the package.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class ReplaceWemCommand : Command<ReplaceWemSettings>
 {
     public override int Execute(CommandContext context, ReplaceWemSettings settings)
@@ -120,7 +123,7 @@ public class ReplaceWemCommand : Command<ReplaceWemSettings>
                 }
 
                 AnsiConsole.MarkupLine($"[blue]Loading:[/] {Path.GetFileName(filePath)}");
-                var package = ServiceProvider.PckFileFactory.Load(filePath);
+                using var audioFile = ServiceProvider.AudioFileFactory.Load(filePath);
 
                 // Track if any replacements were made in this file
                 var totalStreaming = 0;
@@ -131,7 +134,7 @@ public class ReplaceWemCommand : Command<ReplaceWemSettings>
                 // Apply all replacements
                 foreach (var (targetId, data, _) in replacements)
                 {
-                    var result = package.ReplaceWem(targetId, data);
+                    var result = audioFile.ReplaceWem(targetId, data);
 
                     if (result.WasReplaced)
                     {
@@ -197,10 +200,10 @@ public class ReplaceWemCommand : Command<ReplaceWemSettings>
 
                 GameHelpers.EnsureDirectoryCreated(outputFile);
 
-                // Save the modified package
+                // Save the modified file
                 AnsiConsole.WriteLine();
-                AnsiConsole.MarkupLine($"[blue]Saving modified package to:[/] {outputFile}");
-                package.Save(outputFile);
+                AnsiConsole.MarkupLine($"[blue]Saving modified file to:[/] {outputFile}");
+                audioFile.Save(outputFile);
 
                 var idsStr = string.Join(", ", replacedIds.Select(id => $"0x{id:X8}"));
                 AnsiConsole.MarkupLine($"[green]Done![/] Replaced {replacedIds.Count} WEM(s): {idsStr}");

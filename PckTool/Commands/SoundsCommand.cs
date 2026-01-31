@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 
 using PckTool.Core.Games;
 using PckTool.Core.Services;
@@ -11,6 +12,7 @@ namespace PckTool.Commands;
 /// <summary>
 ///     Settings for the sounds command.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class SoundsSettings : GlobalSettings
 {
     [Description("Bank ID (decimal or hex with 0x prefix) to list sounds from.")] [CommandOption("-b|--bank")]
@@ -20,6 +22,7 @@ public class SoundsSettings : GlobalSettings
 /// <summary>
 ///     List all sounds in a specific bank.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class SoundsCommand : Command<SoundsSettings>
 {
     public override int Execute(CommandContext context, SoundsSettings settings)

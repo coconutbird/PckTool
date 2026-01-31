@@ -1,12 +1,12 @@
 using PckTool.Abstractions;
+using PckTool.Core.WWise;
 using PckTool.Core.WWise.Bnk;
-using PckTool.Core.WWise.Pck;
 
 namespace PckTool.Services;
 
 /// <summary>
 ///     Simple service provider for the CLI application.
-///     Provides factory instances for creating and loading PCK files and soundbanks.
+///     Provides factory instances for creating and loading audio files (PCK and BNK) and soundbanks.
 /// </summary>
 /// <remarks>
 ///     This lightweight approach provides testability benefits without the overhead
@@ -14,13 +14,14 @@ namespace PckTool.Services;
 /// </remarks>
 public static class ServiceProvider
 {
-    private static IPckFileFactory? _pckFileFactory;
+    private static IAudioFileFactory? _audioFileFactory;
     private static Func<ISoundBankBuilder>? _soundBankBuilderFactory;
 
     /// <summary>
-    ///     Gets the PCK file factory instance.
+    ///     Gets the audio file factory instance.
+    ///     This factory can load both PCK and BNK files.
     /// </summary>
-    public static IPckFileFactory PckFileFactory => _pckFileFactory ??= new PckFileFactory();
+    public static IAudioFileFactory AudioFileFactory => _audioFileFactory ??= new AudioFileFactory();
 
     /// <summary>
     ///     Creates a new soundbank builder instance.
@@ -34,13 +35,13 @@ public static class ServiceProvider
     ///     Configures the service provider with custom implementations.
     ///     Useful for testing or alternative implementations.
     /// </summary>
-    /// <param name="pckFileFactory">Custom PCK file factory.</param>
+    /// <param name="audioFileFactory">Custom audio file factory.</param>
     /// <param name="soundBankBuilderFactory">Custom soundbank builder factory.</param>
     public static void Configure(
-        IPckFileFactory? pckFileFactory = null,
+        IAudioFileFactory? audioFileFactory = null,
         Func<ISoundBankBuilder>? soundBankBuilderFactory = null)
     {
-        _pckFileFactory = pckFileFactory;
+        _audioFileFactory = audioFileFactory;
         _soundBankBuilderFactory = soundBankBuilderFactory;
     }
 
@@ -49,7 +50,7 @@ public static class ServiceProvider
     /// </summary>
     public static void Reset()
     {
-        _pckFileFactory = null;
+        _audioFileFactory = null;
         _soundBankBuilderFactory = null;
     }
 }

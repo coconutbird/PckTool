@@ -1,5 +1,6 @@
 using PckTool.Abstractions;
 using PckTool.Abstractions.Batch;
+using PckTool.Core.WWise;
 
 namespace PckTool.Core.Services.Batch;
 
@@ -8,16 +9,21 @@ namespace PckTool.Core.Services.Batch;
 /// </summary>
 public sealed class BatchProjectExecutor
 {
-    private readonly IPckFileFactory _pckFileFactory;
+    private readonly IAudioFileFactory _audioFileFactory;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="BatchProjectExecutor" /> class.
     /// </summary>
-    /// <param name="pckFileFactory">The factory for loading PCK files.</param>
-    public BatchProjectExecutor(IPckFileFactory pckFileFactory)
+    /// <param name="audioFileFactory">The factory for loading audio files (PCK and BNK).</param>
+    public BatchProjectExecutor(IAudioFileFactory audioFileFactory)
     {
-        _pckFileFactory = pckFileFactory ?? throw new ArgumentNullException(nameof(pckFileFactory));
+        _audioFileFactory = audioFileFactory ?? throw new ArgumentNullException(nameof(audioFileFactory));
     }
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="BatchProjectExecutor" /> class with default factory.
+    /// </summary>
+    public BatchProjectExecutor() : this(new AudioFileFactory()) { }
 
     /// <summary>
     ///     Event raised when an action starts executing.
@@ -37,11 +43,34 @@ public sealed class BatchProjectExecutor
     /// <returns>The execution result.</returns>
     public BatchExecutionResult Execute(BatchProject project, bool dryRun = false)
     {
+        return Execute(project, null, dryRun);
+    }
+
+    /// <summary>
+    ///     Executes all actions in the batch project with a resolved game directory.
+    /// </summary>
+    /// <param name="project">The batch project to execute.</param>
+    /// <param name="resolvedGameDirectory">
+    ///     The resolved game directory for input files.
+    ///     If null, uses <see cref="BatchProject.GameDir" /> from the project.
+    /// </param>
+    /// <param name="dryRun">If true, validates without making changes.</param>
+    /// <returns>The execution result.</returns>
+    public BatchExecutionResult Execute(BatchProject project, string? resolvedGameDirectory, bool dryRun = false)
+    {
         var results = new List<ActionExecutionResult>();
+
+        // Base path is the project file directory (for action source paths)
         var basePath = project.GetBasePath();
 
-        // Load all input files
-        var loadedFiles = new Dictionary<string, IPckFile>();
+        // Game directory is for input files (relative to game installation)
+        var gameDir = resolvedGameDirectory
+                      ?? project.GameDir
+                      ?? throw new InvalidOperationException(
+                          "Game directory is required. Either set GameDir in the project or pass resolvedGameDirectory.");
+
+        // Load all input files (relative to game directory)
+        var loadedFiles = new Dictionary<string, IAudioFile>();
 
         try
         {
@@ -49,13 +78,13 @@ public sealed class BatchProjectExecutor
             {
                 var fullPath = Path.IsPathRooted(inputFile)
                     ? inputFile
-                    : Path.Combine(basePath, inputFile);
+                    : Path.Combine(gameDir, inputFile);
 
-                var pck = _pckFileFactory.Load(fullPath);
-                loadedFiles[inputFile] = pck;
+                var audioFile = _audioFileFactory.Load(fullPath);
+                loadedFiles[inputFile] = audioFile;
             }
 
-            // Execute each action
+            // Execute each action (source paths are relative to project file directory)
             for (var i = 0; i < project.Actions.Count; i++)
             {
                 var action = project.Actions[i];
@@ -70,15 +99,15 @@ public sealed class BatchProjectExecutor
             // Save modified files if not dry run
             if (!dryRun)
             {
-                SaveModifiedFiles(project, loadedFiles, basePath);
+                SaveModifiedFiles(project, loadedFiles, gameDir, basePath);
             }
         }
         finally
         {
             // Dispose all loaded files
-            foreach (var pck in loadedFiles.Values)
+            foreach (var audioFile in loadedFiles.Values)
             {
-                pck.Dispose();
+                audioFile.Dispose();
             }
         }
 
@@ -88,7 +117,7 @@ public sealed class BatchProjectExecutor
     private ActionExecutionResult ExecuteAction(
         BatchProject project,
         IProjectAction action,
-        Dictionary<string, IPckFile> loadedFiles,
+        Dictionary<string, IAudioFile> loadedFiles,
         string basePath,
         bool dryRun)
     {
@@ -104,7 +133,7 @@ public sealed class BatchProjectExecutor
     private ActionExecutionResult ExecuteReplaceAction(
         BatchProject project,
         ReplaceAction action,
-        Dictionary<string, IPckFile> loadedFiles,
+        Dictionary<string, IAudioFile> loadedFiles,
         string basePath,
         bool dryRun)
     {
@@ -134,7 +163,7 @@ public sealed class BatchProjectExecutor
         var totalReplacements = 0;
         WemReplacementResult? lastResult = null;
 
-        foreach (var pck in loadedFiles.Values)
+        foreach (var audioFile in loadedFiles.Values)
         {
             if (action.TargetType == TargetType.Wem)
             {
@@ -142,7 +171,7 @@ public sealed class BatchProjectExecutor
                 {
                     // Replace WEM only in a specific soundbank
                     var replaced = ReplaceWemInBank(
-                        pck,
+                        audioFile,
                         action.TargetBank.Value,
                         action.TargetId,
                         replacementData,
@@ -157,7 +186,7 @@ public sealed class BatchProjectExecutor
                 else
                 {
                     // Replace WEM in all soundbanks
-                    var result = pck.ReplaceWem(action.TargetId, replacementData, updateHircSizes);
+                    var result = audioFile.ReplaceWem(action.TargetId, replacementData, updateHircSizes);
 
                     if (result.WasReplaced)
                     {
@@ -169,7 +198,7 @@ public sealed class BatchProjectExecutor
             else if (action.TargetType == TargetType.Bnk)
             {
                 // BNK replacement - find and replace the soundbank
-                var entry = pck.SoundBanks[action.TargetId];
+                var entry = audioFile.SoundBanks[action.TargetId];
 
                 if (entry is not null)
                 {
@@ -195,13 +224,13 @@ public sealed class BatchProjectExecutor
     ///     Replaces a WEM in a specific soundbank only.
     /// </summary>
     private static bool ReplaceWemInBank(
-        IPckFile pck,
+        IAudioFile audioFile,
         uint bankId,
         uint wemId,
         byte[] data,
         bool updateHircSizes)
     {
-        var bankEntry = pck.SoundBanks[bankId];
+        var bankEntry = audioFile.SoundBanks[bankId];
 
         if (bankEntry is null)
         {
@@ -223,14 +252,15 @@ public sealed class BatchProjectExecutor
 
     private static void SaveModifiedFiles(
         BatchProject project,
-        Dictionary<string, IPckFile> loadedFiles,
+        Dictionary<string, IAudioFile> loadedFiles,
+        string gameDir,
         string basePath)
     {
         var outputDir = project.OutputDirectory;
 
-        foreach (var (inputFile, pck) in loadedFiles)
+        foreach (var (inputFile, audioFile) in loadedFiles)
         {
-            if (!pck.HasModifications)
+            if (!audioFile.HasModifications)
             {
                 continue;
             }
@@ -239,6 +269,7 @@ public sealed class BatchProjectExecutor
 
             if (!string.IsNullOrEmpty(outputDir))
             {
+                // Output directory is relative to project file directory
                 var outputDirFull = Path.IsPathRooted(outputDir)
                     ? outputDir
                     : Path.Combine(basePath, outputDir);
@@ -253,18 +284,18 @@ public sealed class BatchProjectExecutor
             }
             else
             {
-                // Save to same location with _modified suffix
+                // Save to same location with _modified suffix (input files are relative to game dir)
                 var inputPath = Path.IsPathRooted(inputFile)
                     ? inputFile
-                    : Path.Combine(basePath, inputFile);
+                    : Path.Combine(gameDir, inputFile);
 
-                var dir = Path.GetDirectoryName(inputPath) ?? basePath;
+                var dir = Path.GetDirectoryName(inputPath) ?? gameDir;
                 var name = Path.GetFileNameWithoutExtension(inputPath);
                 var ext = Path.GetExtension(inputPath);
                 outputPath = Path.Combine(dir, $"{name}_modified{ext}");
             }
 
-            pck.Save(outputPath);
+            audioFile.Save(outputPath);
         }
     }
 

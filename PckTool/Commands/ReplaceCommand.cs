@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 
 using PckTool.Core.Games;
 using PckTool.Services;
@@ -11,6 +12,7 @@ namespace PckTool.Commands;
 /// <summary>
 ///     Settings for the replace command.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class ReplaceSettings : GlobalSettings
 {
     [Description("Sound bank ID(s) (decimal or hex with 0x prefix) to replace. Can specify multiple times.")]
@@ -25,6 +27,7 @@ public class ReplaceSettings : GlobalSettings
 /// <summary>
 ///     Replace one or more sound banks in the package file.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class ReplaceCommand : Command<ReplaceSettings>
 {
     public override int Execute(CommandContext context, ReplaceSettings settings)
@@ -120,7 +123,7 @@ public class ReplaceCommand : Command<ReplaceSettings>
                 }
 
                 AnsiConsole.MarkupLine($"[blue]Loading:[/] {Path.GetFileName(filePath)}");
-                var package = ServiceProvider.PckFileFactory.Load(filePath);
+                using var audioFile = ServiceProvider.AudioFileFactory.Load(filePath);
 
                 // Track replacements made in this file
                 var replacedBanks = new List<uint>();
@@ -128,7 +131,7 @@ public class ReplaceCommand : Command<ReplaceSettings>
                 // Apply all replacements
                 foreach (var (bankId, _, data) in replacements)
                 {
-                    var entry = package.SoundBanks[bankId];
+                    var entry = audioFile.SoundBanks[bankId];
 
                     if (entry is null)
                     {
@@ -138,7 +141,7 @@ public class ReplaceCommand : Command<ReplaceSettings>
                     entry.ReplaceWith(data);
                     replacedBanks.Add(bankId);
                     AnsiConsole.MarkupLine(
-                        $"[green]Replaced sound bank[/] [blue]0x{bankId:X8}[/] (Language: {package.Languages[entry.LanguageId]})");
+                        $"[green]Replaced sound bank[/] [blue]0x{bankId:X8}[/] (Language: {audioFile.Languages[entry.LanguageId]})");
                 }
 
                 if (replacedBanks.Count == 0)
@@ -183,10 +186,10 @@ public class ReplaceCommand : Command<ReplaceSettings>
 
                 GameHelpers.EnsureDirectoryCreated(outputFile);
 
-                // Save the modified package
+                // Save the modified audio file
                 AnsiConsole.WriteLine();
-                AnsiConsole.MarkupLine($"[blue]Saving modified package to:[/] {outputFile}");
-                package.Save(outputFile);
+                AnsiConsole.MarkupLine($"[blue]Saving modified file to:[/] {outputFile}");
+                audioFile.Save(outputFile);
 
                 var idsStr = string.Join(", ", replacedBanks.Select(id => $"0x{id:X8}"));
                 AnsiConsole.MarkupLine($"[green]Done![/] Replaced {replacedBanks.Count} sound bank(s): {idsStr}");

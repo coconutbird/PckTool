@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 
 using PckTool.Core.Games;
 using PckTool.Core.Games.HaloWars;
@@ -13,6 +14,7 @@ namespace PckTool.Commands;
 /// <summary>
 ///     Settings for the dump command.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class DumpSettings : GlobalSettings
 {
     [Description("Specific sound bank ID (decimal or hex with 0x prefix) to extract. If not specified, extracts all.")]
@@ -27,6 +29,7 @@ public class DumpSettings : GlobalSettings
 /// <summary>
 ///     Extract all sound banks and WEM files from the game.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class DumpCommand : Command<DumpSettings>
 {
     public override int Execute(CommandContext context, DumpSettings settings)
@@ -67,7 +70,7 @@ public class DumpCommand : Command<DumpSettings>
             {
                 AnsiConsole.MarkupLine($"[blue]Processing:[/] {Path.GetFileName(filePath)}");
 
-                var package = ServiceProvider.PckFileFactory.Load(filePath);
+                using var audioFile = ServiceProvider.AudioFileFactory.Load(filePath);
 
                 // Phase 1: Load all soundbanks
                 var soundbanksByLanguage = new Dictionary<uint, Dictionary<uint, SoundBank>>();
@@ -96,10 +99,12 @@ public class DumpCommand : Command<DumpSettings>
                                "Loading soundbanks...",
                                ctx =>
                                {
-                                   foreach (var fileEntry in package.SoundBanks)
+                                   foreach (var fileEntry in audioFile.SoundBanks)
                                    {
                                        var languageId = fileEntry.LanguageId;
-                                       var language = package.Languages[languageId];
+                                       var language = audioFile.Languages.GetValueOrDefault(
+                                           languageId,
+                                           $"Lang:{languageId}");
 
                                        // Apply language filter
                                        if (!string.IsNullOrWhiteSpace(settings.Language)
@@ -114,7 +119,7 @@ public class DumpCommand : Command<DumpSettings>
                                            continue;
                                        }
 
-                                       ctx.Status($"Loading {fileEntry.Id:X8}...");
+                                       ctx.Status($"Loading 0x{fileEntry.Id:X8}...");
 
                                        var soundbank = SoundBank.Parse(fileEntry.GetData());
 
@@ -180,7 +185,9 @@ public class DumpCommand : Command<DumpSettings>
 
                                foreach (var (languageId, languageBanks) in soundbanksByLanguage)
                                {
-                                   var language = package.Languages[languageId];
+                                   var language = audioFile.Languages.GetValueOrDefault(
+                                       languageId,
+                                       $"Lang:{languageId}");
 
                                    foreach (var (soundbankId, soundbank) in languageBanks)
                                    {
@@ -220,7 +227,7 @@ public class DumpCommand : Command<DumpSettings>
                                        metadata.Save(metadataFile);
 
                                        var bnkFile = Path.Join(settings.Output, language, $"{soundbankId:X8}.bnk");
-                                       var fileEntry = package.SoundBanks.Entries.First(e => e.Id == soundbankId
+                                       var fileEntry = audioFile.SoundBanks.Entries.First(e => e.Id == soundbankId
                                            && e.LanguageId == languageId);
 
                                        File.WriteAllBytes(bnkFile, fileEntry.GetData());
@@ -234,23 +241,23 @@ public class DumpCommand : Command<DumpSettings>
                            });
 
                 // Phase 4: Extract streaming files
-                if (package.StreamingFiles.Count > 0)
+                if (audioFile.StreamingFiles.Count > 0)
                 {
-                    var streamingByLanguage = package.StreamingFiles
-                                                     .Entries
-                                                     .GroupBy(f => f.LanguageId)
-                                                     .ToDictionary(g => g.Key, g => g.ToList());
+                    var streamingByLanguage = audioFile.StreamingFiles
+                                                       .Entries
+                                                       .GroupBy(f => f.LanguageId)
+                                                       .ToDictionary(g => g.Key, g => g.ToList());
 
                     AnsiConsole.Progress()
                                .Start(ctx =>
                                {
                                    var task = ctx.AddTask("[green]Extracting streaming WEM files...[/]");
-                                   var totalFiles = package.StreamingFiles.Count;
+                                   var totalFiles = audioFile.StreamingFiles.Count;
                                    var processedFiles = 0;
 
                                    foreach (var (languageId, files) in streamingByLanguage)
                                    {
-                                       var language = package.Languages.GetValueOrDefault(
+                                       var language = audioFile.Languages.GetValueOrDefault(
                                            languageId,
                                            $"lang_{languageId}");
 
@@ -299,22 +306,22 @@ public class DumpCommand : Command<DumpSettings>
                 }
 
                 // Phase 5: Extract external files
-                if (package.ExternalFiles.Count > 0)
+                if (audioFile.ExternalFiles.Count > 0)
                 {
-                    var externalByLanguage = package.ExternalFiles
-                                                    .GroupBy(f => f.LanguageId)
-                                                    .ToDictionary(g => g.Key, g => g.ToList());
+                    var externalByLanguage = audioFile.ExternalFiles
+                                                      .GroupBy(f => f.LanguageId)
+                                                      .ToDictionary(g => g.Key, g => g.ToList());
 
                     AnsiConsole.Progress()
                                .Start(ctx =>
                                {
                                    var task = ctx.AddTask("[green]Extracting external WEM files...[/]");
-                                   var totalFiles = package.ExternalFiles.Count;
+                                   var totalFiles = audioFile.ExternalFiles.Count;
                                    var processedFiles = 0;
 
                                    foreach (var (languageId, files) in externalByLanguage)
                                    {
-                                       var language = package.Languages.GetValueOrDefault(
+                                       var language = audioFile.Languages.GetValueOrDefault(
                                            languageId,
                                            $"lang_{languageId}");
 
