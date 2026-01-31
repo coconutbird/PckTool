@@ -1,27 +1,42 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v[0-9]+.[0-9]+.[0-9]+*"
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Tag to release (e.g. v2026.01.31 or v2026.01.31.1)"
-        required: true
-        type: string
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  release:
     runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Generate tag
+        id: tag
+        run: |
+          $date = Get-Date -Format "yyyy.MM.dd"
+          $baseTag = "v$date"
+          $counter = 0
+          $tag = $baseTag
+
+          while (git tag -l $tag) {
+            $counter++
+            $tag = "$baseTag.$counter"
+          }
+
+          echo "tag=$tag" >> $env:GITHUB_OUTPUT
+          echo "Generated tag: $tag"
+
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag ${{ steps.tag.outputs.tag }}
+          git push origin ${{ steps.tag.outputs.tag }}
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -44,6 +59,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.tag.outputs.tag }}
           files: |
             PckTool-win-x64.zip
             PckTool-win-arm64.zip
