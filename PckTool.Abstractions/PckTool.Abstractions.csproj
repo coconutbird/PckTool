@@ -9,6 +9,7 @@
         <Description>Abstractions and interfaces for PckTool - a Wwise PCK file manipulation library</Description>
         <Authors>coconutbird</Authors>
         <PackageTags>wwise;pck;audio;bnk;soundbank</PackageTags>
+        <LangVersion>default</LangVersion>
     </PropertyGroup>
 
 </Project>

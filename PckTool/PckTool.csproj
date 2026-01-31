@@ -11,6 +11,7 @@
         <SelfContained>true</SelfContained>
         <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+        <LangVersion>default</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
