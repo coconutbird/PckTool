@@ -105,7 +105,8 @@ public class BatchProjectTests
     [Fact]
     public void Load_WithInvalidPath_ShouldReturnNull()
     {
-        var result = BatchProject.Load(@"C:\NonExistent\file.batchproj");
+        // use invalid drive letter to avoid accidental file access
+        var result = BatchProject.Load(@"_XX_:\NonExistent\file.json");
 
         Assert.Null(result);
     }

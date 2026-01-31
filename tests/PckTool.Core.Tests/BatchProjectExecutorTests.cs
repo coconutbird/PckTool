@@ -72,7 +72,7 @@ public class BatchProjectExecutorTests
     /// </summary>
     private static BatchProject CreateProjectWithTempFile(string tempFile)
     {
-        var projectPath = tempFile + ".batchproj";
+        var projectPath = tempFile + ".json";
         var project = BatchProject.Create("Test");
         project.InputFiles.Add(Path.GetFileName(tempFile)); // Use relative path
         project.GameDir = Path.GetDirectoryName(tempFile);  // Set game dir for input file resolution
@@ -96,7 +96,7 @@ public class BatchProjectExecutorTests
             File.Delete(tempFile);
         }
 
-        var projectPath = tempFile + ".batchproj";
+        var projectPath = tempFile + ".json";
 
         if (File.Exists(projectPath))
         {
