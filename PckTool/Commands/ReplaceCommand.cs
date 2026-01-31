@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 
 using PckTool.Core.Games;
 using PckTool.Services;
@@ -11,6 +12,7 @@ namespace PckTool.Commands;
 /// <summary>
 ///     Settings for the replace command.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class ReplaceSettings : GlobalSettings
 {
     [Description("Sound bank ID(s) (decimal or hex with 0x prefix) to replace. Can specify multiple times.")]
@@ -25,6 +27,7 @@ public class ReplaceSettings : GlobalSettings
 /// <summary>
 ///     Replace one or more sound banks in the package file.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class ReplaceCommand : Command<ReplaceSettings>
 {
     public override int Execute(CommandContext context, ReplaceSettings settings)

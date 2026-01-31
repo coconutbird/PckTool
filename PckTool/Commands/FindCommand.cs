@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 
 using PckTool.Core.Games;
 using PckTool.Core.Services;
@@ -11,6 +12,7 @@ namespace PckTool.Commands;
 /// <summary>
 ///     Settings for the find command.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class FindSettings : GlobalSettings
 {
     [Description("WEM ID (decimal or hex with 0x prefix) to search for.")] [CommandOption("-w|--wem")]
@@ -26,6 +28,7 @@ public class FindSettings : GlobalSettings
 /// <summary>
 ///     Find which bank contains a specific WEM ID or search by cue name.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class FindCommand : Command<FindSettings>
 {
     public override int Execute(CommandContext context, FindSettings settings)

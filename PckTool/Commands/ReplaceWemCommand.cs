@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 
 using PckTool.Core.Games;
 using PckTool.Services;
@@ -11,6 +12,7 @@ namespace PckTool.Commands;
 /// <summary>
 ///     Settings for the replace-wem command.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class ReplaceWemSettings : GlobalSettings
 {
     [Description("Target WEM ID(s) (decimal or hex with 0x prefix) to replace. Can specify multiple times.")]
@@ -25,6 +27,7 @@ public class ReplaceWemSettings : GlobalSettings
 /// <summary>
 ///     Replace one or more WEM files in the package.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class ReplaceWemCommand : Command<ReplaceWemSettings>
 {
     public override int Execute(CommandContext context, ReplaceWemSettings settings)

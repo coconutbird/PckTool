@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -22,6 +23,7 @@ namespace PckTool.Commands;
 /// <summary>
 ///     Settings for batch project create command.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectCreateSettings : CommandSettings
 {
     [Description("Project name.")] [CommandOption("-n|--name")] [DefaultValue("Untitled Batch Project")]
@@ -50,6 +52,7 @@ public class BatchProjectCreateSettings : CommandSettings
 /// <summary>
 ///     Settings for batch project run command.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectRunSettings : CommandSettings
 {
     [Description("Path to the batch project file.")] [CommandArgument(0, "<project>")]
@@ -69,6 +72,7 @@ public class BatchProjectRunSettings : CommandSettings
 /// <summary>
 ///     Settings for batch project info command.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectInfoSettings : CommandSettings
 {
     [Description("Path to the batch project file.")] [CommandArgument(0, "<project>")]
@@ -81,6 +85,7 @@ public class BatchProjectInfoSettings : CommandSettings
 /// <summary>
 ///     Settings for adding an action to a batch project.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectAddActionSettings : CommandSettings
 {
     [Description("Path to the batch project file.")] [CommandArgument(0, "<project>")]
@@ -105,6 +110,7 @@ public class BatchProjectAddActionSettings : CommandSettings
 /// <summary>
 ///     Settings for removing an action from a batch project.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectRemoveActionSettings : CommandSettings
 {
     [Description("Path to the batch project file.")] [CommandArgument(0, "<project>")]
@@ -117,6 +123,7 @@ public class BatchProjectRemoveActionSettings : CommandSettings
 /// <summary>
 ///     Settings for batch project schema command.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectSchemaSettings : CommandSettings
 {
     [Description("Output file path. If not specified, outputs to stdout.")] [CommandArgument(0, "[output]")]
@@ -126,6 +133,7 @@ public class BatchProjectSchemaSettings : CommandSettings
 /// <summary>
 ///     Settings for batch project validate command.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectValidateSettings : CommandSettings
 {
     [Description("Path to the batch project file.")] [CommandArgument(0, "<project>")]
@@ -146,6 +154,7 @@ public class BatchProjectValidateSettings : CommandSettings
 /// <summary>
 ///     Create a new batch project file.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectCreateCommand : Command<BatchProjectCreateSettings>
 {
     public override int Execute(CommandContext context, BatchProjectCreateSettings settings)
@@ -225,6 +234,7 @@ public class BatchProjectCreateCommand : Command<BatchProjectCreateSettings>
 /// <summary>
 ///     Show batch project information.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectInfoCommand : Command<BatchProjectInfoSettings>
 {
     public override int Execute(CommandContext context, BatchProjectInfoSettings settings)
@@ -333,6 +343,7 @@ public class BatchProjectInfoCommand : Command<BatchProjectInfoSettings>
 /// <summary>
 ///     Execute a batch project.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectRunCommand : Command<BatchProjectRunSettings>
 {
     public override int Execute(CommandContext context, BatchProjectRunSettings settings)
@@ -452,6 +463,7 @@ public class BatchProjectRunCommand : Command<BatchProjectRunSettings>
 /// <summary>
 ///     Add an action to a batch project.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectAddActionCommand : Command<BatchProjectAddActionSettings>
 {
     public override int Execute(CommandContext context, BatchProjectAddActionSettings settings)
@@ -541,6 +553,7 @@ public class BatchProjectAddActionCommand : Command<BatchProjectAddActionSetting
 /// <summary>
 ///     Remove an action from a batch project.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectRemoveActionCommand : Command<BatchProjectRemoveActionSettings>
 {
     public override int Execute(CommandContext context, BatchProjectRemoveActionSettings settings)
@@ -598,6 +611,7 @@ public class BatchProjectRemoveActionCommand : Command<BatchProjectRemoveActionS
 /// <summary>
 ///     Generate JSON schema for batch project files.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectSchemaCommand : Command<BatchProjectSchemaSettings>
 {
     public override int Execute(CommandContext context, BatchProjectSchemaSettings settings)
@@ -708,6 +722,7 @@ public class BatchProjectSchemaCommand : Command<BatchProjectSchemaSettings>
 /// <summary>
 ///     Validate a batch project configuration.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BatchProjectValidateCommand : Command<BatchProjectValidateSettings>
 {
     public override int Execute(CommandContext context, BatchProjectValidateSettings settings)

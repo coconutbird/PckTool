@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 
 using PckTool.Core.Games;
 using PckTool.Core.Games.HaloWars;
@@ -13,6 +14,7 @@ namespace PckTool.Commands;
 /// <summary>
 ///     Settings for the dump command.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class DumpSettings : GlobalSettings
 {
     [Description("Specific sound bank ID (decimal or hex with 0x prefix) to extract. If not specified, extracts all.")]
@@ -27,6 +29,7 @@ public class DumpSettings : GlobalSettings
 /// <summary>
 ///     Extract all sound banks and WEM files from the game.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class DumpCommand : Command<DumpSettings>
 {
     public override int Execute(CommandContext context, DumpSettings settings)

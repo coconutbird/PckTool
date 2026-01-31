@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 using PckTool.Core.Games;
 using PckTool.Services;
 
@@ -9,6 +11,7 @@ namespace PckTool.Commands;
 /// <summary>
 ///     List all sound banks in the package file.
 /// </summary>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class ListCommand : Command<GlobalSettings>
 {
     public override int Execute(CommandContext context, GlobalSettings settings)
