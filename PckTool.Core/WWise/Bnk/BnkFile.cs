@@ -57,21 +57,6 @@ public class BnkFile : IAudioFile
     public IReadOnlyDictionary<uint, string> Languages { get; } = new Dictionary<uint, string> { { 0, "SFX" } };
 
     /// <inheritdoc />
-    public string? GetLanguageName(uint languageId)
-    {
-        // First check if we have a mapping in the Languages dictionary
-        var result = Languages.GetValueOrDefault(languageId);
-
-        // Fall back to legacy language ID enum for versions <= 122
-        if (string.IsNullOrEmpty(result))
-        {
-            result = LegacyLanguageIdExtensions.GetDisplayName(languageId);
-        }
-
-        return result;
-    }
-
-    /// <inheritdoc />
     public int SoundBankCount => 1;
 
     /// <inheritdoc />
@@ -150,6 +135,25 @@ public class BnkFile : IAudioFile
         }
 
         return new BnkFile(soundBank, path);
+    }
+
+    /// <summary>
+    ///     Loads a standalone BNK file from a stream.
+    /// </summary>
+    /// <param name="stream">The stream to load from.</param>
+    /// <param name="sourcePath">Optional source path for tracking where the data came from.</param>
+    /// <returns>A standalone BNK file wrapper.</returns>
+    /// <exception cref="InvalidDataException">The stream could not be parsed as a BNK.</exception>
+    public static BnkFile Load(Stream stream, string? sourcePath = null)
+    {
+        var soundBank = SoundBank.Parse(stream);
+
+        if (soundBank is null)
+        {
+            throw new InvalidDataException("Failed to parse BNK file from stream.");
+        }
+
+        return new BnkFile(soundBank, sourcePath);
     }
 
     internal void MarkModified()

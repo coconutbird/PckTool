@@ -14,6 +14,7 @@ internal class BnkFileSoundBankEntry : ISoundBankEntry
     {
         _soundBank = soundBank;
         _parent = parent;
+        ParentFile = parent;
     }
 
     /// <inheritdoc />
@@ -24,6 +25,9 @@ internal class BnkFileSoundBankEntry : ISoundBankEntry
 
     /// <inheritdoc />
     public uint Size => (uint) _soundBank.ToByteArray().Length;
+
+    /// <inheritdoc />
+    public IAudioFile? ParentFile { get; set; }
 
     /// <inheritdoc />
     public byte[] GetData()

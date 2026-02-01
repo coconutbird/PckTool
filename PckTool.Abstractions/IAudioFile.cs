@@ -13,7 +13,12 @@ public enum AudioFileType
     /// <summary>
     ///     A standalone BNK soundbank file.
     /// </summary>
-    Bnk
+    Bnk,
+
+    /// <summary>
+    ///     A composite set of multiple audio files (PCK and/or BNK).
+    /// </summary>
+    Composite
 }
 
 /// <summary>

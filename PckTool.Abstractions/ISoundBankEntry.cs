@@ -25,6 +25,12 @@ public interface ISoundBankEntry
     uint LanguageId { get; }
 
     /// <summary>
+    ///     Gets or sets the parent audio file this entry belongs to.
+    ///     Updated automatically when the entry is moved between files.
+    /// </summary>
+    IAudioFile? ParentFile { get; set; }
+
+    /// <summary>
     ///     Gets the raw soundbank data.
     /// </summary>
     /// <returns>The raw BNK file data.</returns>

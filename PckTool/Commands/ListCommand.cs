@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 
 using PckTool.Abstractions;
 using PckTool.Core.Games;
+using PckTool.Core.WWise.AudioFileSet;
 using PckTool.Services;
 
 using Spectre.Console;
@@ -34,46 +35,75 @@ public class ListCommand : Command<GlobalSettings>
 
         try
         {
+            // Load all files into a composite set for unified view
+            var shouldUseFileSet = resolution.Files.Count > 1;
+
+            AnsiConsole.MarkupLine(
+                shouldUseFileSet
+                    ? $"[blue]Loading {resolution.Files.Count} files as composite set[/]"
+                    : "[blue]Loading single file[/]");
+
+            using IAudioFile audioFile = shouldUseFileSet
+                ? ServiceProvider.AudioFileFactory.Load(resolution.GameDir!, true)
+                : ServiceProvider.AudioFileFactory.Load(resolution.Files[0]);
+
+            AnsiConsole.MarkupLine(
+                shouldUseFileSet
+                    ? $"[green]Loaded {audioFile.SoundBankCount} sound banks from {resolution.Files.Count} files[/]"
+                    : $"[green]Loaded {audioFile.SoundBankCount} sound banks from {resolution.Files[0]}[/]");
+
             // Create a table for output
             var table = new Table();
             table.AddColumn("Bank ID");
             table.AddColumn("Language");
             table.AddColumn("Size");
-            table.AddColumn("File");
 
-            var totalBanks = 0;
-
-            foreach (var filePath in resolution.Files)
+            // Add source file column for composite sets
+            if (shouldUseFileSet)
             {
-                AnsiConsole.MarkupLine($"[blue]Loading:[/] {Path.GetFileName(filePath)}");
+                table.AddColumn("Source File");
+            }
 
-                using var audioFile = ServiceProvider.AudioFileFactory.Load(filePath);
+            // Group by language for cleaner output
+            var banksByLanguage = audioFile.SoundBanks
+                                           .Entries
+                                           .GroupBy(e => audioFile.GetLanguageNameOrDefault(e.LanguageId))
+                                           .OrderBy(g => g.Key);
 
-                // Group by language for cleaner output
-                var banksByLanguage = audioFile.SoundBanks
-                                               .Entries
-                                               .GroupBy(e => audioFile.GetLanguageNameOrDefault(e.LanguageId))
-                                               .OrderBy(g => g.Key);
-
-                foreach (var languageGroup in banksByLanguage)
+            foreach (var languageGroup in banksByLanguage)
+            {
+                foreach (var entry in languageGroup.OrderBy(e => e.Id))
                 {
-                    foreach (var entry in languageGroup.OrderBy(e => e.Id))
+                    if (shouldUseFileSet)
                     {
+                        var sourceFileName = entry.ParentFile?.SourcePath is not null && resolution.GameDir is not null
+                            ? Path.GetRelativePath(resolution.GameDir, entry.ParentFile.SourcePath)
+                            : entry.ParentFile?.SourcePath is not null
+                                ? Path.GetFileName(entry.ParentFile.SourcePath)
+                                : "[grey]Unknown[/]";
+
                         table.AddRow(
                             $"[blue]{entry.Id:X8}[/]",
                             languageGroup.Key,
                             $"{entry.Size:N0} bytes",
-                            Path.GetFileName(filePath));
+                            sourceFileName);
+                    }
+                    else
+                    {
+                        table.AddRow(
+                            $"[blue]{entry.Id:X8}[/]",
+                            languageGroup.Key,
+                            $"{entry.Size:N0} bytes");
                     }
                 }
-
-                totalBanks += audioFile.SoundBanks.Count;
             }
 
             AnsiConsole.WriteLine();
             AnsiConsole.Write(table);
             AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine($"[bold]Total:[/] {totalBanks} sound banks");
+            AnsiConsole.MarkupLine($"[bold]Total:[/] {audioFile.SoundBankCount} sound banks");
+            AnsiConsole.MarkupLine($"[bold]Streaming files:[/] {audioFile.StreamingFileCount}");
+            AnsiConsole.MarkupLine($"[bold]External files:[/] {audioFile.ExternalFileCount}");
 
             return 0;
         }

@@ -22,6 +22,12 @@ public interface IExternalFileEntry
     uint LanguageId { get; }
 
     /// <summary>
+    ///     Gets or sets the parent audio file this entry belongs to.
+    ///     Updated automatically when the entry is moved between files.
+    /// </summary>
+    IAudioFile? ParentFile { get; set; }
+
+    /// <summary>
     ///     Gets the WEM file data.
     /// </summary>
     /// <returns>The raw WEM data.</returns>
