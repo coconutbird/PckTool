@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 
 using PckTool.Core.Games;
 using PckTool.Core.Services;
+using PckTool.Services;
 
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -45,18 +46,20 @@ public class BrowseCommand : Command<BrowseSettings>
             AnsiConsole.MarkupLine($"[green]Directory:[/] {resolution.GameDir}");
         }
 
+        // Load all files as composite set for unified browsing
+        var shouldUseFileSet = resolution.Files.Count > 1;
+
+        AnsiConsole.MarkupLine(
+            shouldUseFileSet
+                ? $"[blue]Loading {resolution.Files.Count} files as composite set...[/]"
+                : $"[blue]Loading:[/] {Path.GetFileName(resolution.Files[0])}");
+
+        using var audioFile = shouldUseFileSet
+            ? ServiceProvider.AudioFileFactory.Load(resolution.GameDir!, true)
+            : ServiceProvider.AudioFileFactory.Load(resolution.Files[0]);
+
         using var browser = new PackageBrowser();
-
-        // Load each input file
-        foreach (var filePath in resolution.Files)
-        {
-            if (!browser.LoadPackage(filePath))
-            {
-                AnsiConsole.MarkupLine($"[red]Failed to load audio file:[/] {Path.GetFileName(filePath)}");
-
-                return 1;
-            }
-        }
+        browser.SetAudioFile(audioFile);
 
         // Try to load sound table for cue names if we have a game directory
         if (resolution.GameDir is not null)

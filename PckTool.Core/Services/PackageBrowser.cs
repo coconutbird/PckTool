@@ -67,24 +67,29 @@ public class PackageBrowser : IDisposable
     /// <returns>True if loaded successfully.</returns>
     public bool LoadPackage(string path)
     {
-        _audioFile?.Dispose();
-        _audioFile = null;
-        _parsedBanks = null;
-        _fileIdsResolved = false;
-
         try
         {
-            _audioFile = _audioFileFactory.Load(path);
+            var audioFile = _audioFileFactory.Load(path);
+            SetAudioFile(audioFile);
+
+            return true;
         }
         catch
         {
             return false;
         }
+    }
 
-        if (_audioFile is null)
-        {
-            return false;
-        }
+    /// <summary>
+    ///     Sets the audio file to browse. This can be a single file or a composite set.
+    /// </summary>
+    /// <param name="audioFile">The audio file (PCK, BNK, or composite set).</param>
+    public void SetAudioFile(IAudioFile audioFile)
+    {
+        _audioFile?.Dispose();
+        _audioFile = audioFile ?? throw new ArgumentNullException(nameof(audioFile));
+        _parsedBanks = null;
+        _fileIdsResolved = false;
 
         // Pre-parse all banks for efficient access
         _parsedBanks = new Dictionary<uint, SoundBank>();
@@ -104,8 +109,6 @@ public class PackageBrowser : IDisposable
         {
             ResolveFileIds();
         }
-
-        return true;
     }
 
     /// <summary>
