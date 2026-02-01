@@ -104,7 +104,7 @@ public class DumpCommand : Command<DumpSettings>
                                        var languageId = fileEntry.LanguageId;
                                        var language = audioFile.Languages.GetValueOrDefault(
                                            languageId,
-                                           $"Lang:{languageId}");
+                                           $"Lang_{languageId}");
 
                                        // Apply language filter
                                        if (!string.IsNullOrWhiteSpace(settings.Language)
@@ -185,9 +185,7 @@ public class DumpCommand : Command<DumpSettings>
 
                                foreach (var (languageId, languageBanks) in soundbanksByLanguage)
                                {
-                                   var language = audioFile.Languages.GetValueOrDefault(
-                                       languageId,
-                                       $"Lang:{languageId}");
+                                   var language = audioFile.GetLanguageName(languageId) ?? $"Lang_{languageId}";
 
                                    foreach (var (soundbankId, soundbank) in languageBanks)
                                    {

@@ -3,6 +3,7 @@ using System.Text;
 
 using PckTool.Abstractions;
 using PckTool.Core.WWise.Bnk;
+using PckTool.Core.WWise.Bnk.Enums;
 using PckTool.Core.WWise.Common;
 using PckTool.Core.WWise.Pck.Collections;
 using PckTool.Core.WWise.Pck.Entries;
@@ -358,7 +359,16 @@ public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile, IAudioFile
     /// </summary>
     public string? GetLanguageName(uint languageId)
     {
-        return Languages.GetValueOrDefault(languageId);
+        // First check if we have a mapping from the PCK file's language table
+        var result = Languages.GetValueOrDefault(languageId);
+
+        // Fall back to legacy language ID enum for versions <= 122
+        if (string.IsNullOrEmpty(result))
+        {
+            result = LegacyLanguageIdExtensions.GetDisplayName(languageId);
+        }
+
+        return result;
     }
 
     /// <summary>

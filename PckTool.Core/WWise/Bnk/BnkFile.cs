@@ -1,6 +1,7 @@
 using PckTool.Abstractions;
 using PckTool.Core.WWise.Bnk.Collections;
 using PckTool.Core.WWise.Bnk.Entries;
+using PckTool.Core.WWise.Bnk.Enums;
 
 namespace PckTool.Core.WWise.Bnk;
 
@@ -54,6 +55,21 @@ public class BnkFile : IAudioFile
 
     /// <inheritdoc />
     public IReadOnlyDictionary<uint, string> Languages { get; } = new Dictionary<uint, string> { { 0, "SFX" } };
+
+    /// <inheritdoc />
+    public string? GetLanguageName(uint languageId)
+    {
+        // First check if we have a mapping in the Languages dictionary
+        var result = Languages.GetValueOrDefault(languageId);
+
+        // Fall back to legacy language ID enum for versions <= 122
+        if (string.IsNullOrEmpty(result))
+        {
+            result = LegacyLanguageIdExtensions.GetDisplayName(languageId);
+        }
+
+        return result;
+    }
 
     /// <inheritdoc />
     public int SoundBankCount => 1;

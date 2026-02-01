@@ -56,6 +56,13 @@ public interface IAudioFile : IDisposable
     IReadOnlyDictionary<uint, string> Languages { get; }
 
     /// <summary>
+    ///     Gets the language name for a language ID.
+    /// </summary>
+    /// <param name="languageId">The language ID.</param>
+    /// <returns>The language name, or null if not found.</returns>
+    string? GetLanguageName(uint languageId);
+
+    /// <summary>
     ///     Gets the number of soundbanks contained in this audio file.
     /// </summary>
     int SoundBankCount { get; }
