@@ -100,11 +100,11 @@ public class RanSeqCntrInitialValues
     public Children Children { get; set; }
     public Playlist Playlist { get; set; }
 
-    public bool Read(BinaryReader reader)
+    public bool Read(BinaryReader reader, bool hasFeedback = false)
     {
         var nodeBaseParams = new NodeBaseParams();
 
-        if (!nodeBaseParams.Read(reader))
+        if (!nodeBaseParams.Read(reader, hasFeedback))
         {
             return false;
         }

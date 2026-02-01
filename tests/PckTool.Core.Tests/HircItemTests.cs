@@ -13,6 +13,8 @@ namespace PckTool.Core.Tests;
 /// </summary>
 public class HircItemTests
 {
+    private const string ModifiedPckPath = @"c:\Users\dev\Documents\Git\coconutbird\SoundsUnpack\Sounds_modified.pck";
+
 #region MusicRanSeqPlaylistItem Tests
 
     [Fact]
@@ -728,6 +730,187 @@ public class HircItemTests
     }
 
 #endregion
+
+    [SkippableFact]
+    public void Integration_ReplaceWem_UpdatesHircSizes()
+    {
+        Skip.IfNot(File.Exists(SoundsPckPath), $"Sounds.pck not found at {SoundsPckPath}");
+
+        // Load the .pck file
+        using var pck = PckFile.Load(SoundsPckPath);
+        Assert.NotNull(pck);
+
+        // Find a bank with embedded media and Sound items
+        SoundBank? testBank = null;
+        uint testSourceId = 0;
+        uint originalSize = 0;
+
+        foreach (var entry in pck.SoundBanks)
+        {
+            var bank = entry.Parse();
+
+            if (bank is null || bank.Media.Count == 0)
+            {
+                continue;
+            }
+
+            // Find a Sound item that references embedded media
+            foreach (var sound in bank.Sounds)
+            {
+                var sourceId = sound.Values.BankSourceData.MediaInformation.SourceId;
+
+                if (bank.Media.Contains(sourceId))
+                {
+                    testBank = bank;
+                    testSourceId = sourceId;
+                    originalSize = sound.Values.BankSourceData.MediaInformation.InMemoryMediaSize;
+
+                    break;
+                }
+            }
+
+            if (testBank is not null)
+            {
+                break;
+            }
+        }
+
+        Skip.If(testBank is null, "No suitable bank found with embedded media and Sound items");
+
+        // Create replacement data with different size
+        var newData = new byte[originalSize + 100];
+        Array.Fill(newData, (byte) 0xAB);
+
+        // Act - Replace the WEM
+        var updatedCount = testBank!.ReplaceWem(testSourceId, newData);
+
+        // Assert
+        Assert.True(updatedCount > 0, "Expected at least one HIRC reference to be updated");
+
+        // Verify the size was updated
+        var refs = testBank.GetMediaReferences(testSourceId).ToList();
+        Assert.All(refs, r => Assert.Equal((uint) newData.Length, r.InMemoryMediaSize));
+    }
+
+    [SkippableFact]
+    public void Integration_SoundBankRoundTrip_ProducesIdenticalData()
+    {
+        Skip.IfNot(File.Exists(SoundsPckPath), $"Sounds.pck not found at {SoundsPckPath}");
+
+        // Load the .pck file
+        using var pck = PckFile.Load(SoundsPckPath);
+        Assert.NotNull(pck);
+
+        // WEM 970927665 - the one user is trying to replace
+        uint targetWem = 970927665;
+        var failures = new List<string>();
+
+        foreach (var entry in pck.SoundBanks)
+        {
+            var bank = entry.Parse();
+
+            if (bank == null || !bank.Media.Contains(targetWem))
+            {
+                continue;
+            }
+
+            // Serialize the parsed bank
+            var serialized = bank.ToByteArray();
+
+            // Re-parse the serialized data to verify functional correctness
+            // This is more robust than byte-comparison because it allows for different padding
+            var reloadedBank = SoundBank.Parse(serialized);
+
+            if (reloadedBank == null)
+            {
+                failures.Add($"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): Failed to re-parse serialized data");
+
+                continue;
+            }
+
+            // Compare HIRC items count
+            if (bank.Items.Count != reloadedBank.Items.Count)
+            {
+                failures.Add(
+                    $"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): "
+                    + $"HIRC item count mismatch! Original: {bank.Items.Count}, Reloaded: {reloadedBank.Items.Count}");
+
+                continue;
+            }
+
+            // Compare media count
+            if (bank.Media.Count != reloadedBank.Media.Count)
+            {
+                failures.Add(
+                    $"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): "
+                    + $"Media count mismatch! Original: {bank.Media.Count}, Reloaded: {reloadedBank.Media.Count}");
+
+                continue;
+            }
+
+            // Compare each media entry's data
+            foreach (var kvp in bank.Media)
+            {
+                if (!reloadedBank.Media.TryGet(kvp.Key, out var reloadedData) || reloadedData is null)
+                {
+                    failures.Add(
+                        $"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): "
+                        + $"Missing media entry 0x{kvp.Key:X8} in reloaded bank");
+
+                    continue;
+                }
+
+                if (!kvp.Value.AsSpan().SequenceEqual(reloadedData))
+                {
+                    failures.Add(
+                        $"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): "
+                        + $"Media data mismatch for entry 0x{kvp.Key:X8}! "
+                        + $"Original size: {kvp.Value.Length}, Reloaded size: {reloadedData.Length}");
+                }
+            }
+        }
+
+        Assert.True(
+            failures.Count == 0,
+            $"Soundbank round-trip failures:\n{string.Join("\n", failures)}");
+    }
+
+    [SkippableFact]
+    public void Integration_ModifiedPck_CanBeLoaded()
+    {
+        Skip.IfNot(File.Exists(ModifiedPckPath), $"Sounds_modified.pck not found at {ModifiedPckPath}");
+
+        // Try to load the modified PCK file
+        using var pck = PckFile.Load(ModifiedPckPath);
+        Assert.NotNull(pck);
+
+        // Verify the modified file has the expected number of entries
+        Assert.True(pck.SoundBanks.Count > 0, "Should have sound banks");
+        Assert.True(pck.StreamingFiles.Count > 0, "Should have streaming files");
+
+        // Parse all soundbanks to ensure none are corrupted
+        var parsedBanks = 0;
+        var errors = new List<string>();
+
+        foreach (var entry in pck.SoundBanks)
+        {
+            try
+            {
+                var bank = entry.Parse();
+                if (bank != null) parsedBanks++;
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): {ex.Message}");
+            }
+        }
+
+        Assert.True(
+            errors.Count == 0,
+            $"Failed to parse {errors.Count} banks. "
+            + $"Parsed {parsedBanks} successfully. "
+            + $"Errors:\n{string.Join("\n", errors.Take(10))}");
+    }
 
 #region StateItem Tests
 
@@ -2063,187 +2246,4 @@ public class HircItemTests
     }
 
 #endregion
-
-    [SkippableFact]
-    public void Integration_ReplaceWem_UpdatesHircSizes()
-    {
-        Skip.IfNot(File.Exists(SoundsPckPath), $"Sounds.pck not found at {SoundsPckPath}");
-
-        // Load the .pck file
-        using var pck = PckFile.Load(SoundsPckPath);
-        Assert.NotNull(pck);
-
-        // Find a bank with embedded media and Sound items
-        SoundBank? testBank = null;
-        uint testSourceId = 0;
-        uint originalSize = 0;
-
-        foreach (var entry in pck.SoundBanks)
-        {
-            var bank = entry.Parse();
-
-            if (bank is null || bank.Media.Count == 0)
-            {
-                continue;
-            }
-
-            // Find a Sound item that references embedded media
-            foreach (var sound in bank.Sounds)
-            {
-                var sourceId = sound.Values.BankSourceData.MediaInformation.SourceId;
-
-                if (bank.Media.Contains(sourceId))
-                {
-                    testBank = bank;
-                    testSourceId = sourceId;
-                    originalSize = sound.Values.BankSourceData.MediaInformation.InMemoryMediaSize;
-
-                    break;
-                }
-            }
-
-            if (testBank is not null)
-            {
-                break;
-            }
-        }
-
-        Skip.If(testBank is null, "No suitable bank found with embedded media and Sound items");
-
-        // Create replacement data with different size
-        var newData = new byte[originalSize + 100];
-        Array.Fill(newData, (byte) 0xAB);
-
-        // Act - Replace the WEM
-        var updatedCount = testBank!.ReplaceWem(testSourceId, newData);
-
-        // Assert
-        Assert.True(updatedCount > 0, "Expected at least one HIRC reference to be updated");
-
-        // Verify the size was updated
-        var refs = testBank.GetMediaReferences(testSourceId).ToList();
-        Assert.All(refs, r => Assert.Equal((uint) newData.Length, r.InMemoryMediaSize));
-    }
-
-    [SkippableFact]
-    public void Integration_SoundBankRoundTrip_ProducesIdenticalData()
-    {
-        Skip.IfNot(File.Exists(SoundsPckPath), $"Sounds.pck not found at {SoundsPckPath}");
-
-        // Load the .pck file
-        using var pck = PckFile.Load(SoundsPckPath);
-        Assert.NotNull(pck);
-
-        // WEM 970927665 - the one user is trying to replace
-        uint targetWem = 970927665;
-        var failures = new List<string>();
-
-        foreach (var entry in pck.SoundBanks)
-        {
-            var bank = entry.Parse();
-
-            if (bank == null || !bank.Media.Contains(targetWem))
-            {
-                continue;
-            }
-
-            // Serialize the parsed bank
-            var serialized = bank.ToByteArray();
-
-            // Re-parse the serialized data to verify functional correctness
-            // This is more robust than byte-comparison because it allows for different padding
-            var reloadedBank = SoundBank.Parse(serialized);
-
-            if (reloadedBank == null)
-            {
-                failures.Add($"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): Failed to re-parse serialized data");
-
-                continue;
-            }
-
-            // Compare HIRC items count
-            if (bank.Items.Count != reloadedBank.Items.Count)
-            {
-                failures.Add(
-                    $"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): "
-                    + $"HIRC item count mismatch! Original: {bank.Items.Count}, Reloaded: {reloadedBank.Items.Count}");
-
-                continue;
-            }
-
-            // Compare media count
-            if (bank.Media.Count != reloadedBank.Media.Count)
-            {
-                failures.Add(
-                    $"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): "
-                    + $"Media count mismatch! Original: {bank.Media.Count}, Reloaded: {reloadedBank.Media.Count}");
-
-                continue;
-            }
-
-            // Compare each media entry's data
-            foreach (var kvp in bank.Media)
-            {
-                if (!reloadedBank.Media.TryGet(kvp.Key, out var reloadedData) || reloadedData is null)
-                {
-                    failures.Add(
-                        $"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): "
-                        + $"Missing media entry 0x{kvp.Key:X8} in reloaded bank");
-
-                    continue;
-                }
-
-                if (!kvp.Value.AsSpan().SequenceEqual(reloadedData))
-                {
-                    failures.Add(
-                        $"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): "
-                        + $"Media data mismatch for entry 0x{kvp.Key:X8}! "
-                        + $"Original size: {kvp.Value.Length}, Reloaded size: {reloadedData.Length}");
-                }
-            }
-        }
-
-        Assert.True(
-            failures.Count == 0,
-            $"Soundbank round-trip failures:\n{string.Join("\n", failures)}");
-    }
-
-    private const string ModifiedPckPath = @"c:\Users\dev\Documents\Git\coconutbird\SoundsUnpack\Sounds_modified.pck";
-
-    [SkippableFact]
-    public void Integration_ModifiedPck_CanBeLoaded()
-    {
-        Skip.IfNot(File.Exists(ModifiedPckPath), $"Sounds_modified.pck not found at {ModifiedPckPath}");
-
-        // Try to load the modified PCK file
-        using var pck = PckFile.Load(ModifiedPckPath);
-        Assert.NotNull(pck);
-
-        // Verify the modified file has the expected number of entries
-        Assert.True(pck.SoundBanks.Count > 0, "Should have sound banks");
-        Assert.True(pck.StreamingFiles.Count > 0, "Should have streaming files");
-
-        // Parse all soundbanks to ensure none are corrupted
-        var parsedBanks = 0;
-        var errors = new List<string>();
-
-        foreach (var entry in pck.SoundBanks)
-        {
-            try
-            {
-                var bank = entry.Parse();
-                if (bank != null) parsedBanks++;
-            }
-            catch (Exception ex)
-            {
-                errors.Add($"Bank 0x{entry.Id:X8} (lang:{entry.LanguageId}): {ex.Message}");
-            }
-        }
-
-        Assert.True(
-            errors.Count == 0,
-            $"Failed to parse {errors.Count} banks. "
-            + $"Parsed {parsedBanks} successfully. "
-            + $"Errors:\n{string.Join("\n", errors.Take(10))}");
-    }
 }

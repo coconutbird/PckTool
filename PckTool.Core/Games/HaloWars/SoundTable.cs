@@ -247,7 +247,7 @@ public class SoundTable
     {
         foreach (var actionId in eventItem.Values.Actions)
         {
-            var actionItem = currentBank.GetItem(actionId);
+            var actionItem = currentBank.GetItem(IdType.Audio, actionId);
 
             if (actionItem is null)
             {
@@ -309,7 +309,7 @@ public class SoundTable
         }
 
         // Find the target item in the target bank
-        var targetItem = targetBank.GetItem(targetItemId);
+        var targetItem = targetBank.GetItem(IdType.Audio, targetItemId);
 
         if (targetItem is null)
         {
@@ -333,7 +333,7 @@ public class SoundTable
     {
         foreach (var childId in containerItem.Values.Children.ChildIds)
         {
-            var childItem = currentBank.GetItem(childId);
+            var childItem = currentBank.GetItem(IdType.Audio, childId);
 
             if (childItem is null)
             {
@@ -359,7 +359,7 @@ public class SoundTable
     {
         foreach (var childId in musicSwitchItem.Values.MusicTransNodeParams.MusicNodeParams.Children.ChildIds)
         {
-            var childItem = currentBank.GetItem(childId);
+            var childItem = currentBank.GetItem(IdType.Audio, childId);
 
             if (childItem is null)
             {
@@ -385,7 +385,7 @@ public class SoundTable
     {
         foreach (var childId in segmentItem.Values.MusicNodeParams.Children.ChildIds)
         {
-            var childItem = currentBank.GetItem(childId);
+            var childItem = currentBank.GetItem(IdType.Audio, childId);
 
             if (childItem is null)
             {
@@ -412,7 +412,7 @@ public class SoundTable
         // Resolve children from MusicNodeParams (like MusicSwitch)
         foreach (var childId in musicRanSeqItem.Values.MusicTransNodeParams.MusicNodeParams.Children.ChildIds)
         {
-            var childItem = currentBank.GetItem(childId);
+            var childItem = currentBank.GetItem(IdType.Audio, childId);
 
             if (childItem is null)
             {
@@ -447,7 +447,7 @@ public class SoundTable
             // If segment ID is non-zero, resolve it
             if (item.SegmentId != 0)
             {
-                var segmentItem = currentBank.GetItem(item.SegmentId);
+                var segmentItem = currentBank.GetItem(IdType.Audio, item.SegmentId);
 
                 if (segmentItem is null)
                 {

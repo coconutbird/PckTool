@@ -7,11 +7,11 @@ public class ActorMixerInitialValues
     public NodeBaseParams NodeBaseParams { get; set; }
     public Children Children { get; set; }
 
-    public bool Read(BinaryReader reader)
+    public bool Read(BinaryReader reader, bool hasFeedback = false)
     {
         var nodeBaseParams = new NodeBaseParams();
 
-        if (!nodeBaseParams.Read(reader))
+        if (!nodeBaseParams.Read(reader, hasFeedback))
         {
             return false;
         }

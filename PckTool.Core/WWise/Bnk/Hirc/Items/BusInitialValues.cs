@@ -18,7 +18,18 @@ public class BusInitialValues
     public InitialRtpc InitialRtpc { get; set; } = null!;
     public StateChunk StateChunk { get; set; } = null!;
 
-    public bool Read(BinaryReader reader)
+    /// <summary>
+    ///     FeedbackInfo.BusId - read at end for v57+ when bank has feedback enabled.
+    ///     This field is "unused" in v112+ but still present in the data.
+    /// </summary>
+    public uint FeedbackBusId { get; set; }
+
+    /// <summary>
+    ///     Whether the bank has feedback enabled. Used to know if FeedbackBusId should be written.
+    /// </summary>
+    public bool HasFeedback { get; set; }
+
+    public bool Read(BinaryReader reader, bool hasFeedback = false)
     {
         // See CAkBus__SetInitialValues in wparser.py
 
@@ -83,7 +94,15 @@ public class BusInitialValues
         }
 
         // 10. FeedbackInfo (v<=126) - for v113 this is read
-        // See CAkParameterNodeBase__ReadFeedbackInfo - but typically empty for Bus
+        // See CAkParameterNodeBase__ReadFeedbackInfo
+        uint feedbackBusId = 0;
+
+        if (hasFeedback)
+        {
+            // For v57+ when bank has feedback enabled, read FeedbackInfo.BusId (4 bytes)
+            // This field is "unused" in v112+ but still present in the data
+            feedbackBusId = reader.ReadUInt32();
+        }
 
         OverrideBusId = overrideBusId;
         BusInitialParams = busInitialParams;
@@ -94,6 +113,8 @@ public class BusInitialValues
         OverrideAttachmentParams = overrideAttachmentParams;
         InitialRtpc = initialRtpc;
         StateChunk = stateChunk;
+        FeedbackBusId = feedbackBusId;
+        HasFeedback = hasFeedback;
 
         return true;
     }
@@ -116,6 +137,12 @@ public class BusInitialValues
         writer.Write(OverrideAttachmentParams);
         InitialRtpc.Write(writer);
         StateChunk.Write(writer);
+
+        // Write FeedbackInfo.BusId if feedback is enabled
+        if (HasFeedback)
+        {
+            writer.Write(FeedbackBusId);
+        }
     }
 }
 

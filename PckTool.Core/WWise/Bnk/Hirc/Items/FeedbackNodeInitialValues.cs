@@ -19,7 +19,7 @@ public class FeedbackNodeInitialValues
     /// </summary>
     public NodeBaseParams NodeBaseParams { get; set; } = null!;
 
-    public bool Read(BinaryReader reader)
+    public bool Read(BinaryReader reader, bool hasFeedback = false)
     {
         // numSources (u32)
         var numSources = reader.ReadUInt32();
@@ -39,7 +39,7 @@ public class FeedbackNodeInitialValues
         // NodeBaseParams
         var nodeBaseParams = new NodeBaseParams();
 
-        if (!nodeBaseParams.Read(reader))
+        if (!nodeBaseParams.Read(reader, hasFeedback))
         {
             return false;
         }

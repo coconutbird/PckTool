@@ -5,6 +5,34 @@ namespace PckTool.Core.Tests;
 
 public class SoundBankTests
 {
+#region PckFile Integration Tests
+
+    [Fact]
+    public void PckFile_AddSoundBank_FromSoundBankObject_ShouldWork()
+    {
+        // Arrange
+        var pck = PckFile.Create();
+        var bank = new SoundBank(0x12345678, 1) { Version = 0x71, ProjectId = 42 };
+
+        // Act
+        var entry = pck.AddSoundBank(bank, name: "FromObject");
+
+        // Assert
+        Assert.Single(pck.SoundBanks);
+        Assert.Equal(0x12345678u, entry.Id);
+        Assert.Equal(1u, entry.LanguageId);
+        Assert.Equal("FromObject", entry.Name);
+
+        // Verify the data is valid BNK data
+        var data = entry.GetData();
+        Assert.Equal((byte) 'B', data[0]);
+        Assert.Equal((byte) 'K', data[1]);
+        Assert.Equal((byte) 'H', data[2]);
+        Assert.Equal((byte) 'D', data[3]);
+    }
+
+#endregion
+
 #region Creation Tests
 
     [Fact]
@@ -82,34 +110,6 @@ public class SoundBankTests
         Assert.Equal(original.Version, loaded.Version);
         Assert.Equal(original.ProjectId, loaded.ProjectId);
         Assert.Equal(original.FeedbackInBank, loaded.FeedbackInBank);
-    }
-
-#endregion
-
-#region PckFile Integration Tests
-
-    [Fact]
-    public void PckFile_AddSoundBank_FromSoundBankObject_ShouldWork()
-    {
-        // Arrange
-        var pck = PckFile.Create();
-        var bank = new SoundBank(0x12345678, 1) { Version = 0x71, ProjectId = 42 };
-
-        // Act
-        var entry = pck.AddSoundBank(bank, name: "FromObject");
-
-        // Assert
-        Assert.Single(pck.SoundBanks);
-        Assert.Equal(0x12345678u, entry.Id);
-        Assert.Equal(1u, entry.LanguageId);
-        Assert.Equal("FromObject", entry.Name);
-
-        // Verify the data is valid BNK data
-        var data = entry.GetData();
-        Assert.Equal((byte) 'B', data[0]);
-        Assert.Equal((byte) 'K', data[1]);
-        Assert.Equal((byte) 'H', data[2]);
-        Assert.Equal((byte) 'D', data[3]);
     }
 
 #endregion
@@ -219,4 +219,3 @@ public class SoundBankTests
 
 #endregion
 }
-

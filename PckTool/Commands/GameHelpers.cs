@@ -104,11 +104,16 @@ public static class GameHelpers
 
         if (gameResolution.GameDir is null)
         {
+            // Provide a more specific error for games that require manual directory specification
+            var errorMessage = gameResolution.Metadata.RequiresManualGameDirectory
+                ? $"{gameResolution.Game.ToDisplayName()} requires --game-dir <path> (UWP games cannot be auto-detected)"
+                : "Game directory not found. Use --game-dir <path> or --file <path>";
+
             return new FileResolutionResult(
                 [],
                 gameResolution.Game,
                 null,
-                "Game directory not found. Use --game-dir <path> or --file <path>");
+                errorMessage);
         }
 
         var inputFiles = gameResolution.Metadata.GetDefaultInputFiles(gameResolution.GameDir).ToList();

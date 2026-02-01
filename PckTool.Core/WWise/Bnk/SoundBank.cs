@@ -53,6 +53,12 @@ public class SoundBank : ISoundBank
     public uint FeedbackInBank { get; set; }
 
     /// <summary>
+    ///     Returns true if feedback is enabled in this bank (bFeedbackInBank != 0).
+    ///     When true, NodeBaseParams will read an additional 4-byte FeedbackInfo.BusId field.
+    /// </summary>
+    public bool HasFeedback => (FeedbackInBank & 1) != 0;
+
+    /// <summary>
     ///     Returns true if the bank was successfully parsed.
     /// </summary>
     public bool IsValid { get; private set; }
@@ -126,19 +132,19 @@ public class SoundBank : ISoundBank
 #region Lookup Methods
 
     /// <summary>
-    ///     Gets a HIRC item by ID.
+    ///     Gets a HIRC item by ID type and ID.
     /// </summary>
-    public HircItem? GetItem(uint id)
+    public HircItem? GetItem(IdType idType, uint id)
     {
-        return Items[id];
+        return Items[idType, id];
     }
 
     /// <summary>
-    ///     Gets a HIRC item by ID and casts to the specified type.
+    ///     Gets a HIRC item by ID type and ID and casts to the specified type.
     /// </summary>
     public T? GetItem<T>(uint id) where T : HircItem
     {
-        return Items.Get<T>(id);
+        return Items.Get<T>(typeof(T).GetIdType(), id);
     }
 
     /// <summary>

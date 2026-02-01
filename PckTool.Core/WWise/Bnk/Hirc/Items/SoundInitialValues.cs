@@ -7,7 +7,7 @@ public class SoundInitialValues
     public BankSourceData BankSourceData { get; set; }
     public NodeBaseParams NodeBaseParams { get; set; }
 
-    public bool Read(BinaryReader reader)
+    public bool Read(BinaryReader reader, bool hasFeedback = false)
     {
         var bankSourceData = new BankSourceData();
 
@@ -18,7 +18,7 @@ public class SoundInitialValues
 
         var nodeBaseParams = new NodeBaseParams();
 
-        if (!nodeBaseParams.Read(reader))
+        if (!nodeBaseParams.Read(reader, hasFeedback))
         {
             return false;
         }

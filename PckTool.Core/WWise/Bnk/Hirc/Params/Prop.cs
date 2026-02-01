@@ -7,24 +7,31 @@ public class Prop
     public PropType Id { get; set; }
     public byte[] RawValue { get; set; } = [];
 
-    public static int GetSizeOfType(PropType type, bool isRandomizer = false)
+    /// <summary>
+    ///     Gets the size in bytes for a property value.
+    ///     Per wwiser's AkPropBundle_AkPropValue_unsigned_char___SetInitialParams:
+    ///     ALL prop values in PropBundles are stored as 4-byte unions (AkPropValue),
+    ///     regardless of their logical type (curves, probability, etc.).
+    /// </summary>
+    /// <param name="type">The property type ID (not used for sizing, kept for potential future use).</param>
+    /// <param name="isRandomizer">Whether this is a ranged modifier (min+max values).</param>
+    /// <param name="isModulator">
+    ///     Whether this property belongs to a modulator (LFO/Envelope).
+    ///     Modulators use AkModulatorPropID, not AkPropID, and all values are 4-byte floats.
+    /// </param>
+    /// <returns>The size in bytes for the property value.</returns>
+    public static int GetSizeOfType(PropType type, bool isRandomizer = false, bool isModulator = false)
     {
-        return type switch
+        // Ranged modifiers always have 8 bytes (min + max, each as AkPropValue/union which is 4 bytes).
+        // This applies to both regular objects and modulators.
+        if (isRandomizer)
         {
-            // Special cases
-            PropType.Pitch => isRandomizer ? 8 : 4,          // double / 64-bit
-            PropType.InitialDelay => isRandomizer ? 8 : 4,   // double / 64-bit
-            PropType.TransitionTime => isRandomizer ? 8 : 4, // double / 64-bit
-            PropType.LowPassFilter => isRandomizer ? 8 : 4,  // double / 64-bit
-            PropType.Volume => isRandomizer ? 8 : 4,         // double / 64-bit
-            PropType.Probability => sizeof(byte),            // stored as % (0-100)
-            PropType.FadeInCurve => sizeof(byte),            // curve enum
-            PropType.FadeOutCurve => sizeof(byte),
-            PropType.CrossfadeUpCurve => sizeof(byte),
-            PropType.CrossfadeDownCurve => sizeof(byte),
+            return 8;
+        }
 
-            // Everything else is a float (AkReal32)
-            _ => sizeof(float)
-        };
+        // Per wwiser, ALL prop values in PropBundles are stored as 4-byte unions.
+        // The prop ID is 1 byte, but the value is always a 4-byte union (AkPropValue).
+        // This is true for all props including Probability, FadeCurve types, etc.
+        return 4;
     }
 }
