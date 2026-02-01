@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 
+using PckTool.Abstractions;
 using PckTool.Core.Games;
 using PckTool.Services;
 
@@ -51,9 +52,7 @@ public class ListCommand : Command<GlobalSettings>
                 // Group by language for cleaner output
                 var banksByLanguage = audioFile.SoundBanks
                                                .Entries
-                                               .GroupBy(e => audioFile.Languages.GetValueOrDefault(
-                                                            e.LanguageId,
-                                                            $"Lang:{e.LanguageId}"))
+                                               .GroupBy(e => audioFile.GetLanguageNameOrDefault(e.LanguageId))
                                                .OrderBy(g => g.Key);
 
                 foreach (var languageGroup in banksByLanguage)

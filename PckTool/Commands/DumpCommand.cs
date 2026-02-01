@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 
+using PckTool.Abstractions;
 using PckTool.Core.Games;
 using PckTool.Core.Games.HaloWars;
 using PckTool.Core.WWise.Bnk;
@@ -185,7 +186,7 @@ public class DumpCommand : Command<DumpSettings>
 
                                foreach (var (languageId, languageBanks) in soundbanksByLanguage)
                                {
-                                   var language = audioFile.GetLanguageName(languageId) ?? $"Lang_{languageId}";
+                                   var language = audioFile.GetLanguageNameOrDefault(languageId);
 
                                    foreach (var (soundbankId, soundbank) in languageBanks)
                                    {

@@ -1,4 +1,3 @@
-using PckTool.Core.WWise.Bnk;
 using PckTool.Core.WWise.Bnk.Enums;
 using PckTool.Core.WWise.Bnk.Hirc.Items;
 using PckTool.Core.WWise.Pck;
@@ -138,4 +137,3 @@ public class Hw2RoundTripTests
             $"Round-trip failures: {roundTripFailures.Count}/{totalItems}\nBy Type: {string.Join(", ", failuresByType)}");
     }
 }
-
