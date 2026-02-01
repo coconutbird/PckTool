@@ -12,11 +12,11 @@ namespace PckTool.Core.WWise.AudioFileSet;
 /// </remarks>
 public class AudioFileSet : IAudioFile
 {
+    private readonly CompositeExternalFileCollection _externalFiles;
     private readonly List<IAudioFile> _files = [];
+    private readonly Dictionary<uint, string> _languages = new();
     private readonly CompositeSoundBankCollection _soundBanks;
     private readonly CompositeStreamingFileCollection _streamingFiles;
-    private readonly CompositeExternalFileCollection _externalFiles;
-    private readonly Dictionary<uint, string> _languages = new();
 
     /// <summary>
     ///     Creates a new empty audio file set.
@@ -74,23 +74,6 @@ public class AudioFileSet : IAudioFile
 
     /// <inheritdoc />
     public int ExternalFileCount => _files.Sum(f => f.ExternalFileCount);
-
-    /// <summary>
-    ///     Adds an audio file to the set.
-    /// </summary>
-    /// <param name="file">The audio file to add.</param>
-    public void Add(IAudioFile file)
-    {
-        ArgumentNullException.ThrowIfNull(file);
-
-        _files.Add(file);
-
-        // Merge languages
-        foreach (var (langId, langName) in file.Languages)
-        {
-            _languages.TryAdd(langId, langName);
-        }
-    }
 
     /// <inheritdoc />
     public byte[]? FindWem(uint sourceId)
@@ -155,7 +138,7 @@ public class AudioFileSet : IAudioFile
         // Check if it's a directory path (exists or ends with separator)
         if (Directory.Exists(path) || Path.EndsInDirectorySeparator(path))
         {
-            SaveAll(path, onlyModified: false);
+            SaveAll(path, false);
 
             return;
         }
@@ -172,6 +155,35 @@ public class AudioFileSet : IAudioFile
         throw new NotSupportedException(
             "Cannot save a composite AudioFileSet to a single stream. "
             + "Use SaveAll() to save each file to its original location.");
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        foreach (var file in _files)
+        {
+            file.Dispose();
+        }
+
+        _files.Clear();
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    ///     Adds an audio file to the set.
+    /// </summary>
+    /// <param name="file">The audio file to add.</param>
+    public void Add(IAudioFile file)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+
+        _files.Add(file);
+
+        // Merge languages
+        foreach (var (langId, langName) in file.Languages)
+        {
+            _languages.TryAdd(langId, langName);
+        }
     }
 
     /// <summary>
@@ -192,7 +204,7 @@ public class AudioFileSet : IAudioFile
             if (string.IsNullOrEmpty(file.SourcePath))
             {
                 throw new InvalidOperationException(
-                    $"Cannot save file without a source path. Use SaveAll(directory) instead.");
+                    "Cannot save file without a source path. Use SaveAll(directory) instead.");
             }
 
             file.Save(file.SourcePath);
@@ -225,17 +237,5 @@ public class AudioFileSet : IAudioFile
             var outputPath = Path.Combine(directory, fileName);
             file.Save(outputPath);
         }
-    }
-
-    /// <inheritdoc />
-    public void Dispose()
-    {
-        foreach (var file in _files)
-        {
-            file.Dispose();
-        }
-
-        _files.Clear();
-        GC.SuppressFinalize(this);
     }
 }

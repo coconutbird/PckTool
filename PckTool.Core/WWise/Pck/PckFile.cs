@@ -3,7 +3,6 @@ using System.Text;
 
 using PckTool.Abstractions;
 using PckTool.Core.WWise.Bnk;
-using PckTool.Core.WWise.Bnk.Enums;
 using PckTool.Core.WWise.Common;
 using PckTool.Core.WWise.Pck.Collections;
 using PckTool.Core.WWise.Pck.Entries;

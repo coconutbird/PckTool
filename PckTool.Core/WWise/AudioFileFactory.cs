@@ -63,7 +63,22 @@ public class AudioFileFactory : IAudioFileFactory
     }
 
     /// <inheritdoc />
-    public AudioFileType DetectFileType(string path) => DetectFileType(path, allowDirectories: false);
+    public AudioFileType DetectFileType(string path)
+    {
+        return DetectFileType(path, false);
+    }
+
+    /// <inheritdoc />
+    public bool IsSupportedExtension(string extension)
+    {
+        // Normalize extension to have a leading dot
+        if (!extension.StartsWith('.'))
+        {
+            extension = "." + extension;
+        }
+
+        return PckExtensions.Contains(extension) || BnkExtensions.Contains(extension);
+    }
 
     /// <summary>
     ///     Determines the audio file type from a file path based on extension.
@@ -101,18 +116,6 @@ public class AudioFileFactory : IAudioFileFactory
         }
 
         throw new InvalidDataException($"Unsupported audio file extension: {extension}");
-    }
-
-    /// <inheritdoc />
-    public bool IsSupportedExtension(string extension)
-    {
-        // Normalize extension to have a leading dot
-        if (!extension.StartsWith('.'))
-        {
-            extension = "." + extension;
-        }
-
-        return PckExtensions.Contains(extension) || BnkExtensions.Contains(extension);
     }
 
     private static IAudioFile LoadPck(string path)

@@ -1,7 +1,6 @@
 using PckTool.Abstractions;
 using PckTool.Core.WWise.Bnk.Collections;
 using PckTool.Core.WWise.Bnk.Entries;
-using PckTool.Core.WWise.Bnk.Enums;
 
 namespace PckTool.Core.WWise.Bnk;
 

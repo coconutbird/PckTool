@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 
 using PckTool.Abstractions;
 using PckTool.Core.Games;
-using PckTool.Core.WWise.AudioFileSet;
 using PckTool.Services;
 
 using Spectre.Console;
@@ -43,7 +42,7 @@ public class ListCommand : Command<GlobalSettings>
                     ? $"[blue]Loading {resolution.Files.Count} files as composite set[/]"
                     : "[blue]Loading single file[/]");
 
-            using IAudioFile audioFile = shouldUseFileSet
+            using var audioFile = shouldUseFileSet
                 ? ServiceProvider.AudioFileFactory.Load(resolution.GameDir!, true)
                 : ServiceProvider.AudioFileFactory.Load(resolution.Files[0]);
 
