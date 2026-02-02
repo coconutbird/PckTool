@@ -84,8 +84,8 @@ public class PositioningParams
     public byte? PathMode { get; set; }
     public int? TransitionTime { get; set; }
     public List<PathVertex>? PathVertices { get; set; }
-    public List<PlaylistItem>? PlaylistItems { get; set; }
-    public Ak3DAutomationParams? Ak3DAutomationParams { get; set; }
+    public List<PathListItemOffset>? PathListItems { get; set; }
+    public List<Ak3DAutomationParams>? AutomationParams { get; set; }
 
     public bool Read(BinaryReader reader)
     {
@@ -106,9 +106,10 @@ public class PositioningParams
             {
                 var pathMode = reader.ReadByte();
                 var transitionTime = reader.ReadInt32();
+                var numVertices = reader.ReadUInt32();
 
                 var pathVertices = new List<PathVertex>();
-                var numberOfVertices = reader.ReadUInt32();
+                var numberOfVertices = numVertices;
 
                 for (var i = 0; i < numberOfVertices; ++i)
                 {
@@ -122,33 +123,41 @@ public class PositioningParams
                     pathVertices.Add(pathVertex);
                 }
 
-                var playlistItems = new List<PlaylistItem>();
-                var numberOfPlaylistItems = reader.ReadUInt32();
+                var pathListItems = new List<PathListItemOffset>();
+                var numberOfPathListItems = reader.ReadUInt32();
 
-                for (var i = 0; i < numberOfPlaylistItems; ++i)
+                for (var i = 0; i < numberOfPathListItems; ++i)
                 {
-                    var playlistItem = new PlaylistItem();
+                    var pathListItem = new PathListItemOffset();
 
-                    if (!playlistItem.Read(reader))
+                    if (!pathListItem.Read(reader))
                     {
                         return false;
                     }
 
-                    playlistItems.Add(playlistItem);
+                    pathListItems.Add(pathListItem);
                 }
 
-                var ak3DAutomationParams = new Ak3DAutomationParams();
+                // For v44+, read one Ak3DAutomationParams per path list item
+                var automationParams = new List<Ak3DAutomationParams>();
 
-                if (!ak3DAutomationParams.Read(reader))
+                for (var i = 0; i < numberOfPathListItems; ++i)
                 {
-                    return false;
+                    var automationParam = new Ak3DAutomationParams();
+
+                    if (!automationParam.Read(reader))
+                    {
+                        return false;
+                    }
+
+                    automationParams.Add(automationParam);
                 }
 
                 PathMode = pathMode;
                 TransitionTime = transitionTime;
                 PathVertices = pathVertices;
-                PlaylistItems = playlistItems;
-                Ak3DAutomationParams = ak3DAutomationParams;
+                PathListItems = pathListItems;
+                AutomationParams = automationParams;
             }
         }
 
@@ -182,17 +191,23 @@ public class PositioningParams
                     }
                 }
 
-                writer.Write((uint) (PlaylistItems?.Count ?? 0));
+                writer.Write((uint) (PathListItems?.Count ?? 0));
 
-                if (PlaylistItems != null)
+                if (PathListItems != null)
                 {
-                    foreach (var item in PlaylistItems)
+                    foreach (var item in PathListItems)
                     {
                         item.Write(writer);
                     }
                 }
 
-                Ak3DAutomationParams?.Write(writer);
+                if (AutomationParams != null)
+                {
+                    foreach (var automationParam in AutomationParams)
+                    {
+                        automationParam.Write(writer);
+                    }
+                }
             }
         }
     }

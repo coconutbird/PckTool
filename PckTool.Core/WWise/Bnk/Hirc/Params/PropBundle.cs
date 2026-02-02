@@ -5,11 +5,22 @@ namespace PckTool.Core.WWise.Bnk.Hirc.Params;
 public class PropBundle
 {
     public bool IsRandomizer { get; set; }
+    public bool IsModulator { get; set; }
     public List<Prop> Props { get; set; } = new();
 
-    public bool Read(BinaryReader reader, bool isRandomizer = false)
+    /// <summary>
+    ///     Reads a property bundle from the binary reader.
+    /// </summary>
+    /// <param name="reader">The binary reader.</param>
+    /// <param name="isRandomizer">Whether this is a ranged modifier bundle (min+max values).</param>
+    /// <param name="isModulator">
+    ///     Whether this bundle belongs to a modulator (LFO/Envelope).
+    ///     Modulators use AkModulatorPropID, not AkPropID, and all values are 4-byte floats.
+    /// </param>
+    public bool Read(BinaryReader reader, bool isRandomizer = false, bool isModulator = false)
     {
         IsRandomizer = isRandomizer;
+        IsModulator = isModulator;
         var numberOfProps = reader.ReadByte();
         var ids = new byte[numberOfProps];
 
@@ -21,7 +32,8 @@ public class PropBundle
         for (var i = 0; i < numberOfProps; ++i)
         {
             var propId = (PropType) ids[i];
-            var propValue = reader.ReadBytes(Prop.GetSizeOfType(propId, isRandomizer));
+            var size = Prop.GetSizeOfType(propId, isRandomizer, isModulator);
+            var propValue = reader.ReadBytes(size);
             var prop = new Prop { Id = propId, RawValue = propValue };
 
             Props.Add(prop);

@@ -14,6 +14,9 @@ public static class ActionTypeHelpers
     /// </summary>
     public static ActionCategory GetActionCategory(ActionType actionType)
     {
+        // Check PlayEvent BEFORE Play - PlayEvent has empty params, Play has byBitVector + fileID
+        if (IsPlayEventActionType(actionType)) return ActionCategory.PlayEvent;
+
         if (IsPlayActionType(actionType)) return ActionCategory.Play;
 
         if (IsActiveActionType(actionType)) return ActionCategory.Active;
@@ -28,13 +31,52 @@ public static class ActionTypeHelpers
 
         if (IsBypassFXActionType(actionType)) return ActionCategory.BypassFX;
 
+        if (IsSeekActionType(actionType)) return ActionCategory.Seek;
+
         if (IsNoneParamsActionType(actionType)) return ActionCategory.None;
 
         return ActionCategory.Unknown;
     }
 
     // ============================================
+    // Seek Actions - CAkActionSeek
+    // ============================================
+
+    public static bool IsSeekActionType(ActionType actionType)
+    {
+        return actionType switch
+        {
+            ActionType.Seek_E => true,
+            ActionType.Seek_E_O => true,
+            ActionType.Seek_ALL => true,
+            ActionType.Seek_ALL_O => true,
+            ActionType.Seek_AE => true,
+            ActionType.Seek_AE_O => true,
+            _ => false
+        };
+    }
+
+    // ============================================
+    // PlayEvent Actions - CAkActionPlayEvent (v113+)
+    // Empty params - reads nothing
+    // Note: PlayEventUnknown_O (0x2303) uses CAkActionPlay params per wwiser
+    // ============================================
+
+    public static bool IsPlayEventActionType(ActionType actionType)
+    {
+        return actionType switch
+        {
+            ActionType.PlayEvent => true,
+
+            // PlayEventUnknown_O uses CAkActionPlay params, NOT empty
+            _ => false
+        };
+    }
+
+    // ============================================
     // Play Actions - CAkActionPlay
+    // Reads byBitVector + fileID (v113)
+    // PlayEventUnknown_O is classified here per wwiser dispatch table
     // ============================================
 
     public static bool IsPlayActionType(ActionType actionType)
@@ -43,8 +85,7 @@ public static class ActionTypeHelpers
         {
             ActionType.Play => true,
             ActionType.PlayAndContinue => true,
-            ActionType.PlayEvent => true,
-            ActionType.PlayEventUnknown_O => true,
+            ActionType.PlayEventUnknown_O => true, // Uses CAkActionPlay__SetActionParams per wwiser
             _ => false
         };
     }
@@ -60,6 +101,7 @@ public static class ActionTypeHelpers
 
     public static bool IsStopActionType(ActionType actionType)
     {
+        // Note: StopEvent (0x1511) is CAkActionEvent, not CAkActionActive
         return actionType switch
         {
             ActionType.Stop_E => true,
@@ -68,13 +110,13 @@ public static class ActionTypeHelpers
             ActionType.Stop_ALL_O => true,
             ActionType.Stop_AE => true,
             ActionType.Stop_AE_O => true,
-            ActionType.StopEvent => true,
             _ => false
         };
     }
 
     public static bool IsPauseActionType(ActionType actionType)
     {
+        // Note: PauseEvent (0x1611) is CAkActionEvent, not CAkActionActive
         return actionType switch
         {
             ActionType.Pause_E => true,
@@ -83,13 +125,13 @@ public static class ActionTypeHelpers
             ActionType.Pause_ALL_O => true,
             ActionType.Pause_AE => true,
             ActionType.Pause_AE_O => true,
-            ActionType.PauseEvent => true,
             _ => false
         };
     }
 
     public static bool IsResumeActionType(ActionType actionType)
     {
+        // Note: ResumeEvent (0x1711) is CAkActionEvent, not CAkActionActive
         return actionType switch
         {
             ActionType.Resume_E => true,
@@ -98,7 +140,6 @@ public static class ActionTypeHelpers
             ActionType.Resume_ALL_O => true,
             ActionType.Resume_AE => true,
             ActionType.Resume_AE_O => true,
-            ActionType.ResumeEvent => true,
             _ => false
         };
     }
@@ -295,14 +336,6 @@ public static class ActionTypeHelpers
             ActionType.Release => true,
             ActionType.Release_O => true,
 
-            // Seek (has its own params but treating as None for now)
-            ActionType.Seek_E => true,
-            ActionType.Seek_E_O => true,
-            ActionType.Seek_ALL => true,
-            ActionType.Seek_ALL_O => true,
-            ActionType.Seek_AE => true,
-            ActionType.Seek_AE_O => true,
-
             // ResetPlaylist
             ActionType.ResetPlaylist_E => true,
             ActionType.ResetPlaylist_E_O => true,
@@ -311,6 +344,11 @@ public static class ActionTypeHelpers
             ActionType.SetFX_M => true,
             ActionType.ResetSetFX_M => true,
             ActionType.ResetSetFX_ALL => true,
+
+            // Event actions (CAkActionEvent) - use empty params
+            ActionType.StopEvent => true,
+            ActionType.PauseEvent => true,
+            ActionType.ResumeEvent => true,
 
             // NoOp
             ActionType.NoOp => true,

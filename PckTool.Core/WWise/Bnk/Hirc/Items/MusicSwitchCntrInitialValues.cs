@@ -43,12 +43,12 @@ public class MusicSwitchCntrInitialValues
     /// </summary>
     public DecisionTree DecisionTree { get; set; } = null!;
 
-    public bool Read(BinaryReader reader)
+    public bool Read(BinaryReader reader, bool hasFeedback = false)
     {
         // MusicTransNodeParams
         var musicTransNodeParams = new MusicTransNodeParams();
 
-        if (!musicTransNodeParams.Read(reader))
+        if (!musicTransNodeParams.Read(reader, hasFeedback))
         {
             return false;
         }

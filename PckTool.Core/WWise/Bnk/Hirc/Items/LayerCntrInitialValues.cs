@@ -23,12 +23,12 @@ public class LayerCntrInitialValues
     /// </summary>
     public List<LayerInitialValues> Layers { get; set; } = [];
 
-    public bool Read(BinaryReader reader)
+    public bool Read(BinaryReader reader, bool hasFeedback = false)
     {
         // NodeBaseParams
         var nodeBaseParams = new NodeBaseParams();
 
-        if (!nodeBaseParams.Read(reader))
+        if (!nodeBaseParams.Read(reader, hasFeedback))
         {
             return false;
         }

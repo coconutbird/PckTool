@@ -326,6 +326,31 @@ public class BnkFileTests
 
 public class AudioFileFactoryTests
 {
+#region IsSupportedExtension Tests
+
+    [Theory]
+    [InlineData(".pck", true)]
+    [InlineData(".PCK", true)]
+    [InlineData(".bnk", true)]
+    [InlineData(".BNK", true)]
+    [InlineData("pck", true)]
+    [InlineData("bnk", true)]
+    [InlineData(".wav", false)]
+    [InlineData(".mp3", false)]
+    public void IsSupportedExtension_ReturnsCorrectResult(string extension, bool expected)
+    {
+        // Arrange
+        var factory = new AudioFileFactory();
+
+        // Act
+        var result = factory.IsSupportedExtension(extension);
+
+        // Assert
+        Assert.Equal(expected, result);
+    }
+
+#endregion
+
 #region DetectFileType Tests
 
     [Theory]
@@ -353,31 +378,6 @@ public class AudioFileFactoryTests
 
         // Act & Assert
         Assert.Throws<InvalidDataException>(() => factory.DetectFileType("test.wav"));
-    }
-
-#endregion
-
-#region IsSupportedExtension Tests
-
-    [Theory]
-    [InlineData(".pck", true)]
-    [InlineData(".PCK", true)]
-    [InlineData(".bnk", true)]
-    [InlineData(".BNK", true)]
-    [InlineData("pck", true)]
-    [InlineData("bnk", true)]
-    [InlineData(".wav", false)]
-    [InlineData(".mp3", false)]
-    public void IsSupportedExtension_ReturnsCorrectResult(string extension, bool expected)
-    {
-        // Arrange
-        var factory = new AudioFileFactory();
-
-        // Act
-        var result = factory.IsSupportedExtension(extension);
-
-        // Assert
-        Assert.Equal(expected, result);
     }
 
 #endregion

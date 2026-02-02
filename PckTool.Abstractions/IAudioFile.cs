@@ -1,6 +1,27 @@
 namespace PckTool.Abstractions;
 
 /// <summary>
+///     Specifies the type of audio file.
+/// </summary>
+public enum AudioFileType
+{
+    /// <summary>
+    ///     A PCK package file containing multiple soundbanks and streaming files.
+    /// </summary>
+    Pck,
+
+    /// <summary>
+    ///     A standalone BNK soundbank file.
+    /// </summary>
+    Bnk,
+
+    /// <summary>
+    ///     A composite set of multiple audio files (PCK and/or BNK).
+    /// </summary>
+    Composite
+}
+
+/// <summary>
 ///     Represents a unified audio file that can be either a PCK package or a standalone BNK soundbank.
 /// </summary>
 /// <remarks>
@@ -106,18 +127,118 @@ public interface IAudioFile : IDisposable
     void Save(Stream stream);
 }
 
-/// <summary>
-///     Specifies the type of audio file.
-/// </summary>
-public enum AudioFileType
+public static class AudioFileExtensions
 {
     /// <summary>
-    ///     A PCK package file containing multiple soundbanks and streaming files.
+    ///     Gets the language name for a language ID, or a default formatted name if not found.
     /// </summary>
-    Pck,
+    /// <param name="audioFile">The audio file.</param>
+    /// <param name="languageId">The language ID.</param>
+    /// <returns>The language name, or a default formatted name if not found.</returns>
+    public static string GetLanguageNameOrDefault(this IAudioFile audioFile, uint languageId)
+    {
+        // First check if we have a mapping in the Languages dictionary
+        var result = audioFile.Languages.GetValueOrDefault(languageId);
+
+        // Fall back to legacy language ID enum for versions <= 122
+        if (string.IsNullOrEmpty(result))
+        {
+            result = (LegacyLanguageId) languageId switch
+            {
+                LegacyLanguageId.Sfx => "SFX",
+                LegacyLanguageId.Arabic => "Arabic",
+                LegacyLanguageId.Bulgarian => "Bulgarian",
+                LegacyLanguageId.ChineseHK => "Chinese(HK)",
+                LegacyLanguageId.ChinesePRC => "Chinese(PRC)",
+                LegacyLanguageId.ChineseTaiwan => "Chinese(Taiwan)",
+                LegacyLanguageId.Czech => "Czech",
+                LegacyLanguageId.Danish => "Danish",
+                LegacyLanguageId.Dutch => "Dutch",
+                LegacyLanguageId.EnglishAustralia => "English(Australia)",
+                LegacyLanguageId.EnglishIndia => "English(India)",
+                LegacyLanguageId.EnglishUK => "English(UK)",
+                LegacyLanguageId.EnglishUS => "English(US)",
+                LegacyLanguageId.Finnish => "Finnish",
+                LegacyLanguageId.FrenchCanada => "French(Canada)",
+                LegacyLanguageId.FrenchFrance => "French(France)",
+                LegacyLanguageId.German => "German",
+                LegacyLanguageId.Greek => "Greek",
+                LegacyLanguageId.Hebrew => "Hebrew",
+                LegacyLanguageId.Hungarian => "Hungarian",
+                LegacyLanguageId.Indonesian => "Indonesian",
+                LegacyLanguageId.Italian => "Italian",
+                LegacyLanguageId.Japanese => "Japanese",
+                LegacyLanguageId.Korean => "Korean",
+                LegacyLanguageId.Latin => "Latin",
+                LegacyLanguageId.Norwegian => "Norwegian",
+                LegacyLanguageId.Polish => "Polish",
+                LegacyLanguageId.PortugueseBrazil => "Portuguese(Brazil)",
+                LegacyLanguageId.PortuguesePortugal => "Portuguese(Portugal)",
+                LegacyLanguageId.Romanian => "Romanian",
+                LegacyLanguageId.Russian => "Russian",
+                LegacyLanguageId.Slovenian => "Slovenian",
+                LegacyLanguageId.SpanishMexico => "Spanish(Mexico)",
+                LegacyLanguageId.SpanishSpain => "Spanish(Spain)",
+                LegacyLanguageId.SpanishUS => "Spanish(US)",
+                LegacyLanguageId.Swedish => "Swedish",
+                LegacyLanguageId.Turkish => "Turkish",
+                LegacyLanguageId.Ukrainian => "Ukrainian",
+                LegacyLanguageId.Vietnamese => "Vietnamese",
+                _ => $"Lang_{languageId}"
+            };
+        }
+
+        return result;
+    }
 
     /// <summary>
-    ///     A standalone BNK soundbank file.
+    ///     Wwise language IDs for bank versions ≤122.
+    ///     For versions >122, language is stored as an FNV hash of the language string.
     /// </summary>
-    Bnk
+    private enum LegacyLanguageId : uint
+    {
+        /// <summary>
+        ///     Sound effects (non-localized). This is the default.
+        /// </summary>
+        Sfx = 0x00,
+
+        Arabic = 0x01,
+        Bulgarian = 0x02,
+        ChineseHK = 0x03,
+        ChinesePRC = 0x04,
+        ChineseTaiwan = 0x05,
+        Czech = 0x06,
+        Danish = 0x07,
+        Dutch = 0x08,
+        EnglishAustralia = 0x09,
+        EnglishIndia = 0x0A,
+        EnglishUK = 0x0B,
+        EnglishUS = 0x0C,
+        Finnish = 0x0D,
+        FrenchCanada = 0x0E,
+        FrenchFrance = 0x0F,
+        German = 0x10,
+        Greek = 0x11,
+        Hebrew = 0x12,
+        Hungarian = 0x13,
+        Indonesian = 0x14,
+        Italian = 0x15,
+        Japanese = 0x16,
+        Korean = 0x17,
+        Latin = 0x18,
+        Norwegian = 0x19,
+        Polish = 0x1A,
+        PortugueseBrazil = 0x1B,
+        PortuguesePortugal = 0x1C,
+        Romanian = 0x1D,
+        Russian = 0x1E,
+        Slovenian = 0x1F,
+        SpanishMexico = 0x20,
+        SpanishSpain = 0x21,
+        SpanishUS = 0x22,
+        Swedish = 0x23,
+        Turkish = 0x24,
+        Ukrainian = 0x25,
+        Vietnamese = 0x26
+    }
 }

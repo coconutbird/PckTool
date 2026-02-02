@@ -71,7 +71,13 @@ public class NodeBaseParams
     public StateChunk StateChunk { get; set; }
     public InitialRtpc InitialRtpc { get; set; }
 
-    public bool Read(BinaryReader reader)
+    /// <summary>
+    ///     FeedbackInfo.BusId - only present when the bank has feedback enabled (bFeedbackInBank != 0).
+    ///     For v113 (≤126), this is read after InitialRtpc.
+    /// </summary>
+    public uint? FeedbackBusId { get; set; }
+
+    public bool Read(BinaryReader reader, bool hasFeedback = false)
     {
         var nodeInitialFxParams = new NodeInitialFxParams();
 
@@ -127,6 +133,15 @@ public class NodeBaseParams
             return false;
         }
 
+        // For v113 (≤126), read FeedbackInfo if the bank has feedback enabled
+        // See CAkParameterNodeBase__ReadFeedbackInfo in wwiser wparser.py
+        uint? feedbackBusId = null;
+
+        if (hasFeedback)
+        {
+            feedbackBusId = reader.ReadUInt32();
+        }
+
         NodeInitialFxParams = nodeInitialFxParams;
 
         OverrideAttachmentParams = overrideAttachmentParams;
@@ -140,6 +155,7 @@ public class NodeBaseParams
         AdvSettingsParams = advSettingsParams;
         StateChunk = stateChunk;
         InitialRtpc = initialRtpc;
+        FeedbackBusId = feedbackBusId;
 
         return true;
     }
@@ -157,5 +173,11 @@ public class NodeBaseParams
         AdvSettingsParams.Write(writer);
         StateChunk.Write(writer);
         InitialRtpc.Write(writer);
+
+        // Write FeedbackInfo.BusId if present
+        if (FeedbackBusId.HasValue)
+        {
+            writer.Write(FeedbackBusId.Value);
+        }
     }
 }

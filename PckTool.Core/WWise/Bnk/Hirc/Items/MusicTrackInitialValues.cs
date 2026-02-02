@@ -58,7 +58,7 @@ public class MusicTrackInitialValues
     /// </summary>
     public int LookAheadTime { get; set; }
 
-    public bool Read(BinaryReader reader)
+    public bool Read(BinaryReader reader, bool hasFeedback = false)
     {
         // For v90-112: uOverrides (u8)
         // bits: 1=bOverrideParentMidiTempo, 2=bOverrideParentMidiTarget
@@ -118,7 +118,7 @@ public class MusicTrackInitialValues
         // NodeBaseParams
         var nodeBaseParams = new NodeBaseParams();
 
-        if (!nodeBaseParams.Read(reader))
+        if (!nodeBaseParams.Read(reader, hasFeedback))
         {
             return false;
         }

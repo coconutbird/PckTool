@@ -2,6 +2,8 @@ using System.ComponentModel;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
+using PckTool.Abstractions;
+
 namespace PckTool.Core.WWise.Pck.Entries;
 
 /// <summary>
@@ -35,6 +37,12 @@ public abstract class FileEntry<TKey> : INotifyPropertyChanged, IEquatable<FileE
     ///     The original starting offset in the package file.
     /// </summary>
     public uint StartBlock { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the parent audio file this entry belongs to.
+    ///     Updated automatically when the entry is moved between files.
+    /// </summary>
+    public IAudioFile? ParentFile { get; set; }
 
     /// <summary>
     ///     Whether this entry has been modified from its original state.

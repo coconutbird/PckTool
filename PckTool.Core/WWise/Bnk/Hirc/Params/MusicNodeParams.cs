@@ -36,7 +36,7 @@ public class MusicNodeParams
     /// </summary>
     public List<Stinger> Stingers { get; set; } = [];
 
-    public bool Read(BinaryReader reader)
+    public bool Read(BinaryReader reader, bool hasFeedback = false)
     {
         // For v90+: uFlags (u8)
         Flags = reader.ReadByte();
@@ -44,7 +44,7 @@ public class MusicNodeParams
         // NodeBaseParams
         var nodeBaseParams = new NodeBaseParams();
 
-        if (!nodeBaseParams.Read(reader))
+        if (!nodeBaseParams.Read(reader, hasFeedback))
         {
             return false;
         }

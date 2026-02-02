@@ -155,11 +155,13 @@ public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile, IAudioFile
     /// <summary>
     ///     Loads a package from a stream.
     /// </summary>
-    public static PckFile? Load(Stream stream)
+    /// <param name="stream">The stream to load from.</param>
+    /// <param name="sourcePath">Optional source path for tracking where the data came from.</param>
+    public static PckFile? Load(Stream stream, string? sourcePath = null)
     {
         var package = new PckFile();
 
-        if (package.LoadInternal(stream))
+        if (package.LoadInternal(stream, sourcePath))
         {
             return package;
         }
@@ -208,7 +210,8 @@ public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile, IAudioFile
             LanguageId = languageId,
             BlockSize = blockSize,
             Name = name,
-            Language = GetLanguageName(languageId)
+            Language = this.GetLanguageNameOrDefault(languageId),
+            ParentFile = this
         };
 
         entry.SetOriginalData(data);
@@ -272,7 +275,8 @@ public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile, IAudioFile
             LanguageId = languageId,
             BlockSize = blockSize,
             Name = name,
-            Language = GetLanguageName(languageId)
+            Language = this.GetLanguageNameOrDefault(languageId),
+            ParentFile = this
         };
 
         entry.SetOriginalData(data);
@@ -323,7 +327,8 @@ public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile, IAudioFile
             LanguageId = languageId,
             BlockSize = blockSize,
             Name = name,
-            Language = GetLanguageName(languageId)
+            Language = this.GetLanguageNameOrDefault(languageId),
+            ParentFile = this
         };
 
         entry.SetOriginalData(data);
@@ -351,14 +356,6 @@ public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile, IAudioFile
         var data = File.ReadAllBytes(filePath);
 
         return AddExternalFile(id, data, languageId, blockSize, name);
-    }
-
-    /// <summary>
-    ///     Gets the language name for a language ID.
-    /// </summary>
-    public string? GetLanguageName(uint languageId)
-    {
-        return Languages.GetValueOrDefault(languageId);
     }
 
     /// <summary>
@@ -572,9 +569,9 @@ public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile, IAudioFile
         return LoadFromReader(_reader);
     }
 
-    private bool LoadInternal(Stream stream)
+    private bool LoadInternal(Stream stream, string? sourcePath)
     {
-        SourcePath = null;
+        SourcePath = sourcePath;
         _reader = new BinaryReader(stream, Encoding.UTF8, true);
 
         return LoadFromReader(_reader);
@@ -648,23 +645,26 @@ public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile, IAudioFile
     }
 
     /// <summary>
-    ///     Resolves language names on all entries.
+    ///     Resolves language names and sets parent file reference on all entries.
     /// </summary>
     private void ResolveLanguageNames()
     {
         foreach (var entry in SoundBanks)
         {
-            entry.Language = GetLanguageName(entry.LanguageId);
+            entry.Language = this.GetLanguageNameOrDefault(entry.LanguageId);
+            entry.ParentFile = this;
         }
 
         foreach (var entry in StreamingFiles)
         {
-            entry.Language = GetLanguageName(entry.LanguageId);
+            entry.Language = this.GetLanguageNameOrDefault(entry.LanguageId);
+            entry.ParentFile = this;
         }
 
         foreach (var entry in ExternalFiles)
         {
-            entry.Language = GetLanguageName(entry.LanguageId);
+            entry.Language = this.GetLanguageNameOrDefault(entry.LanguageId);
+            entry.ParentFile = this;
         }
     }
 
@@ -680,7 +680,16 @@ public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile, IAudioFile
                 currentOffset += entry.BlockSize - currentOffset % entry.BlockSize;
             }
 
-            entry.StartBlock = currentOffset;
+            // Store StartBlock as a block index when BlockSize > 1
+            if (entry.BlockSize > 1)
+            {
+                entry.StartBlock = currentOffset / entry.BlockSize;
+            }
+            else
+            {
+                entry.StartBlock = currentOffset;
+            }
+
             currentOffset += (uint) entry.Size;
         }
     }
@@ -691,7 +700,10 @@ public class PckFile : IDisposable, IEquatable<PckFile>, IPckFile, IAudioFile
     {
         foreach (var entry in lut)
         {
-            writer.BaseStream.Position = entry.StartBlock;
+            // Calculate actual byte offset from StartBlock
+            // If BlockSize > 1, StartBlock is a block index
+            var byteOffset = (long) entry.StartBlock * entry.BlockSize;
+            writer.BaseStream.Position = byteOffset;
             writer.Write(entry.GetData());
         }
     }

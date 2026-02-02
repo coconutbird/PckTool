@@ -56,8 +56,9 @@ public abstract class HircItem : IHircItem
     ///     Factory method to read and create the appropriate HircItem subtype.
     /// </summary>
     /// <param name="reader">The binary reader positioned at the start of the HIRC item.</param>
+    /// <param name="hasFeedback">Whether the bank has feedback enabled (bFeedbackInBank != 0).</param>
     /// <returns>The parsed HircItem, or null if parsing failed.</returns>
-    public static HircItem? Read(BinaryReader reader)
+    public static HircItem? Read(BinaryReader reader, bool hasFeedback = false)
     {
         var type = (HircType) reader.ReadByte();
         var sectionSize = reader.ReadUInt32();
@@ -67,32 +68,30 @@ public abstract class HircItem : IHircItem
         // Remaining size after reading the ID (4 bytes)
         var remainingSize = (int) (sectionSize - 4);
 
-        // Log.Info($"Reading HIRC item: Type {type}, Size {sectionSize}, ID {id}");
-
         HircItem? item = type switch
         {
             // Fully implemented parsers
             HircType.Attenuation => AttenuationItem.ReadItem(reader, id),
-            HircType.Sound => SoundItem.ReadItem(reader, id),
-            HircType.RanSeqCntr => RanSeqCntrItem.ReadItem(reader, id),
-            HircType.ActorMixer => ActorMixerItem.ReadItem(reader, id),
-            HircType.Bus => BusItem.ReadItem(reader, id),
+            HircType.Sound => SoundItem.ReadItem(reader, id, hasFeedback),
+            HircType.RanSeqCntr => RanSeqCntrItem.ReadItem(reader, id, hasFeedback),
+            HircType.ActorMixer => ActorMixerItem.ReadItem(reader, id, hasFeedback),
+            HircType.Bus => BusItem.ReadItem(reader, id, hasFeedback),
             HircType.Action => ActionItem.ReadItem(reader, id),
             HircType.Event => EventItem.ReadItem(reader, id),
             HircType.FxShareSet or HircType.FxCustom => FxItem.ReadItem(reader, id, type),
 
             // Stub implementations (raw bytes preserved)
             HircType.State => StateItem.ReadItem(reader, id, remainingSize),
-            HircType.SwitchCntr => SwitchCntrItem.ReadItem(reader, id, remainingSize),
-            HircType.LayerCntr => LayerCntrItem.ReadItem(reader, id, remainingSize),
-            HircType.Segment => MusicSegmentItem.ReadItem(reader, id),
-            HircType.Track => MusicTrackItem.ReadItem(reader, id),
-            HircType.MusicSwitch => MusicSwitchItem.ReadItem(reader, id),
-            HircType.MusicRanSeq => MusicRanSeqItem.ReadItem(reader, id),
+            HircType.SwitchCntr => SwitchCntrItem.ReadItem(reader, id, remainingSize, hasFeedback),
+            HircType.LayerCntr => LayerCntrItem.ReadItem(reader, id, remainingSize, hasFeedback),
+            HircType.Segment => MusicSegmentItem.ReadItem(reader, id, hasFeedback),
+            HircType.Track => MusicTrackItem.ReadItem(reader, id, hasFeedback),
+            HircType.MusicSwitch => MusicSwitchItem.ReadItem(reader, id, hasFeedback),
+            HircType.MusicRanSeq => MusicRanSeqItem.ReadItem(reader, id, hasFeedback),
             HircType.DialogueEvent => DialogueEventItem.ReadItem(reader, id, remainingSize),
-            HircType.FeedbackBus => FeedbackBusItem.ReadItem(reader, id, remainingSize),
-            HircType.FeedbackNode => FeedbackNodeItem.ReadItem(reader, id, remainingSize),
-            HircType.AuxBus => AuxBusItem.ReadItem(reader, id, remainingSize),
+            HircType.FeedbackBus => FeedbackBusItem.ReadItem(reader, id, hasFeedback),
+            HircType.FeedbackNode => FeedbackNodeItem.ReadItem(reader, id, remainingSize, hasFeedback),
+            HircType.AuxBus => AuxBusItem.ReadItem(reader, id, hasFeedback),
             HircType.LfoModulator => LfoModulatorItem.ReadItem(reader, id, remainingSize),
             HircType.EnvelopeModulator => EnvelopeModulatorItem.ReadItem(reader, id, remainingSize),
             HircType.AudioDevice => AudioDeviceItem.ReadItem(reader, id, remainingSize),
@@ -111,8 +110,9 @@ public abstract class HircItem : IHircItem
 
         if (reader.BaseStream.Position != expectedPosition)
         {
+            var actionInfo = item is ActionItem actionItem ? $" (ActionType: {actionItem.ActionType})" : "";
             Log.Error(
-                $"HIRC item read position mismatch for type {type}. Expected {expectedPosition}, got {reader.BaseStream.Position}.");
+                $"HIRC item read position mismatch for type {type}{actionInfo}. Expected {expectedPosition}, got {reader.BaseStream.Position}.");
 
             // Seek to correct position to allow parsing to continue
             reader.BaseStream.Position = expectedPosition;
@@ -162,11 +162,11 @@ public sealed class SoundItem : HircItem
     public override HircType Type => HircType.Sound;
     public required SoundInitialValues Values { get; init; }
 
-    internal static SoundItem? ReadItem(BinaryReader reader, uint id)
+    internal static SoundItem? ReadItem(BinaryReader reader, uint id, bool hasFeedback = false)
     {
         var values = new SoundInitialValues();
 
-        if (!values.Read(reader)) return null;
+        if (!values.Read(reader, hasFeedback)) return null;
 
         return new SoundItem { Id = id, Values = values };
     }
@@ -185,11 +185,11 @@ public sealed class RanSeqCntrItem : HircItem
     public override HircType Type => HircType.RanSeqCntr;
     public required RanSeqCntrInitialValues Values { get; init; }
 
-    internal static RanSeqCntrItem? ReadItem(BinaryReader reader, uint id)
+    internal static RanSeqCntrItem? ReadItem(BinaryReader reader, uint id, bool hasFeedback = false)
     {
         var values = new RanSeqCntrInitialValues();
 
-        if (!values.Read(reader)) return null;
+        if (!values.Read(reader, hasFeedback)) return null;
 
         return new RanSeqCntrItem { Id = id, Values = values };
     }
@@ -208,11 +208,11 @@ public sealed class ActorMixerItem : HircItem
     public override HircType Type => HircType.ActorMixer;
     public required ActorMixerInitialValues Values { get; init; }
 
-    internal static ActorMixerItem? ReadItem(BinaryReader reader, uint id)
+    internal static ActorMixerItem? ReadItem(BinaryReader reader, uint id, bool hasFeedback = false)
     {
         var values = new ActorMixerInitialValues();
 
-        if (!values.Read(reader)) return null;
+        if (!values.Read(reader, hasFeedback)) return null;
 
         return new ActorMixerItem { Id = id, Values = values };
     }
@@ -231,11 +231,11 @@ public sealed class BusItem : HircItem
     public override HircType Type => HircType.Bus;
     public required BusInitialValues Values { get; init; }
 
-    internal static BusItem? ReadItem(BinaryReader reader, uint id)
+    internal static BusItem? ReadItem(BinaryReader reader, uint id, bool hasFeedback = false)
     {
         var values = new BusInitialValues();
 
-        if (!values.Read(reader)) return null;
+        if (!values.Read(reader, hasFeedback)) return null;
 
         return new BusItem { Id = id, Values = values };
     }
@@ -366,11 +366,11 @@ public sealed class SwitchCntrItem : HircItem
     public override HircType Type => HircType.SwitchCntr;
     public required SwitchCntrInitialValues Values { get; init; }
 
-    internal static SwitchCntrItem? ReadItem(BinaryReader reader, uint id, int remainingSize)
+    internal static SwitchCntrItem? ReadItem(BinaryReader reader, uint id, int remainingSize, bool hasFeedback = false)
     {
         var values = new SwitchCntrInitialValues();
 
-        if (!values.Read(reader)) return null;
+        if (!values.Read(reader, hasFeedback)) return null;
 
         return new SwitchCntrItem { Id = id, Values = values };
     }
@@ -389,11 +389,11 @@ public sealed class LayerCntrItem : HircItem
     public override HircType Type => HircType.LayerCntr;
     public required LayerCntrInitialValues Values { get; init; }
 
-    internal static LayerCntrItem? ReadItem(BinaryReader reader, uint id, int remainingSize)
+    internal static LayerCntrItem? ReadItem(BinaryReader reader, uint id, int remainingSize, bool hasFeedback = false)
     {
         var values = new LayerCntrInitialValues();
 
-        if (!values.Read(reader)) return null;
+        if (!values.Read(reader, hasFeedback)) return null;
 
         return new LayerCntrItem { Id = id, Values = values };
     }
@@ -412,11 +412,11 @@ public sealed class MusicSegmentItem : HircItem
     public override HircType Type => HircType.Segment;
     public required MusicSegmentInitialValues Values { get; init; }
 
-    internal static MusicSegmentItem? ReadItem(BinaryReader reader, uint id)
+    internal static MusicSegmentItem? ReadItem(BinaryReader reader, uint id, bool hasFeedback = false)
     {
         var values = new MusicSegmentInitialValues();
 
-        if (!values.Read(reader)) return null;
+        if (!values.Read(reader, hasFeedback)) return null;
 
         return new MusicSegmentItem { Id = id, Values = values };
     }
@@ -435,11 +435,11 @@ public sealed class MusicTrackItem : HircItem
     public override HircType Type => HircType.Track;
     public required MusicTrackInitialValues Values { get; init; }
 
-    internal static MusicTrackItem? ReadItem(BinaryReader reader, uint id)
+    internal static MusicTrackItem? ReadItem(BinaryReader reader, uint id, bool hasFeedback = false)
     {
         var values = new MusicTrackInitialValues();
 
-        if (!values.Read(reader)) return null;
+        if (!values.Read(reader, hasFeedback)) return null;
 
         return new MusicTrackItem { Id = id, Values = values };
     }
@@ -458,11 +458,11 @@ public sealed class MusicSwitchItem : HircItem
     public override HircType Type => HircType.MusicSwitch;
     public required MusicSwitchCntrInitialValues Values { get; init; }
 
-    internal static MusicSwitchItem? ReadItem(BinaryReader reader, uint id)
+    internal static MusicSwitchItem? ReadItem(BinaryReader reader, uint id, bool hasFeedback = false)
     {
         var values = new MusicSwitchCntrInitialValues();
 
-        if (!values.Read(reader)) return null;
+        if (!values.Read(reader, hasFeedback)) return null;
 
         return new MusicSwitchItem { Id = id, Values = values };
     }
@@ -481,11 +481,11 @@ public sealed class MusicRanSeqItem : HircItem
     public override HircType Type => HircType.MusicRanSeq;
     public required MusicRanSeqCntrInitialValues Values { get; init; }
 
-    internal static MusicRanSeqItem? ReadItem(BinaryReader reader, uint id)
+    internal static MusicRanSeqItem? ReadItem(BinaryReader reader, uint id, bool hasFeedback = false)
     {
         var values = new MusicRanSeqCntrInitialValues();
 
-        if (!values.Read(reader)) return null;
+        if (!values.Read(reader, hasFeedback)) return null;
 
         return new MusicRanSeqItem { Id = id, Values = values };
     }
@@ -528,11 +528,11 @@ public sealed class FeedbackBusItem : HircItem
     public override HircType Type => HircType.FeedbackBus;
     public required BusInitialValues Values { get; init; }
 
-    internal static FeedbackBusItem? ReadItem(BinaryReader reader, uint id, int remainingSize)
+    internal static FeedbackBusItem? ReadItem(BinaryReader reader, uint id, bool hasFeedback = false)
     {
         var values = new BusInitialValues();
 
-        if (!values.Read(reader)) return null;
+        if (!values.Read(reader, hasFeedback)) return null;
 
         return new FeedbackBusItem { Id = id, Values = values };
     }
@@ -552,11 +552,15 @@ public sealed class FeedbackNodeItem : HircItem
     public override HircType Type => HircType.FeedbackNode;
     public required FeedbackNodeInitialValues Values { get; init; }
 
-    internal static FeedbackNodeItem? ReadItem(BinaryReader reader, uint id, int remainingSize)
+    internal static FeedbackNodeItem? ReadItem(
+        BinaryReader reader,
+        uint id,
+        int remainingSize,
+        bool hasFeedback = false)
     {
         var values = new FeedbackNodeInitialValues();
 
-        if (!values.Read(reader)) return null;
+        if (!values.Read(reader, hasFeedback)) return null;
 
         return new FeedbackNodeItem { Id = id, Values = values };
     }
@@ -575,11 +579,11 @@ public sealed class AuxBusItem : HircItem
     public override HircType Type => HircType.AuxBus;
     public required BusInitialValues Values { get; init; }
 
-    internal static AuxBusItem? ReadItem(BinaryReader reader, uint id, int remainingSize)
+    internal static AuxBusItem? ReadItem(BinaryReader reader, uint id, bool hasFeedback = false)
     {
         var values = new BusInitialValues();
 
-        if (!values.Read(reader)) return null;
+        if (!values.Read(reader, hasFeedback)) return null;
 
         return new AuxBusItem { Id = id, Values = values };
     }

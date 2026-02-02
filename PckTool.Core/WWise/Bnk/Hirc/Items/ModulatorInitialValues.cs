@@ -27,9 +27,10 @@ public class ModulatorInitialValues
     public bool Read(BinaryReader reader)
     {
         // AkPropBundle<AkPropValue> (values)
+        // Note: Modulators use AkModulatorPropID, not AkPropID, so isModulator=true
         var propBundle = new PropBundle();
 
-        if (!propBundle.Read(reader))
+        if (!propBundle.Read(reader, false, true))
         {
             return false;
         }
@@ -37,9 +38,10 @@ public class ModulatorInitialValues
         PropBundle = propBundle;
 
         // AkPropBundle<RANGED_MODIFIERS<AkPropValue>> (ranged modifiers)
+        // Note: Modulators use AkModulatorPropID, not AkPropID, so isModulator=true
         var propBundleRanged = new PropBundle();
 
-        if (!propBundleRanged.Read(reader, true))
+        if (!propBundleRanged.Read(reader, true, true))
         {
             return false;
         }

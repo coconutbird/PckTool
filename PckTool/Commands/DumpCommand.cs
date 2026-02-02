@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 
+using PckTool.Abstractions;
 using PckTool.Core.Games;
 using PckTool.Core.Games.HaloWars;
 using PckTool.Core.WWise.Bnk;
@@ -65,297 +66,294 @@ public class DumpCommand : Command<DumpSettings>
 
         try
         {
-            // Process each input file
-            foreach (var filePath in resolution.Files)
+            // Parse sound bank filter if provided
+            uint? soundBankIdFilter = null;
+
+            if (!string.IsNullOrWhiteSpace(settings.Bank))
             {
-                AnsiConsole.MarkupLine($"[blue]Processing:[/] {Path.GetFileName(filePath)}");
-
-                using var audioFile = ServiceProvider.AudioFileFactory.Load(filePath);
-
-                // Phase 1: Load all soundbanks
-                var soundbanksByLanguage = new Dictionary<uint, Dictionary<uint, SoundBank>>();
-
-                // Parse sound bank filter if provided
-                uint? soundBankIdFilter = null;
-
-                if (!string.IsNullOrWhiteSpace(settings.Bank))
+                if (GameHelpers.TryParseId(settings.Bank, out var parsedId))
                 {
-                    if (GameHelpers.TryParseId(settings.Bank, out var parsedId))
-                    {
-                        soundBankIdFilter = parsedId;
-                        AnsiConsole.MarkupLine($"[blue]Filtering to sound bank:[/] 0x{parsedId:X8}");
-                    }
-                    else
-                    {
-                        AnsiConsole.MarkupLine(
-                            "[red]Invalid sound bank ID format. Use decimal (e.g., 12345) or hex with 0x prefix (e.g., 0x1A2B3C4D)[/]");
-
-                        return 1;
-                    }
+                    soundBankIdFilter = parsedId;
+                    AnsiConsole.MarkupLine($"[blue]Filtering to sound bank:[/] 0x{parsedId:X8}");
                 }
-
-                AnsiConsole.Status()
-                           .Start(
-                               "Loading soundbanks...",
-                               ctx =>
-                               {
-                                   foreach (var fileEntry in audioFile.SoundBanks)
-                                   {
-                                       var languageId = fileEntry.LanguageId;
-                                       var language = audioFile.Languages.GetValueOrDefault(
-                                           languageId,
-                                           $"Lang:{languageId}");
-
-                                       // Apply language filter
-                                       if (!string.IsNullOrWhiteSpace(settings.Language)
-                                           && !language.Equals(settings.Language, StringComparison.OrdinalIgnoreCase))
-                                       {
-                                           continue;
-                                       }
-
-                                       // Apply sound bank filter
-                                       if (soundBankIdFilter.HasValue && fileEntry.Id != soundBankIdFilter.Value)
-                                       {
-                                           continue;
-                                       }
-
-                                       ctx.Status($"Loading 0x{fileEntry.Id:X8}...");
-
-                                       var soundbank = SoundBank.Parse(fileEntry.GetData());
-
-                                       if (soundbank is null || (soundbank.Media.Count == 0 && !soundbank.IsValid))
-                                       {
-                                           continue;
-                                       }
-
-                                       if (!soundbanksByLanguage.TryGetValue(languageId, out var languageBanks))
-                                       {
-                                           languageBanks = new Dictionary<uint, SoundBank>();
-                                           soundbanksByLanguage[languageId] = languageBanks;
-                                       }
-
-                                       languageBanks[soundbank.Id] = soundbank;
-                                   }
-                               });
-
-                // Phase 2: Load sound table and resolve file IDs
-                var soundTable = new SoundTable();
-
-                if (!string.IsNullOrWhiteSpace(soundTablePath) && soundTable.Load(soundTablePath))
+                else
                 {
-                    AnsiConsole.MarkupLine($"[green]Loaded {soundTable.Cues.Count} cue entries from sound table[/]");
+                    AnsiConsole.MarkupLine(
+                        "[red]Invalid sound bank ID format. Use decimal (e.g., 12345) or hex with 0x prefix (e.g., 0x1A2B3C4D)[/]");
+
+                    return 1;
                 }
+            }
 
-                // Build global lookup and resolve
-                var globalBankLookup = new Dictionary<uint, SoundBank>();
+            // Load all files as composite set for unified processing
+            var shouldUseFileSet = resolution.Files.Count > 1;
 
-                foreach (var languageBanks in soundbanksByLanguage.Values)
-                {
-                    foreach (var (bankId, soundbank) in languageBanks)
-                    {
-                        globalBankLookup.TryAdd(bankId, soundbank);
-                    }
-                }
+            AnsiConsole.MarkupLine(
+                shouldUseFileSet
+                    ? $"[blue]Loading {resolution.Files.Count} files as composite set...[/]"
+                    : $"[blue]Processing:[/] {Path.GetFileName(resolution.Files[0])}");
 
-                foreach (var (languageId, languageBanks) in soundbanksByLanguage)
-                {
-                    SoundBank? BankLookup(uint bankId)
-                    {
-                        if (languageBanks.TryGetValue(bankId, out var sameLanguageBank)) return sameLanguageBank;
+            using var audioFile = shouldUseFileSet
+                ? ServiceProvider.AudioFileFactory.Load(resolution.GameDir!, true)
+                : ServiceProvider.AudioFileFactory.Load(resolution.Files[0]);
 
-                        return globalBankLookup.GetValueOrDefault(bankId);
-                    }
-
-                    foreach (var soundbank in languageBanks.Values)
-                    {
-                        soundTable.ResolveFileIds(soundbank, BankLookup);
-                    }
-                }
-
+            if (shouldUseFileSet)
+            {
                 AnsiConsole.MarkupLine(
-                    $"[green]Resolved {soundTable.ResolvedFileIdCount} file IDs to cue references[/]");
+                    $"[green]Loaded {audioFile.SoundBankCount} sound banks from {resolution.Files.Count} files[/]");
+            }
 
-                // Phase 3: Extract WEM files with progress
+            // Phase 1: Load all soundbanks
+            var soundbanksByLanguage = new Dictionary<uint, Dictionary<uint, SoundBank>>();
+
+            AnsiConsole.Status()
+                       .Start(
+                           "Loading soundbanks...",
+                           ctx =>
+                           {
+                               foreach (var fileEntry in audioFile.SoundBanks)
+                               {
+                                   var languageId = fileEntry.LanguageId;
+                                   var language = audioFile.GetLanguageNameOrDefault(languageId);
+
+                                   // Apply language filter
+                                   if (!string.IsNullOrWhiteSpace(settings.Language)
+                                       && !language.Equals(settings.Language, StringComparison.OrdinalIgnoreCase))
+                                   {
+                                       continue;
+                                   }
+
+                                   // Apply sound bank filter
+                                   if (soundBankIdFilter.HasValue && fileEntry.Id != soundBankIdFilter.Value)
+                                   {
+                                       continue;
+                                   }
+
+                                   ctx.Status($"Loading 0x{fileEntry.Id:X8}...");
+
+                                   var soundbank = SoundBank.Parse(fileEntry.GetData());
+
+                                   if (soundbank is null || (soundbank.Media.Count == 0 && !soundbank.IsValid))
+                                   {
+                                       continue;
+                                   }
+
+                                   if (!soundbanksByLanguage.TryGetValue(languageId, out var languageBanks))
+                                   {
+                                       languageBanks = new Dictionary<uint, SoundBank>();
+                                       soundbanksByLanguage[languageId] = languageBanks;
+                                   }
+
+                                   languageBanks[soundbank.Id] = soundbank;
+                               }
+                           });
+
+            // Phase 2: Load sound table and resolve file IDs
+            var soundTable = new SoundTable();
+
+            if (!string.IsNullOrWhiteSpace(soundTablePath) && soundTable.Load(soundTablePath))
+            {
+                AnsiConsole.MarkupLine($"[green]Loaded {soundTable.Cues.Count} cue entries from sound table[/]");
+            }
+
+            // Build global lookup and resolve
+            var globalBankLookup = new Dictionary<uint, SoundBank>();
+
+            foreach (var languageBanks in soundbanksByLanguage.Values)
+            {
+                foreach (var (bankId, soundbank) in languageBanks)
+                {
+                    globalBankLookup.TryAdd(bankId, soundbank);
+                }
+            }
+
+            foreach (var (languageId, languageBanks) in soundbanksByLanguage)
+            {
+                SoundBank? BankLookup(uint bankId)
+                {
+                    if (languageBanks.TryGetValue(bankId, out var sameLanguageBank)) return sameLanguageBank;
+
+                    return globalBankLookup.GetValueOrDefault(bankId);
+                }
+
+                foreach (var soundbank in languageBanks.Values)
+                {
+                    soundTable.ResolveFileIds(soundbank, BankLookup);
+                }
+            }
+
+            AnsiConsole.MarkupLine($"[green]Resolved {soundTable.ResolvedFileIdCount} file IDs to cue references[/]");
+
+            // Phase 3: Extract WEM files with progress
+            AnsiConsole.Progress()
+                       .Start(ctx =>
+                       {
+                           var task = ctx.AddTask("[green]Extracting WEM files...[/]");
+                           var totalBanks = soundbanksByLanguage.Values.Sum(lb => lb.Count);
+                           var processedBanks = 0;
+
+                           foreach (var (languageId, languageBanks) in soundbanksByLanguage)
+                           {
+                               var language = audioFile.GetLanguageNameOrDefault(languageId);
+
+                               foreach (var (soundbankId, soundbank) in languageBanks)
+                               {
+                                   var bankDir = Path.Join(settings.Output, language, $"{soundbankId:X8}");
+                                   GameHelpers.EnsureDirectoryCreated(bankDir + Path.DirectorySeparatorChar);
+
+                                   var metadata = new WemMetadata
+                                   {
+                                       SoundbankId = soundbankId, Language = language, LanguageId = languageId
+                                   };
+
+                                   foreach (var (wemId, wemData) in soundbank.Media)
+                                   {
+                                       var wemFile = Path.Join(bankDir, $"{wemId}.wem");
+                                       File.WriteAllBytes(wemFile, wemData);
+
+                                       var cueRefs = soundTable.GetCueReferencesByFileId(wemId);
+                                       var cueMetadataList = cueRefs
+                                                             .OrderBy(r => r.CueName)
+                                                             .ThenBy(r => r.SourceBankId)
+                                                             .Select(r => new CueMetadata
+                                                             {
+                                                                 Name = r.CueName,
+                                                                 EventId = r.CueIndex,
+                                                                 SourceBankId = r.SourceBankId
+                                                             })
+                                                             .ToList();
+
+                                       metadata.Files.Add(
+                                           new WemFileEntry
+                                           {
+                                               Id = wemId, Size = wemData.Length, Cues = cueMetadataList
+                                           });
+                                   }
+
+                                   var metadataFile = Path.Join(bankDir, "metadata.json");
+                                   metadata.Save(metadataFile);
+
+                                   var bnkFile = Path.Join(settings.Output, language, $"{soundbankId:X8}.bnk");
+                                   var fileEntry = audioFile.SoundBanks.Entries.First(e => e.Id == soundbankId
+                                       && e.LanguageId == languageId);
+
+                                   File.WriteAllBytes(bnkFile, fileEntry.GetData());
+
+                                   processedBanks++;
+                                   task.Value = (double) processedBanks / totalBanks * 100;
+                               }
+                           }
+
+                           task.Value = 100;
+                       });
+
+            // Phase 4: Extract streaming files
+            if (audioFile.StreamingFiles.Count > 0)
+            {
+                var streamingByLanguage = audioFile.StreamingFiles
+                                                   .Entries
+                                                   .GroupBy(f => f.LanguageId)
+                                                   .ToDictionary(g => g.Key, g => g.ToList());
+
                 AnsiConsole.Progress()
                            .Start(ctx =>
                            {
-                               var task = ctx.AddTask("[green]Extracting WEM files...[/]");
-                               var totalBanks = soundbanksByLanguage.Values.Sum(lb => lb.Count);
-                               var processedBanks = 0;
+                               var task = ctx.AddTask("[green]Extracting streaming WEM files...[/]");
+                               var totalFiles = audioFile.StreamingFiles.Count;
+                               var processedFiles = 0;
 
-                               foreach (var (languageId, languageBanks) in soundbanksByLanguage)
+                               foreach (var (languageId, files) in streamingByLanguage)
                                {
-                                   var language = audioFile.Languages.GetValueOrDefault(
-                                       languageId,
-                                       $"Lang:{languageId}");
+                                   var language = audioFile.GetLanguageNameOrDefault(languageId);
 
-                                   foreach (var (soundbankId, soundbank) in languageBanks)
+                                   var streamingDir = Path.Join(settings.Output, language, "_streaming");
+                                   GameHelpers.EnsureDirectoryCreated(streamingDir + Path.DirectorySeparatorChar);
+
+                                   var metadata = new StreamingMetadata
                                    {
-                                       var bankDir = Path.Join(settings.Output, language, $"{soundbankId:X8}");
-                                       GameHelpers.EnsureDirectoryCreated(bankDir + Path.DirectorySeparatorChar);
+                                       Language = language, LanguageId = languageId
+                                   };
 
-                                       var metadata = new WemMetadata
-                                       {
-                                           SoundbankId = soundbankId, Language = language, LanguageId = languageId
-                                       };
+                                   foreach (var file in files)
+                                   {
+                                       var wemFile = Path.Join(streamingDir, $"{file.Id}.wem");
+                                       var wemData = file.GetData();
+                                       File.WriteAllBytes(wemFile, wemData);
 
-                                       foreach (var (wemId, wemData) in soundbank.Media)
-                                       {
-                                           var wemFile = Path.Join(bankDir, $"{wemId}.wem");
-                                           File.WriteAllBytes(wemFile, wemData);
+                                       var cueRefs = soundTable.GetCueReferencesByFileId(file.Id);
+                                       var cueMetadataList = cueRefs
+                                                             .OrderBy(r => r.CueName)
+                                                             .ThenBy(r => r.SourceBankId)
+                                                             .Select(r => new CueMetadata
+                                                             {
+                                                                 Name = r.CueName,
+                                                                 EventId = r.CueIndex,
+                                                                 SourceBankId = r.SourceBankId
+                                                             })
+                                                             .ToList();
 
-                                           var cueRefs = soundTable.GetCueReferencesByFileId(wemId);
-                                           var cueMetadataList = cueRefs
-                                                                 .OrderBy(r => r.CueName)
-                                                                 .ThenBy(r => r.SourceBankId)
-                                                                 .Select(r => new CueMetadata
-                                                                 {
-                                                                     Name = r.CueName,
-                                                                     EventId = r.CueIndex,
-                                                                     SourceBankId = r.SourceBankId
-                                                                 })
-                                                                 .ToList();
+                                       metadata.Files.Add(
+                                           new StreamingFileMetadataEntry
+                                           {
+                                               Id = file.Id, Size = wemData.Length, Cues = cueMetadataList
+                                           });
 
-                                           metadata.Files.Add(
-                                               new WemFileEntry
-                                               {
-                                                   Id = wemId, Size = wemData.Length, Cues = cueMetadataList
-                                               });
-                                       }
-
-                                       var metadataFile = Path.Join(bankDir, "metadata.json");
-                                       metadata.Save(metadataFile);
-
-                                       var bnkFile = Path.Join(settings.Output, language, $"{soundbankId:X8}.bnk");
-                                       var fileEntry = audioFile.SoundBanks.Entries.First(e => e.Id == soundbankId
-                                           && e.LanguageId == languageId);
-
-                                       File.WriteAllBytes(bnkFile, fileEntry.GetData());
-
-                                       processedBanks++;
-                                       task.Value = (double) processedBanks / totalBanks * 100;
+                                       processedFiles++;
+                                       task.Value = (double) processedFiles / totalFiles * 100;
                                    }
+
+                                   var metadataFile = Path.Join(streamingDir, "metadata.json");
+                                   metadata.Save(metadataFile);
                                }
 
                                task.Value = 100;
                            });
-
-                // Phase 4: Extract streaming files
-                if (audioFile.StreamingFiles.Count > 0)
-                {
-                    var streamingByLanguage = audioFile.StreamingFiles
-                                                       .Entries
-                                                       .GroupBy(f => f.LanguageId)
-                                                       .ToDictionary(g => g.Key, g => g.ToList());
-
-                    AnsiConsole.Progress()
-                               .Start(ctx =>
-                               {
-                                   var task = ctx.AddTask("[green]Extracting streaming WEM files...[/]");
-                                   var totalFiles = audioFile.StreamingFiles.Count;
-                                   var processedFiles = 0;
-
-                                   foreach (var (languageId, files) in streamingByLanguage)
-                                   {
-                                       var language = audioFile.Languages.GetValueOrDefault(
-                                           languageId,
-                                           $"lang_{languageId}");
-
-                                       var streamingDir = Path.Join(settings.Output, language, "_streaming");
-                                       GameHelpers.EnsureDirectoryCreated(streamingDir + Path.DirectorySeparatorChar);
-
-                                       var metadata = new StreamingMetadata
-                                       {
-                                           Language = language, LanguageId = languageId
-                                       };
-
-                                       foreach (var file in files)
-                                       {
-                                           var wemFile = Path.Join(streamingDir, $"{file.Id}.wem");
-                                           var wemData = file.GetData();
-                                           File.WriteAllBytes(wemFile, wemData);
-
-                                           var cueRefs = soundTable.GetCueReferencesByFileId(file.Id);
-                                           var cueMetadataList = cueRefs
-                                                                 .OrderBy(r => r.CueName)
-                                                                 .ThenBy(r => r.SourceBankId)
-                                                                 .Select(r => new CueMetadata
-                                                                 {
-                                                                     Name = r.CueName,
-                                                                     EventId = r.CueIndex,
-                                                                     SourceBankId = r.SourceBankId
-                                                                 })
-                                                                 .ToList();
-
-                                           metadata.Files.Add(
-                                               new StreamingFileMetadataEntry
-                                               {
-                                                   Id = file.Id, Size = wemData.Length, Cues = cueMetadataList
-                                               });
-
-                                           processedFiles++;
-                                           task.Value = (double) processedFiles / totalFiles * 100;
-                                       }
-
-                                       var metadataFile = Path.Join(streamingDir, "metadata.json");
-                                       metadata.Save(metadataFile);
-                                   }
-
-                                   task.Value = 100;
-                               });
-                }
-
-                // Phase 5: Extract external files
-                if (audioFile.ExternalFiles.Count > 0)
-                {
-                    var externalByLanguage = audioFile.ExternalFiles
-                                                      .GroupBy(f => f.LanguageId)
-                                                      .ToDictionary(g => g.Key, g => g.ToList());
-
-                    AnsiConsole.Progress()
-                               .Start(ctx =>
-                               {
-                                   var task = ctx.AddTask("[green]Extracting external WEM files...[/]");
-                                   var totalFiles = audioFile.ExternalFiles.Count;
-                                   var processedFiles = 0;
-
-                                   foreach (var (languageId, files) in externalByLanguage)
-                                   {
-                                       var language = audioFile.Languages.GetValueOrDefault(
-                                           languageId,
-                                           $"lang_{languageId}");
-
-                                       var externalDir = Path.Join(settings.Output, language, "_external");
-                                       GameHelpers.EnsureDirectoryCreated(externalDir + Path.DirectorySeparatorChar);
-
-                                       var metadata = new ExternalMetadata
-                                       {
-                                           Language = language, LanguageId = languageId
-                                       };
-
-                                       foreach (var file in files)
-                                       {
-                                           var wemFile = Path.Join(externalDir, $"{file.Id}.wem");
-                                           var wemData = file.GetData();
-                                           File.WriteAllBytes(wemFile, wemData);
-
-                                           metadata.Files.Add(
-                                               new ExternalFileMetadataEntry { Id = file.Id, Size = wemData.Length });
-
-                                           processedFiles++;
-                                           task.Value = (double) processedFiles / totalFiles * 100;
-                                       }
-
-                                       var metadataFile = Path.Join(externalDir, "metadata.json");
-                                       metadata.Save(metadataFile);
-                                   }
-
-                                   task.Value = 100;
-                               });
-                }
-
-                AnsiConsole.MarkupLine("[green]Done processing file![/]");
             }
+
+            // Phase 5: Extract external files
+            if (audioFile.ExternalFiles.Count > 0)
+            {
+                var externalByLanguage = audioFile.ExternalFiles
+                                                  .GroupBy(f => f.LanguageId)
+                                                  .ToDictionary(g => g.Key, g => g.ToList());
+
+                AnsiConsole.Progress()
+                           .Start(ctx =>
+                           {
+                               var task = ctx.AddTask("[green]Extracting external WEM files...[/]");
+                               var totalFiles = audioFile.ExternalFiles.Count;
+                               var processedFiles = 0;
+
+                               foreach (var (languageId, files) in externalByLanguage)
+                               {
+                                   var language = audioFile.GetLanguageNameOrDefault(languageId);
+                                   var externalDir = Path.Join(settings.Output, language, "_external");
+                                   GameHelpers.EnsureDirectoryCreated(externalDir + Path.DirectorySeparatorChar);
+
+                                   var metadata = new ExternalMetadata { Language = language, LanguageId = languageId };
+
+                                   foreach (var file in files)
+                                   {
+                                       var wemFile = Path.Join(externalDir, $"{file.Id}.wem");
+                                       var wemData = file.GetData();
+                                       File.WriteAllBytes(wemFile, wemData);
+
+                                       metadata.Files.Add(
+                                           new ExternalFileMetadataEntry { Id = file.Id, Size = wemData.Length });
+
+                                       processedFiles++;
+                                       task.Value = (double) processedFiles / totalFiles * 100;
+                                   }
+
+                                   var metadataFile = Path.Join(externalDir, "metadata.json");
+                                   metadata.Save(metadataFile);
+                               }
+
+                               task.Value = 100;
+                           });
+            }
+
+            AnsiConsole.MarkupLine("[green]Done![/]");
 
             return 0;
         }

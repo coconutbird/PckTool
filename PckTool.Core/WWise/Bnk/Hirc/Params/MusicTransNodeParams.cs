@@ -16,12 +16,12 @@ public class MusicTransNodeParams
     /// </summary>
     public List<MusicTransitionRule> Rules { get; set; } = [];
 
-    public bool Read(BinaryReader reader)
+    public bool Read(BinaryReader reader, bool hasFeedback = false)
     {
         // MusicNodeParams
         var musicNodeParams = new MusicNodeParams();
 
-        if (!musicNodeParams.Read(reader))
+        if (!musicNodeParams.Read(reader, hasFeedback))
         {
             return false;
         }

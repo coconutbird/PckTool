@@ -150,9 +150,11 @@ public abstract class FileLut<TKey, TEntry> : IEnumerable<TEntry>, IEquatable<Fi
                     + $"LUT size={size}, KeySize={KeySize}");
             }
 
+            var actualOffset = (long) startBlock * blockSize;
+
             // Read the actual file data
             var position = reader.BaseStream.Position;
-            reader.BaseStream.Seek(startBlock, SeekOrigin.Begin);
+            reader.BaseStream.Seek(actualOffset, SeekOrigin.Begin);
             var buffer = reader.ReadBytes(fileSize);
             reader.BaseStream.Position = position;
 

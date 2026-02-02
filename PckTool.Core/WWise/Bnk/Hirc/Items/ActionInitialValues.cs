@@ -29,6 +29,7 @@ public class ActionInitialValues
     public GameParamActionParams? GameParamActionParams { get; set; }
     public ValueActionParams? ValueActionParams { get; set; }
     public BypassFXActionParams? BypassFXActionParams { get; set; }
+    public SeekActionParams? SeekActionParams { get; set; }
 
     public bool Read(BinaryReader reader, ActionType actionType)
     {
@@ -156,9 +157,24 @@ public class ActionInitialValues
                 break;
             }
 
+            case ActionCategory.Seek:
+            {
+                var seekParams = new SeekActionParams();
+
+                if (!seekParams.Read(reader))
+                {
+                    return false;
+                }
+
+                SeekActionParams = seekParams;
+
+                break;
+            }
+
             case ActionCategory.None:
             case ActionCategory.Event:
-                // CAkAction::SetActionParams - empty, no additional params
+            case ActionCategory.PlayEvent:
+                // CAkAction::SetActionParams / CAkActionPlayEvent::SetActionParams - empty, no additional params
                 break;
 
             case ActionCategory.Unknown:
@@ -222,8 +238,14 @@ public class ActionInitialValues
 
                 break;
 
+            case ActionCategory.Seek:
+                SeekActionParams?.Write(writer);
+
+                break;
+
             case ActionCategory.None:
             case ActionCategory.Event:
+            case ActionCategory.PlayEvent:
                 // No additional params
                 break;
 
